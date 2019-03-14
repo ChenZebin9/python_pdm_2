@@ -83,6 +83,12 @@ class DatabaseCreator:
             CONSTRAINT pk_part_thumbnail PRIMARY KEY (part_id, version)
         )
         ''' )
+        c.execute('''
+        CREATE VIEW part_tag_view AS        
+        SELECT p.id, p.name, p.english_name, p.description, p.status, p.comment, t.tag_id
+        FROM part_view AS p INNER JOIN part_tag AS t ON p.id=t.part_id
+        ORDER BY t.tag_id, p.id
+        ''')
 
 
 if __name__ == '__main__':
