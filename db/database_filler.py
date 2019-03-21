@@ -5,9 +5,10 @@ from sqlite3 import Error
 conn = pymssql.connect(server='191.1.6.103', user='sa', password='8893945', database='Greatoo_JJ_Database')
 c = conn.cursor()
 
-fill_mission = (0, 0, 0, 0, 0, 0)
+fill_mission = (1, 1, 1, 1, 1, 1)
+# fill_mission = (0, 0, 0, 0, 0, 1)
 
-t_conn = sqlite3.connect('greatoo_jj.db')
+t_conn = sqlite3.connect('greatoo_jj_3.db')
 t_c = t_conn.cursor()
 
 if fill_mission[0] == 1:
@@ -22,7 +23,7 @@ if fill_mission[0] == 1:
 
 if fill_mission[1] == 1:
     t_c.execute('DELETE FROM part')
-    c.execute('SELECT PartID, StatusType, Description1, Description4, Description2 FROM JJPart.Part')
+    c.execute('SELECT PartID, StatusType, Description1, Description4, Description2, Comment FROM JJPart.Part')
     rs = c.fetchall()
     for r in rs:
         if r[2] == '':
@@ -31,14 +32,19 @@ if fill_mission[1] == 1:
             des = '\'{0}\''.format(str(r[4]).strip())
         else:
             des = 'NULL'
-        sql = 'INSERT INTO part VALUES ({0}, {1}, \'{2}\', \'{3}\', {4})'.format(r[0], r[1], r[2], r[3], des)
+        if r[5] is not None and len(r[5]) > 0:
+            cmt = '\'{0}\''.format(str(r[5]).strip())
+        else:
+            cmt = 'NULL'
+        sql = 'INSERT INTO part VALUES ({0}, {1}, \'{2}\', \'{3}\', {4}, {5})'.format(r[0], r[1], r[2], r[3], des, cmt)
         try:
             print(sql)
             t_c.execute(sql)
         except Error:
             des = '\'{0}\''.format(des.replace('\'', ''))
             english_name = str(r[3]).replace('\'', '')
-            sql = 'INSERT INTO part VALUES ({0}, {1}, \'{2}\', \'{3}\', {4})'.format( r[0], r[1], r[2], english_name, des )
+            sql = 'INSERT INTO part VALUES ({0}, {1}, \'{2}\', \'{3}\', {4}, {5})'.format(
+                r[0], r[1], r[2], english_name, des, cmt )
             t_c.execute(sql)
     c.execute('SELECT Comment, PartID FROM JJPart.Part WHERE Comment IS NOT NULL')
     rs = c.fetchall()
@@ -86,11 +92,11 @@ if fill_mission[4] == 1:
     for cc in classic_list:
         t_c.execute('INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format(index, cc, classic_list_index, t_index))
         t_index += 1
-        index += 1
         c.execute('SELECT PartID FROM JJPart.Part WHERE PartType={0} AND StatusType>80'.format(index-1))
         rrs = c.fetchall()
         for rr in rrs:
             t_c.execute('INSERT INTO part_tag VALUES ({0}, {1})'.format(rr[0], index))
+        index += 1
     standard_index = index
     t_c.execute('INSERT INTO tag VALUES ({0}, \'标准\', NULL, 1)'.format(standard_index))
     index += 1
@@ -142,14 +148,14 @@ if fill_mission[4] == 1:
     t_index = 1
     for r in rs:
         print( r )
-        if r[0] is None:
+        if r[0] is None or r[0] == '':
             continue
         t_c.execute('INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format(index, r[0], foreign_code_index, t_index))
         t_index +=1
-        c.execute( 'SELECT PartID FROM JJPart.Part WHERE Description6=\'{0}\''.format( r[0] ) )
+        c.execute( 'SELECT PartID FROM JJPart.Part WHERE Description5=\'{0}\''.format( r[0] ) )
         rrs = c.fetchall()
         for rr in rrs:
-            t_c.execute( 'INSERT INTO part_tag VALUES ({0}, {1})'.format( rr[0], erp_num_index ) )
+            t_c.execute( 'INSERT INTO part_tag VALUES ({0}, {1})'.format( rr[0], index ) )
         index += 1
 
 if fill_mission[5] == 1:
@@ -159,8 +165,8 @@ if fill_mission[5] == 1:
     index = 1
     for r in rs:
         try:
-            if index > 20:
-                break
+            # if index > 500:
+            #     break
             t_c.execute('INSERT INTO part_thumbnail VALUES ({0}, {1}, ?)'.format(r[0], r[2]), (r[1],))
         except Error as ex:
             print('Error:')

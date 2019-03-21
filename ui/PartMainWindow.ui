@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>物料管理</string>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="operationMenu">
+    <property name="title">
+     <string>操作</string>
+    </property>
+    <addaction name="add2TreeViewMenuItem"/>
+    <addaction name="separator"/>
+    <addaction name="exitMenuItem"/>
+   </widget>
+   <widget class="QMenu" name="dataMenu">
+    <property name="title">
+     <string>数据</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>窗体</string>
+    </property>
+    <addaction name="resetDocksMenuItem"/>
+   </widget>
+   <addaction name="operationMenu"/>
+   <addaction name="dataMenu"/>
+   <addaction name="menu"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QDockWidget" name="tagDockWidget">
+   <property name="windowTitle">
+    <string>标签</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents"/>
+  </widget>
+  <widget class="QDockWidget" name="partInfoDockWidget">
+   <property name="windowTitle">
+    <string>项目信息</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2"/>
+  </widget>
+  <widget class="QDockWidget" name="partChildrenDockWidget">
+   <property name="windowTitle">
+    <string>清单</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3"/>
+  </widget>
+  <widget class="QDockWidget" name="partParentDockWidget">
+   <property name="windowTitle">
+    <string>使用处</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_4"/>
+  </widget>
+  <widget class="QDockWidget" name="purchaseDockWidget">
+   <property name="windowTitle">
+    <string>采购</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_5"/>
+  </widget>
+  <widget class="QDockWidget" name="partStructureDockWidget">
+   <property name="windowTitle">
+    <string>产品结构</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_6"/>
+  </widget>
+  <action name="exitMenuItem">
+   <property name="text">
+    <string>关闭</string>
+   </property>
+   <property name="toolTip">
+    <string>退出程序</string>
+   </property>
+   <property name="statusTip">
+    <string>退出程序。</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="resetDocksMenuItem">
+   <property name="text">
+    <string>重置布局</string>
+   </property>
+  </action>
+  <action name="add2TreeViewMenuItem">
+   <property name="text">
+    <string>添加至树形视图</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

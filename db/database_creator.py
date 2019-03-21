@@ -65,12 +65,12 @@ class DatabaseCreator:
         )
         ''')
         create_view_sql = 'CREATE VIEW part_view AS ' \
-                          'SELECT a.id, a.name, a.english_name, a.description, b.description AS status FROM ' \
+                          'SELECT a.id, a.name, a.english_name, a.description, b.description AS status, a.comment FROM ' \
                           'part AS a INNER JOIN status AS b ON a.status_id=b.id WHERE a.status_id>80'
         c.execute( create_view_sql )
         create_view_sql = 'CREATE VIEW part_relation_view AS ' \
                           'SELECT a.id, b.parent_part_id, a.name, a.english_name, a.description, a.status, ' \
-                          'b.qty_1, b.qty_2, b.relation_index, b.comment FROM ' \
+                          'b.qty_1, b.qty_2, b.relation_index, b.id AS relation_id, b.comment FROM ' \
                           'part_view AS a INNER JOIN part_relation AS b ON a.id=b.child_part_id ' \
                           'ORDER BY b.parent_part_id, b.relation_index'
         c.execute( create_view_sql )
@@ -92,7 +92,7 @@ class DatabaseCreator:
 
 
 if __name__ == '__main__':
-    database_file = 'greatoo_jj.db'
+    database_file = 'greatoo_jj_3.db'
     if os.path.exists(database_file):
         os.remove(database_file)
     DatabaseCreator( database_file )
