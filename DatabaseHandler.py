@@ -16,6 +16,11 @@ class DatabaseHandler(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_sub_tag_by_part_and_tag_name(self, part_id, tag_name):
+        """ 通过part_id，及一个tag_name，查找其子tag """
+        pass
+
+    @abstractmethod
     def get_parts_2_tag(self, tag_id):
         pass
 

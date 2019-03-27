@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<msg>
- <header>
-  <cmd>LOGIN</cmd>
-  <ver>1.0</ver>
-  <id>1234</id>
- </header>
- <data/>
-</msg>

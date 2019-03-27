@@ -29,22 +29,36 @@
     </property>
     <addaction name="add2TreeViewMenuItem"/>
     <addaction name="separator"/>
+    <addaction name="add2OutputListMenuItem"/>
+    <addaction name="showOutputListMenuItem"/>
+    <addaction name="separator"/>
     <addaction name="exitMenuItem"/>
    </widget>
    <widget class="QMenu" name="dataMenu">
     <property name="title">
      <string>数据</string>
     </property>
+    <addaction name="refreshMenuItem"/>
+    <addaction name="separator"/>
+    <addaction name="importPartListMenuItem"/>
+    <addaction name="exportPartListMenuItem"/>
    </widget>
-   <widget class="QMenu" name="menu">
+   <widget class="QMenu" name="windowsMenu">
     <property name="title">
      <string>窗体</string>
     </property>
     <addaction name="resetDocksMenuItem"/>
    </widget>
+   <widget class="QMenu" name="settingMenu">
+    <property name="title">
+     <string>设置</string>
+    </property>
+    <addaction name="columnViewMenuItem"/>
+   </widget>
    <addaction name="operationMenu"/>
    <addaction name="dataMenu"/>
-   <addaction name="menu"/>
+   <addaction name="windowsMenu"/>
+   <addaction name="settingMenu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="tagDockWidget">
@@ -123,6 +137,42 @@
   <action name="add2TreeViewMenuItem">
    <property name="text">
     <string>添加至树形视图</string>
+   </property>
+  </action>
+  <action name="importPartListMenuItem">
+   <property name="text">
+    <string>导入项目列表</string>
+   </property>
+  </action>
+  <action name="exportPartListMenuItem">
+   <property name="text">
+    <string>导出项目列表</string>
+   </property>
+  </action>
+  <action name="columnViewMenuItem">
+   <property name="text">
+    <string>项目显示列设置</string>
+   </property>
+  </action>
+  <action name="refreshMenuItem">
+   <property name="text">
+    <string>刷新</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
+   </property>
+  </action>
+  <action name="add2OutputListMenuItem">
+   <property name="text">
+    <string>添加至输出清单</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="showOutputListMenuItem">
+   <property name="text">
+    <string>输出清单</string>
    </property>
   </action>
  </widget>

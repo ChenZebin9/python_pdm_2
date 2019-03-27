@@ -1,4 +1,5 @@
 """ 一些基础的数据类 """
+import os.path
 
 
 class Part:
@@ -38,6 +39,14 @@ class Part:
             t = Tag(r[0], r[1], r[2], r[3], database=database)
             self.tags.append(t)
 
+    def get_specified_tag(self, database, tag_name):
+        """ 根据给定的tag名称，查找其子tag所指定的part """
+        rs = database.get_sub_tag_by_part_and_tag_name(self.__part_id, tag_name)
+        if rs is None:
+            return ''
+        else:
+            return rs
+
     def get_part_id(self):
         return self.__part_id
 
@@ -50,6 +59,19 @@ class Part:
             p = Part(r[1], r[2], r[3], r[4], description=r[5], comment=r[6])
             one_r = (r[0], p, r[7], r[8], r[9])
             result.append(one_r)
+        return result
+
+    def get_related_files(self, database):
+        relation_files = database.get_files_2_part(self.__part_id)
+        result = {}
+        for f in relation_files:
+            ss = os.path.splitext(f)[1][1:]
+            ss = ss.upper()
+            if ss in result.keys():
+                v = result[ss]
+                v.append(f)
+            else:
+                result[ss] = [f, ]
         return result
 
     def __eq__(self, other):

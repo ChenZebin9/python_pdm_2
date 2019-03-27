@@ -22,12 +22,22 @@ class SqliteHandler(DatabaseHandler):
         if tag_id is None and name is None and parent_id is None:
             # 找出没有父标签的标签
             sql = 'SELECT * FROM tag WHERE parent_id is NULL ORDER BY id'
-        elif tag_id is not None:
-            sql = 'SELECT * FROM tag WHERE id={0}'.format(tag_id)
-        elif name is not None:
-            sql = 'SELECT * FROM tag WHERE tag_name LIKE \'%{0}%\' ORDER BY id'.format(name)
-        elif parent_id is not None:
-            sql = 'SELECT * FROM tag WHERE parent_id={0} ORDER BY sort_index, id'.format(parent_id)
+        else:
+            sql = 'SELECT * FROM tag WHERE'
+            factor = False
+            if tag_id is not None:
+                sql = '{1} id={0}'.format(tag_id, sql)
+                factor = True
+            if name is not None:
+                if factor:
+                    sql += ' AND'
+                sql = '{1} tag_name LIKE \'%{0}%\''.format(name, sql)
+                factor = True
+            if parent_id is not None:
+                if factor:
+                    sql += ' AND'
+                sql = '{1} parent_id={0}'.format(parent_id, sql)
+            sql += ' ORDER BY sort_index, id'
         self.__c.execute(sql)
         return self.__c.fetchall()
 
@@ -83,6 +93,19 @@ class SqliteHandler(DatabaseHandler):
         if len(rs) < 1:
             return None
         return rs
+
+    def get_sub_tag_by_part_and_tag_name(self, part_id, tag_name):
+        tt = self.get_tags(name=tag_name)
+        if len(tt) < 1:
+            return None
+        sql = 'SELECT t.tag_name ' \
+              'FROM tag AS t INNER JOIN part_tag AS p ON t.id=p.tag_id ' \
+              'WHERE t.parent_id={0} AND p.part_id={1}'.format(tt[0][0], part_id)
+        self.__c.execute(sql)
+        rs = self.__c.fetchall()
+        if len(rs) < 1:
+            return None
+        return rs[0][0]
 
     def close(self):
         if self.__conn is not None:

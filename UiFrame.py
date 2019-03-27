@@ -44,7 +44,7 @@ class PartInfoPanel( QFrame ):
         hbox.addLayout( tagLayout )
 
         self.setLayout( hbox )
-        self.setFixedSize( 600, 300 )
+        self.setFixedSize( 600, 200 )
 
     def set_part_info(self, part):
         self.idLineEdit.setText(part.part_id)
@@ -64,7 +64,8 @@ class PartInfoPanelInMainWindow(QFrame):
 
     def __init__(self, parent=None, work_folder=None):
         self.__work_folder = work_folder
-        self.parent = parent
+        self.__parent = parent
+        self.__vault = None
         super().__init__(parent)
         self.partInfo = PartInfoPanel(parent)
         self.imageLabel = QLabel(self)
@@ -74,11 +75,12 @@ class PartInfoPanelInMainWindow(QFrame):
     def __setup_ui(self):
         hbox = QHBoxLayout(self)
         hbox.addWidget(self.partInfo)
-        self.imageLabel.setFixedSize(300, 300)
+        self.imageLabel.setFixedSize(200, 200)
         self.imageLabel.setAlignment(Qt.AlignCenter)
         hbox.addWidget(self.imageLabel)
         hbox.addWidget(self.relationFilesList)
         self.relationFilesList.itemDoubleClicked.connect(self.__open_file)
+        self.relationFilesList.itemSelectionChanged.connect(self.__linked_file_changed)
         self.setLayout(hbox)
 
     def set_part_info(self, part, database):
@@ -90,18 +92,33 @@ class PartInfoPanelInMainWindow(QFrame):
         if img_data is not None:
             img = QPixmap()
             img.loadFromData(img_data)
-            n_img = img.scaled(300, 300, aspectRatioMode=Qt.KeepAspectRatio)
+            n_img = img.scaled(200, 200, aspectRatioMode=Qt.KeepAspectRatio)
             self.imageLabel.setPixmap(n_img)
         else:
             self.imageLabel.clear()
 
-    def __open_file(self, item : QListWidgetItem):
+    def __open_file(self, item: QListWidgetItem):
         file_name = item.text()
         full_path = '{0}\\{1}'.format(self.__work_folder, file_name)
         if os.path.exists(full_path):
             os.startfile(full_path)
         else:
-            QMessageBox.information(self.parent, '无法打开', '{0}文件不存在'.format(full_path), QMessageBox.Ok)
+            QMessageBox.information( self.__parent, '无法打开', '{0}文件不存在'.format( full_path ), QMessageBox.Ok )
+
+    def set_vault(self, vault):
+        self.__vault = vault
+
+    def __linked_file_changed(self):
+        try:
+            item = self.relationFilesList.currentItem()
+            if self.__vault is None:
+                return
+            file_name = item.text()
+            datas_ = self.__vault.GetFileStatus(file_name)
+            datas = list(datas_)
+            self.__parent.set_status_bar_text(file_name + ' ' + datas[0])
+        except Exception as e:
+            self.__parent.set_status_bar_text('Error: {0}'.format(e))
 
 
 class ChildrenTablePanel(QFrame):
@@ -316,10 +333,11 @@ class TagViewPanel(QFrame):
 
 class PartTablePanel( QFrame ):
 
-    def __init__(self, parent=None, database=None):
+    def __init__(self, parent=None, database=None, columns=None):
         super().__init__(parent)
         self.__database = database
         self.__parent = parent
+        self.__columns = columns
         self.__display_range = []
         self.idLineEdit = QLineEdit(self)
         self.nameComboBox = QComboBox(self)
@@ -367,6 +385,24 @@ class PartTablePanel( QFrame ):
             part_num = int(t.lstrip('0'))
             self.__current_selected_part = part_num
             self.__parent.do_when_part_list_select(part_num)
+
+    def set_display_columns(self, columns):
+        self.__columns = columns
+
+    def get_current_selected_parts(self):
+        """ 获取所有选择了的part的ID """
+        items = self.partList.selectedItems()
+        result = []
+        rr = []
+        for item in items:
+            r = item.row()
+            if r in rr:
+                continue
+            rr.append(r)
+            i = self.partList.item(r, 0)
+            id_ = i.data(Qt.UserRole)
+            result.append(id_)
+        return result
 
     def get_current_selected_part(self):
         return self.__current_selected_part
@@ -420,8 +456,10 @@ class PartTablePanel( QFrame ):
         self.set_list_data(parts)
 
     def set_list_data(self, parts):
-        self.partList.setColumnCount(6)
-        self.partList.setHorizontalHeaderLabels(['序号', '名称', '英文名称', '描述', '状态', '备注'])
+        columns_flags = self.__columns[0]
+        columns_name = self.__columns[1]
+        self.partList.setColumnCount(len(columns_name))
+        self.partList.setHorizontalHeaderLabels(list(columns_name))
         self.partList.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.partList.setSelectionBehavior(QAbstractItemView.SelectRows)
         r_number = len(parts) if parts is not None else 0
@@ -430,21 +468,53 @@ class PartTablePanel( QFrame ):
             return
         index = 0
         for p in parts:
-            id_item = QTableWidgetItem(p.part_id)
-            name_item = QTableWidgetItem(p.name)
-            english_item = QTableWidgetItem(p.english_name)
-            status_item = QTableWidgetItem(p.status)
-            description_item = QTableWidgetItem(p.description)
-            comment_item = QTableWidgetItem(p.comment)
-            self.partList.setItem(index, 0, id_item)
-            self.partList.setItem(index, 1, name_item)
-            self.partList.setItem(index, 2, english_item)
-            self.partList.setItem(index, 3, description_item)
-            self.partList.setItem(index, 4, status_item)
-            self.partList.setItem(index, 5, comment_item)
+            column_index = 0
+            if columns_flags[0] == 1:
+                id_item = QTableWidgetItem(p.part_id)
+                id_item.setData(Qt.UserRole, p.get_part_id())
+                self.partList.setItem( index, column_index, id_item )
+                column_index += 1
+            if columns_flags[1] == 1:
+                name_item = QTableWidgetItem(p.name)
+                self.partList.setItem( index, column_index, name_item )
+                column_index += 1
+            if columns_flags[2] == 1:
+                english_item = QTableWidgetItem(p.english_name)
+                self.partList.setItem( index, column_index, english_item )
+                column_index += 1
+            if columns_flags[3] == 1:
+                description_item = QTableWidgetItem( p.description )
+                self.partList.setItem( index, column_index, description_item )
+                column_index += 1
+            if columns_flags[4] == 1:
+                status_item = QTableWidgetItem( p.status )
+                self.partList.setItem( index, column_index, status_item )
+                column_index += 1
+
+            # 其它信息，可配置的
+            for j in range(5, 10):
+                if columns_flags[j] == 1:
+                    ss = p.get_specified_tag(self.__database, columns_name[column_index])
+                    t_item = QTableWidgetItem(ss)
+                    self.partList.setItem(index, column_index, t_item)
+                    column_index += 1
+
+            if columns_flags[10] == 1:
+                comment_item = QTableWidgetItem(p.comment)
+                self.partList.setItem( index, column_index, comment_item )
             index += 1
         QTableWidget.resizeColumnsToContents(self.partList)
         QTableWidget.resizeRowsToContents( self.partList )
+        self.partList.clearSelection()
+
+    def get_current_parts_id(self):
+        result = []
+        cc = self.partList.rowCount()
+        for i in range(cc):
+            item = self.partList.item(i, 0)
+            id_ = item.data( Qt.UserRole )
+            result.append( id_ )
+        return tuple(result)
 
     def set_display_range(self, parts):
         self.__display_range = parts
