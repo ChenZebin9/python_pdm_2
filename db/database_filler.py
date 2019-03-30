@@ -82,6 +82,7 @@ if fill_mission[3] == 1:
 if fill_mission[4] == 1:
     t_c.execute( 'DELETE FROM tag' )
     t_c.execute('DELETE FROM part_tag')
+    t_c.execute('INSERT INTO tag VALUES (0, \'剪切板\', NULL, 1)')
     index = 1
     t_c.execute('INSERT INTO tag VALUES ({0}, \'类别\', NULL, 1)'.format(index))
     classic_list_index = index
