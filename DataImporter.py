@@ -1,6 +1,11 @@
-from PyQt5.QtWidgets import (QFileDialog, QMessageBox)
-from ui.NImportSettingDialog import (NImportSettingDialog)
+import win32con
+import win32ui
+import os
+
+from PyQt5.QtWidgets import (QMessageBox)
+
 from excel.ExcelHandler import (ExcelHandler2)
+from ui.NImportSettingDialog import (NImportSettingDialog)
 
 
 class DataImporter:
@@ -8,11 +13,14 @@ class DataImporter:
     @staticmethod
     def import_data_4_parts_list(parent=None, title=None, database=None):
         try:
-            selected_file, _ = QFileDialog.getOpenFileName(
-                parent=parent,
-                caption=title,
-                filter='Excel File (*.xls *.xlsx);;Text Files (*.txt)')
-            if selected_file == '':
+            openFlags = win32con.OFN_FILEMUSTEXIST
+            fspec = 'Excel Files (*.xls, *.xlsx)|*.xls;*.xlsx|Text Files (*.txt)|*.txt||'
+            dlg = win32ui.CreateFileDialog(1, None, None, openFlags, fspec)
+            selected_file = None
+            if dlg.DoModal() == win32con.IDOK:
+                selected_file = dlg.GetPathName()
+            print(selected_file)
+            if selected_file is None:
                 return None
             file_name = selected_file
             dialog = NImportSettingDialog(parent, title, database)
@@ -28,3 +36,19 @@ class DataImporter:
                 dialog.show()
         except Exception as ex:
             QMessageBox.warning(parent, '', str(ex), QMessageBox.Ok)
+
+    @staticmethod
+    def export_data_2_excel(parent, data):
+        fspec = 'Excel Files (*.xls)|*.xls||'
+        dlg = win32ui.CreateFileDialog(0, None, None, win32con.OFN_FILEMUSTEXIST, fspec)
+        if dlg.DoModal() != win32con.IDOK:
+            QMessageBox.information( parent, '', '放弃保存！', QMessageBox.Ok )
+            return
+        file_name = dlg.GetPathName()
+        if not file_name.upper()[-4:] == '.XLS':
+            file_name += '.xls'
+        print(file_name)
+        data.save( file_name )
+        rsp = QMessageBox.question( parent, '', '是否打开文件？', QMessageBox.Yes | QMessageBox.No )
+        if rsp == QMessageBox.Yes:
+            os.startfile( file_name )
