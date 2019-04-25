@@ -1,8 +1,12 @@
-from DatabaseHandler import *
+from db.DatabaseHandler import *
 import sqlite3
 
 
 class SqliteHandler(DatabaseHandler):
+
+    def save_change(self):
+        if self.__conn is not None:
+            self.__conn.commit()
 
     def get_tags_2_part(self, part_id):
         sql = 'SELECT t.id, t.tag_name, t.parent_id, t.sort_index ' \
@@ -18,10 +22,9 @@ class SqliteHandler(DatabaseHandler):
         return self.__c.fetchall()
 
     def get_tags(self, tag_id=None, name=None, parent_id=None):
-        sql = None
         if tag_id is None and name is None and parent_id is None:
             # 找出没有父标签的标签
-            sql = 'SELECT * FROM tag WHERE parent_id is NULL ORDER BY id'
+            sql = 'SELECT * FROM tag WHERE parent_id is NULL AND id > 0 ORDER BY id'
         else:
             sql = 'SELECT * FROM tag WHERE'
             factor = False
@@ -110,3 +113,14 @@ class SqliteHandler(DatabaseHandler):
     def close(self):
         if self.__conn is not None:
             self.__conn.close()
+
+    def sort_one_tag_to_index(self, tag_id, target_index):
+        sql = 'UPDATE tag SET sort_index={0} WHERE id={1}'.format(target_index, tag_id)
+        self.__c.execute(sql)
+
+    def set_tag_parent(self, tag_id, parent_id):
+        if parent_id is not None:
+            sql = 'UPDATE tag SET parent_id={0} WHERE id={1}'.format(parent_id, tag_id)
+        else:
+            sql = 'UPDATE tag SET parent_id=NULL WHERE id={0}'.format(tag_id)
+        self.__c.execute(sql)

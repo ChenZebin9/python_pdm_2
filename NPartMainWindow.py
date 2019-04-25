@@ -12,12 +12,13 @@ from ui.DocOutputDialog import *
 
 class NPartMainWindow( QMainWindow, Ui_MainWindow ):
 
-    def __init__(self, parent=None, database=None, username=None, work_folder=None, pdm_vault=None):
+    def __init__(self, parent=None, database=None, username=None, work_folder=None, pdm_vault=None, mode=None):
         super( NPartMainWindow, self ).__init__( parent )
         self.__database = database
         self.__username = username
         self.__work_folder = work_folder
         self.__pdm_vault = pdm_vault
+        self.__mode = mode
         self.__sw_app = None
         self.tagTreePanel = TagViewPanel( self, database=database )
         self.partInfoPanel = PartInfoPanelInMainWindow( self, work_folder=self.__work_folder )
@@ -108,7 +109,11 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         tags = Tag.get_tags( self.__database )
         self.tagTreePanel.fill_data( tags )
         self.__reset_dock()
-        self.setWindowTitle( '物料管理 __用户：' + self.__username )
+        if self.__mode == 1:
+            mode_string = '(离线模式)'
+        else:
+            mode_string = '(在线模式)'
+        self.setWindowTitle( '物料管理 __用户：{0} {1}'.format(self.__username, mode_string) )
 
     def __on_change_tag_mode(self, check_status):
         self.doTaggedMenuItem.setVisible( check_status )

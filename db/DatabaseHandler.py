@@ -39,3 +39,18 @@ class DatabaseHandler(metaclass=ABCMeta):
     @abstractmethod
     def close(self):
         pass
+
+    @abstractmethod
+    def save_change(self):
+        """ 实际上就是 database_connection 的 commit """
+        pass
+
+    @abstractmethod
+    def sort_one_tag_to_index(self, tag_id, target_index):
+        """ 改变一个 tag 的顺序 """
+        pass
+
+    @abstractmethod
+    def set_tag_parent(self, tag_id, parent_id):
+        """ 设置一个 tag 的parent """
+        pass
