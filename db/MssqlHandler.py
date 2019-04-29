@@ -73,7 +73,7 @@ class MssqlHandler(DatabaseHandler):
         select_cmd = 'SELECT t.PartID AS id, t.Description1 AS name, t.Description4 AS english_name,' \
                      ' t.Description2 AS description, s.StatusDescrption AS status, t.Comment AS comment'
         from_database = 'FROM JJPart.Part AS t INNER JOIN JJPart.PartStatus AS s ON t.StatusType=s.StatusID'
-        default_where = 't.StatusType=90 OR t.StatusType=100'
+        default_where = '(t.StatusType=90 OR t.StatusType=100)'
         if part_id is None and name is None and english_name is None and description is None:
             sql = '{0} {1} WHERE {2} ORDER BY t.PartID'.format(select_cmd, from_database, default_where)
         elif part_id is not None:
