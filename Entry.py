@@ -14,10 +14,10 @@ from db.MssqlHandler import MssqlHandler
 class InitConfig:
 
     def __init__(self):
-        db_name = 'rt_config.db'
-        if os.path.exists(db_name):
+        self.db_name = 'rt_config.db'
+        if os.path.exists(self.db_name):
             return
-        conn = sqlite3.connect(db_name)
+        conn = sqlite3.connect(self.db_name)
         c = conn.cursor()
         c.execute('''
         CREATE TABLE display_config
@@ -26,25 +26,26 @@ class InitConfig:
             config_value TEXT NOT NULL
         )
         ''')
-        c.execute('INSERT INTO display_config VALUES (\'columns\', \'1,1,0,1,0,0,1,1,0,0,1\')')
+        c.execute('INSERT INTO display_config VALUES (\'columns\', \'1,1,0,1,0,0,1,1,0,0,0,1\')')
+        c.execute('INSERT INTO display_config VALUES (\'default_tag_group\', \'-1\')')
         conn.commit()
         conn.close()
 
 
 if __name__ == '__main__':
-    database_conn = None
+    database_handler: DatabaseHandler = None
+    init_config: InitConfig = None
     try:
         config = configparser.ConfigParser()
         if not config.read('pdm_config.ini', encoding='GBK'):
             raise Exception('INI file not found.')
-        InitConfig()
+        init_config = InitConfig()
         mode = config.getint('Config', 'Mode')
         work_folder = None
         user_name = None
         vault = None
         solidWorks_app = None
         to_offline = False
-        database_handler: DatabaseHandler = None
         if mode == 0:
             try:
                 import clr
@@ -63,8 +64,8 @@ if __name__ == '__main__':
                 database_handler = MssqlHandler(server, database_name, user, password)
             except:
                 print('无法进入在线登陆模式。')
-                to_offline = True
-        if mode == 1 or to_offline:
+                mode = 1
+        if mode == 1:
             work_folder = config.get('Database', 'Folder')
             user_name = config.get('Database', 'UserName')
             database_file = config.get('Database', 'DatabaseFile')
@@ -72,7 +73,7 @@ if __name__ == '__main__':
         app = QApplication(sys.argv)
         myWin = NPartMainWindow( database=database_handler, username=user_name,
                                  work_folder=work_folder, pdm_vault=vault, mode=mode )
-        myWin.add_config(solidWorks_app)
+        myWin.add_config(solidWorks_app, init_config.db_name)
         myWin.show()
         sys.exit(app.exec_())
     except Exception as e:

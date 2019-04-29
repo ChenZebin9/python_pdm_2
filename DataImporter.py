@@ -19,7 +19,6 @@ class DataImporter:
             selected_file = None
             if dlg.DoModal() == win32con.IDOK:
                 selected_file = dlg.GetPathName()
-            print(selected_file)
             if selected_file is None:
                 return None
             file_name = selected_file
@@ -47,7 +46,6 @@ class DataImporter:
         file_name = dlg.GetPathName()
         if not file_name.upper()[-4:] == '.XLS':
             file_name += '.xls'
-        print(file_name)
         data.save( file_name )
         rsp = QMessageBox.question( parent, '', '是否打开文件？', QMessageBox.Yes | QMessageBox.No )
         if rsp == QMessageBox.Yes:

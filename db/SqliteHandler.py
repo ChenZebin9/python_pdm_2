@@ -4,6 +4,49 @@ import sqlite3
 
 class SqliteHandler(DatabaseHandler):
 
+    def del_one_tag(self, tag_id):
+        del_link_sql = 'DELETE FROM part_tag WHERE tag_id={0}'.format(tag_id)
+        self.__c.execute(del_link_sql)
+        del_tag_sql = 'DELETE FROM tag WHERE id={0}'.format(tag_id)
+        self.__c.execute(del_tag_sql)
+        self.__conn.commit()
+
+    def rename_one_tag(self, tag_id, tag_name):
+        update_tag_sql = 'UPDATE tag SET tag_name=\'{0}\' WHERE id={1}'.format(tag_name, tag_id)
+        self.__c.execute(update_tag_sql)
+        self.__conn.commit()
+
+    def set_tag_2_part(self, tag_id, part_id):
+        insert_tag_link = 'INSERT INTO part_tag VALUES ({0}, {1})'.format(part_id, tag_id)
+        self.__c.execute(insert_tag_link)
+        self.__conn.commit()
+
+    def copy(self):
+        return 'SQLite3', self.__db_file
+
+    def create_one_tag(self, name, parent_id):
+        tag_count = 'SELECT MAX(id) FROM tag'
+        self.__c.execute(tag_count)
+        next_id = self.__c.fetchone()[0] + 1
+        if parent_id is None:
+            sort_count = 'SELECT MAX(sort_index) FROM tag WHERE parent_id is NULL'
+            self.__c.execute(sort_count)
+            next_sort_index = self.__c.fetchone()[0] + 1
+            insert_sql = 'INSERT INTO tag VALUES ({0}, \'{1}\', NULL, {2})'.format(next_id, name, next_sort_index)
+        else:
+            sort_count = 'SELECT MAX(sort_index) FROM tag WHERE parent_id={0}'.format(parent_id)
+            self.__c.execute(sort_count)
+            the_sort = self.__c.fetchone()[0]
+            if the_sort is None:
+                next_sort_index = 1
+            else:
+                next_sort_index = the_sort + 1
+            insert_sql = 'INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format(next_id, name,
+                                                                                        parent_id, next_sort_index)
+        self.__c.execute(insert_sql)
+        self.__conn.commit()
+        return next_id
+
     def save_change(self):
         if self.__conn is not None:
             self.__conn.commit()
@@ -45,6 +88,7 @@ class SqliteHandler(DatabaseHandler):
         return self.__c.fetchall()
 
     def __init__(self, database_file):
+        self.__db_file = database_file
         self.__conn = sqlite3.connect(database_file, timeout=30.0)
         self.__c = self.__conn.cursor()
 
@@ -91,6 +135,18 @@ class SqliteHandler(DatabaseHandler):
         sql = 'SELECT relation_index, id, name, english_name, status,' \
               ' description, comment, qty_1, qty_2, relation_id FROM part_relation_view ' \
               'WHERE parent_part_id={0} ORDER BY relation_index'.format(part_id)
+        self.__c.execute(sql)
+        rs = self.__c.fetchall()
+        if len(rs) < 1:
+            return None
+        return rs
+
+    def get_parents(self, part_id):
+        sql = 'SELECT b.relation_index, b.parent_part_id, a.name, a.english_name, a.status,' \
+              ' a.description,  b.comment, b.qty_1, b.qty_2, b.id AS relation_id' \
+              ' FROM part_view AS a INNER JOIN part_relation AS b ON a.id = b.parent_part_id' \
+              ' WHERE b.child_part_id={0}' \
+              ' ORDER BY b.parent_part_id, b.relation_index'.format(part_id)
         self.__c.execute(sql)
         rs = self.__c.fetchall()
         if len(rs) < 1:

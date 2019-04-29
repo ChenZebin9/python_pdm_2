@@ -54,3 +54,30 @@ class DatabaseHandler(metaclass=ABCMeta):
     def set_tag_parent(self, tag_id, parent_id):
         """ 设置一个 tag 的parent """
         pass
+
+    @abstractmethod
+    def create_one_tag(self, name, parent_id):
+        """ 新建一个Tag，返回新Tag的id """
+        pass
+
+    @abstractmethod
+    def del_one_tag(self, tag_id):
+        """ 删除一个Tag """
+        pass
+
+    @abstractmethod
+    def rename_one_tag(self, tag_id, tag_name):
+        """ 重命名一个Tag """
+        pass
+
+    @abstractmethod
+    def set_tag_2_part(self, tag_id, part_id):
+        pass
+
+    @abstractmethod
+    def copy(self):
+        pass
+
+    @abstractmethod
+    def get_parents(self, part_id):
+        pass

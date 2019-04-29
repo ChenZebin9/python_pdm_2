@@ -27,7 +27,6 @@
     <property name="title">
      <string>操作</string>
     </property>
-    <addaction name="add2TreeViewMenuItem"/>
     <addaction name="separator"/>
     <addaction name="add2OutputListMenuItem"/>
     <addaction name="showOutputListMenuItem"/>
@@ -36,12 +35,24 @@
    </widget>
    <widget class="QMenu" name="dataMenu">
     <property name="title">
-     <string>数据</string>
+     <string>列表</string>
     </property>
+    <widget class="QMenu" name="menu">
+     <property name="title">
+      <string>统计设置</string>
+     </property>
+     <addaction name="allStatisticsAction"/>
+     <addaction name="purchaseStatisticsAction"/>
+     <addaction name="assemblyStatisticsAction"/>
+    </widget>
     <addaction name="refreshMenuItem"/>
     <addaction name="separator"/>
     <addaction name="importPartListMenuItem"/>
     <addaction name="exportPartListMenuItem"/>
+    <addaction name="separator"/>
+    <addaction name="add2TreeViewMenuItem"/>
+    <addaction name="statisticsInTimeAction"/>
+    <addaction name="menu"/>
    </widget>
    <widget class="QMenu" name="windowsMenu">
     <property name="title">
@@ -55,8 +66,19 @@
     </property>
     <addaction name="columnViewMenuItem"/>
    </widget>
+   <widget class="QMenu" name="tagMenu">
+    <property name="title">
+     <string>标签</string>
+    </property>
+    <addaction name="tagEditModeMenuItem"/>
+    <addaction name="doTaggedMenuItem"/>
+    <addaction name="separator"/>
+    <addaction name="selectDefaultTagMenuItem"/>
+    <addaction name="addTag2PartMenuItem"/>
+   </widget>
    <addaction name="operationMenu"/>
    <addaction name="dataMenu"/>
+   <addaction name="tagMenu"/>
    <addaction name="windowsMenu"/>
    <addaction name="settingMenu"/>
   </widget>
@@ -173,6 +195,82 @@
   <action name="showOutputListMenuItem">
    <property name="text">
     <string>输出清单</string>
+   </property>
+  </action>
+  <action name="tagEditModeMenuItem">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>编辑模式</string>
+   </property>
+   <property name="statusTip">
+    <string>激活标签页的编辑功能。</string>
+   </property>
+  </action>
+  <action name="doTaggedMenuItem">
+   <property name="text">
+    <string>打标签</string>
+   </property>
+   <property name="statusTip">
+    <string>为某项项目打上标签。</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="statisticsInTimeAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>实时统计</string>
+   </property>
+  </action>
+  <action name="allStatisticsAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>完全</string>
+   </property>
+  </action>
+  <action name="purchaseStatisticsAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>投料</string>
+   </property>
+  </action>
+  <action name="assemblyStatisticsAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>装配</string>
+   </property>
+  </action>
+  <action name="selectDefaultTagMenuItem">
+   <property name="text">
+    <string>设置默认标签组</string>
+   </property>
+   <property name="iconText">
+    <string>新创建标签时，默认加入该标签。</string>
+   </property>
+   <property name="toolTip">
+    <string>新创建标签时，默认加入该标签。</string>
+   </property>
+  </action>
+  <action name="addTag2PartMenuItem">
+   <property name="text">
+    <string>添加标签</string>
+   </property>
+   <property name="shortcut">
+    <string>F3</string>
    </property>
   </action>
  </widget>

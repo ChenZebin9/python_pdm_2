@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import win32ui
 
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QCursor, QColor, QBrush
@@ -38,7 +39,7 @@ class DocOutputDialog(QDialog):
         self.__do_output_thread = DoOutput(self.__sw_app)
         self.__do_output_thread.all_task_done_signal.connect(self.__output_task_end)
         self.__do_output_thread.one_task_done_signal.connect(self.__on_one_task_done)
-        self.all_task_done = False
+        self.all_task_done = True
 
         # 输出的清单
         self.__output_parts = []

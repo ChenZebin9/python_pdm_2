@@ -1,16 +1,33 @@
 import pymssql
 import sqlite3
 from sqlite3 import Error
+from database_creator import DatabaseCreator
+import os
+
+db_file = 'greatoo_jj_3.db'
+
+user_db_name = input('请输入数据库名称（直接按Enter接受默认名称）：')
+print('数据库文件名称为：')
+if user_db_name == '':
+    print('greatoo_jj_3.db。')
+else:
+    print(user_db_name)
+    db_file = user_db_name
+
+
+if os.path.exists(db_file):
+    os.remove(db_file)
+DatabaseCreator(db_file)
 
 conn = pymssql.connect(server='191.1.6.103', user='sa', password='8893945', database='Greatoo_JJ_Database')
 c = conn.cursor()
 
 fill_mission = (1, 1, 1, 1, 1, 1)
-# fill_mission = (0, 0, 0, 0, 0, 1)
 
-t_conn = sqlite3.connect('greatoo_jj_3.db')
+t_conn = sqlite3.connect(db_file)
 t_c = t_conn.cursor()
 
+# status 的数据
 if fill_mission[0] == 1:
     t_c.execute('DELETE FROM status')
     t_conn.commit()
@@ -21,6 +38,7 @@ if fill_mission[0] == 1:
         t_c.execute('INSERT INTO status VALUES ({0}, \'{1}\')'.format(r[0], r[1]))
     t_conn.commit()
 
+# part 的数据
 if fill_mission[1] == 1:
     t_c.execute('DELETE FROM part')
     c.execute('SELECT PartID, StatusType, Description1, Description4, Description2, Comment FROM JJPart.Part')
@@ -52,6 +70,7 @@ if fill_mission[1] == 1:
         print(r)
         t_c.execute('UPDATE part SET comment=\'{0}\' WHERE id={1}'.format(r[0], r[1]))
 
+# part_2_file 文件链接
 if fill_mission[2] == 1:
     t_c.execute('DELETE FROM part_2_file')
     c.execute('SELECT PartID, FilePath FROM JJPart.FileRelation')
@@ -60,6 +79,7 @@ if fill_mission[2] == 1:
         sql = 'INSERT INTO part_2_file VALUES ({0}, \'{1}\')'.format(r[0], r[1])
         t_c.execute(sql)
 
+# part 之间的连接，part_relation
 if fill_mission[3] == 1:
     t_c.execute('DELETE FROM part_relation')
     c.execute('SELECT PartRelationID, ChildPart, ParentPart, Quantity, ActualQty, '
@@ -79,87 +99,30 @@ if fill_mission[3] == 1:
         )
         t_c.execute(sql)
 
+# tag 的数据
 if fill_mission[4] == 1:
     t_c.execute( 'DELETE FROM tag' )
     t_c.execute('DELETE FROM part_tag')
-    t_c.execute('INSERT INTO tag VALUES (0, \'剪切板\', NULL, 1)')
-    index = 1
-    t_c.execute('INSERT INTO tag VALUES ({0}, \'类别\', NULL, 1)'.format(index))
-    classic_list_index = index
-    classic_list = '钣金件 紧固件 电气工程 机械系统-零件 机械系统-装配件 流体系统 ' \
-                   '图纸 文档 物料清单 工具 其它 虚拟单元 电气工程-装配件'.split(' ')
-    index += 1
-    t_index = 1
-    for cc in classic_list:
-        t_c.execute('INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format(index, cc, classic_list_index, t_index))
-        t_index += 1
-        c.execute('SELECT PartID FROM JJPart.Part WHERE PartType={0} AND StatusType>80'.format(index-1))
-        rrs = c.fetchall()
-        for rr in rrs:
-            t_c.execute('INSERT INTO part_tag VALUES ({0}, {1})'.format(rr[0], index))
-        index += 1
-    standard_index = index
-    t_c.execute('INSERT INTO tag VALUES ({0}, \'标准\', NULL, 1)'.format(standard_index))
-    index += 1
-    brand_index = index
-    t_c.execute( 'INSERT INTO tag VALUES ({0}, \'品牌\', NULL, 1)'.format( brand_index ) )
-    index += 1
-    c.execute( 'SELECT DISTINCT(Description3) FROM JJPart.Part WHERE StatusType>80 ORDER BY Description3' )
+    c.execute('SELECT id, tag_name, parent_id, sort_index FROM JJCom.Tag')
     rs = c.fetchall()
-    t_index = 1
-    tt_index = 1
     for r in rs:
-        print(r)
-        if r[0] is None:
-            continue
-        if str(r[0]).startswith('GB') or str(r[0]).startswith('DIN'):
-            t_c.execute( 'INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format( index, r[0], standard_index, t_index ) )
-            t_index += 1
-        else:
-            t_c.execute(
-                'INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format( index, r[0], brand_index, tt_index ) )
-            tt_index += 1
-        c.execute('SELECT PartID FROM JJPart.Part WHERE Description3=\'{0}\''.format(r[0]))
-        rrs = c.fetchall()
-        for rr in rrs:
-            t_c.execute('INSERT INTO part_tag VALUES ({0}, {1})'.format(rr[0], index))
-        index += 1
-    t_c.execute('INSERT INTO tag VALUES ({0}, \'巨轮智能ERP物料编码\', NULL, 1)'.format(index))
-    erp_num_index = index
-    index += 1
-    c.execute( 'SELECT DISTINCT(Description6) FROM JJPart.Part WHERE StatusType>80 ORDER BY Description6' )
+        pp_id = r[2]
+        if r[2] is None:
+            pp_id = 'NULL'
+        t_c.execute('INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format(r[0], r[1], pp_id, r[3]))
+    c.execute('SELECT part_id, tag_id FROM JJCom.PartTag')
     rs = c.fetchall()
-    t_index = 1
     for r in rs:
-        print(r)
-        if r[0] is None:
-            continue
-        t_c.execute('INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format(index, r[0], erp_num_index, t_index))
-        t_index += 1
-        c.execute( 'SELECT PartID FROM JJPart.Part WHERE Description6=\'{0}\''.format( r[0] ) )
-        rrs = c.fetchall()
-        for rr in rrs:
-            t_c.execute( 'INSERT INTO part_tag VALUES ({0}, {1})'.format( rr[0], index ) )
-        index += 1
-    t_c.execute( 'INSERT INTO tag VALUES ({0}, \'外部编码\', NULL, 1)'.format( index ) )
-    foreign_code_index = index
-    index += 1
-    c.execute( 'SELECT DISTINCT(Description5) FROM JJPart.Part WHERE StatusType>80 ORDER BY Description5' )
-    rs = c.fetchall()
-    t_index = 1
-    for r in rs:
-        print( r )
-        if r[0] is None or r[0] == '':
-            continue
-        t_c.execute('INSERT INTO tag VALUES ({0}, \'{1}\', {2}, {3})'.format(index, r[0], foreign_code_index, t_index))
-        t_index +=1
-        c.execute( 'SELECT PartID FROM JJPart.Part WHERE Description5=\'{0}\''.format( r[0] ) )
-        rrs = c.fetchall()
-        for rr in rrs:
-            t_c.execute( 'INSERT INTO part_tag VALUES ({0}, {1})'.format( rr[0], index ) )
-        index += 1
+        t_c.execute('INSERT INTO part_tag VALUES ({0}, {1})'.format(r[0], r[1]))
 
-if fill_mission[5] == 1:
+rsp = input('是否输出缩略图？（Y/N）')
+rsp = rsp.upper()
+while rsp != 'Y' and rsp != 'N':
+    rsp = input( '请重新输入。是否输出缩略图？（Y/N）' )
+    rsp = rsp.upper()
+
+# thumbnail 缩略图
+if fill_mission[5] == 1 and rsp == 'Y':
     t_c.execute('DELETE FROM part_thumbnail')
     c.execute('SELECT * FROM JJPart.PartThumbnail')
     rs = c.fetchall()
@@ -182,3 +145,5 @@ c.close()
 conn.close()
 t_c.close()
 t_conn.close()
+
+print('创建完成。')

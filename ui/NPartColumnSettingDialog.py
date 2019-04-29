@@ -1,12 +1,15 @@
-from ui.PartColumnSettingDialog import Ui_Dialog
-from PyQt5.QtWidgets import (QDialog, QListWidgetItem)
+import sqlite3
+
 from PyQt5.QtCore import Qt
-import configparser
+from PyQt5.QtWidgets import (QDialog, QListWidgetItem)
+
+from ui.PartColumnSettingDialog import Ui_Dialog
 
 
 class NPartColumnSettingDialog(QDialog, Ui_Dialog):
 
-    Columns = ('序号', '名称', '英文名称', '描述', '状态', '类别', '标准', '品牌', '巨轮智能ERP物料编码', '外部编码', '备注')
+    Columns = ('序号', '名称', '英文名称', '描述', '状态', '类别', '标准', '品牌', '巨轮智能ERP物料编码',
+               '巨轮中德ERP物料编码', '外部编码', '备注')
 
     def __init__(self, parent, ini_file):
         self.__parent = parent
@@ -17,10 +20,7 @@ class NPartColumnSettingDialog(QDialog, Ui_Dialog):
     def __setup_ui(self):
         super( NPartColumnSettingDialog, self ).setupUi( self )
         self.setFixedSize(380, 300)
-
-        config = configparser.ConfigParser()
-        config.read( 'pdm_config.ini', encoding='GBK' )
-        columns_set = config.get( 'PartView', 'columns' )
+        columns_set = NPartColumnSettingDialog.__get_config_value()
         columns_set_flags = columns_set.split(',')
         index = 0
         for columns in NPartColumnSettingDialog.Columns:
@@ -43,19 +43,32 @@ class NPartColumnSettingDialog(QDialog, Ui_Dialog):
             else:
                 setting.append('0')
         setting_str = ','.join(setting)
-        config = configparser.ConfigParser()
-        config.read(self.__ini_file, encoding='GBK')
-        config.set('PartView', 'columns', setting_str)
-        config.write(open(self.__ini_file, 'r+', encoding='GBK'))
+        NPartColumnSettingDialog.__set_config_value(setting_str)
         self.__parent.set_display_columns(NPartColumnSettingDialog.get_columns_setting())
         self.__parent.refresh_part_list()
         self.close()
 
     @staticmethod
+    def __get_config_value():
+        conn = sqlite3.connect( 'rt_config.db' )
+        c = conn.cursor()
+        c.execute( 'SELECT config_value FROM display_config WHERE name=\'columns\'' )
+        dd = c.fetchall()
+        columns_set = dd[0][0]
+        c.close()
+        return columns_set
+
+    @staticmethod
+    def __set_config_value(the_value):
+        conn = sqlite3.connect( 'rt_config.db' )
+        c = conn.cursor()
+        c.execute( 'UPDATE display_config SET config_value=\'{0}\' WHERE name=\'columns\''.format( the_value ) )
+        conn.commit()
+        c.close()
+
+    @staticmethod
     def get_columns_setting():
-        config = configparser.ConfigParser()
-        config.read( 'pdm_config.ini', encoding='GBK' )
-        columns_set = config.get( 'PartView', 'columns' )
+        columns_set = NPartColumnSettingDialog.__get_config_value()
         columns_set_flags = columns_set.split( ',' )
         result = []
         result_str = []

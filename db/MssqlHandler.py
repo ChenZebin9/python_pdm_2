@@ -4,7 +4,68 @@ import pymssql
 
 class MssqlHandler(DatabaseHandler):
 
+    def get_parents(self, part_id):
+        sql = 'SELECT b.Number, b.ParentPart, a.Description1, a.Description4, c.StatusDescrption,' \
+              ' a.Description2, b.Comment, b.Quantity, b.ActualQty, b.PartRelationID' \
+              ' FROM JJPart.PartRelation AS b INNER JOIN (JJPart.Part AS a' \
+              ' INNER JOIN JJPart.PartStatus AS c ON a.StatusType=c.StatusID)' \
+              ' ON b.ParentPart=a.PartID' \
+              ' WHERE b.ChildPart={0}' \
+              ' ORDER BY b.ParentPart, b.PartRelationID'.format(part_id)
+        self.__c.execute( sql )
+        rs = self.__c.fetchall()
+        if len( rs ) < 1:
+            return None
+        return rs
+
+    def copy(self):
+        return 'MSSQL', MssqlHandler(self.__server, self.__database, self.__user, self.__password)
+
+    def set_tag_2_part(self, tag_id, part_id):
+        insert_tag_link = 'INSERT INTO JJCom.PartTag VALUES ({0}, {1})'.format(part_id, tag_id)
+        self.__c.execute(insert_tag_link)
+        self.__conn.commit()
+
+    def rename_one_tag(self, tag_id, tag_name):
+        update_tag_sql = 'UPDATE JJCom.Tag SET tag_name=\'{0}\' WHERE id={1}'.format(tag_name, tag_id)
+        self.__c.execute(update_tag_sql)
+        self.__conn.commit()
+
+    def del_one_tag(self, tag_id):
+        del_link_sql = 'DELETE FROM JJCom.PartTag WHERE tag_id={0}'.format(tag_id)
+        self.__c.execute(del_link_sql)
+        del_tag_sql = 'DELETE FROM JJCom.Tag WHERE id={0}'.format(tag_id)
+        self.__c.execute(del_tag_sql)
+        self.__conn.commit()
+
+    def create_one_tag(self, name, parent_id):
+        tag_count = 'SELECT MAX(id) FROM JJCom.Tag'
+        self.__c.execute(tag_count)
+        next_id = self.__c.fetchone()[0] + 1
+        if parent_id is None:
+            sort_count = 'SELECT MAX(sort_index) FROM JJCom.Tag WHERE parent_id is NULL'
+            self.__c.execute(sort_count)
+            next_sort_index = self.__c.fetchone()[0] + 1
+            insert_sql = 'INSERT INTO JJCom.Tag VALUES ({0}, \'{1}\', NULL, {2})'.format(next_id, name, next_sort_index)
+        else:
+            sort_count = 'SELECT MAX(sort_index) FROM JJCom.Tag WHERE parent_id={0}'.format(parent_id)
+            self.__c.execute(sort_count)
+            the_sort = self.__c.fetchone()[0]
+            if the_sort is None:
+                next_sort_index = 1
+            else:
+                next_sort_index = the_sort + 1
+            insert_sql = 'INSERT INTO JJCom.Tag VALUES ({0}, \'{1}\', {2}, {3})'.format(next_id, name,
+                                                                                    parent_id, next_sort_index)
+        self.__c.execute(insert_sql)
+        self.__conn.commit()
+        return next_id
+
     def __init__(self, server, database, user, password):
+        self.__server = server
+        self.__database = database
+        self.__user = user
+        self.__password = password
         self.__conn = pymssql.connect(server=server, user=user, password=password, database=database)
         self.__c = self.__conn.cursor()
 

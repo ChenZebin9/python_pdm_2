@@ -1,13 +1,14 @@
-from PyQt5.QtWidgets import QMainWindow
 import xlwt
-import os
+from PyQt5.QtWidgets import (QMainWindow, QInputDialog)
+
 from DataImporter import *
-from Part import Part, Tag
+from Part import Part
 from UiFrame import (PartInfoPanelInMainWindow, TagViewPanel, PartTablePanel,
                      ChildrenTablePanel, PartStructurePanel)
-from ui.NPartColumnSettingDialog import *
-from ui.PartMainWindow import *
 from ui.DocOutputDialog import *
+from ui.NPartColumnSettingDialog import *
+from ui.NSetDefaultTagDialog import *
+from ui.PartMainWindow import *
 
 
 class NPartMainWindow( QMainWindow, Ui_MainWindow ):
@@ -19,13 +20,21 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.__work_folder = work_folder
         self.__pdm_vault = pdm_vault
         self.__mode = mode
+        # Solidworks 程序
         self.__sw_app = None
+        # 一个存储了设置参数的数据库，原ini文件变成为只读设置
+        self.__config_file = None
+        # 在 Part 添加 Tag 时，默认加入的组，-1 时为没有选中
+        self.__default_tag_group = -1
+        # 当前被选中的 Part，-1 时为没有选中
+        self.__current_selected_part = -1
         self.tagTreePanel = TagViewPanel( self, database=database )
         self.partInfoPanel = PartInfoPanelInMainWindow( self, work_folder=self.__work_folder )
         self.partInfoPanel.set_vault( pdm_vault )
         self.partListPanel = PartTablePanel( self, database=database,
                                              columns=NPartColumnSettingDialog.get_columns_setting() )
         self.childrenTablePanel = ChildrenTablePanel( self, database=database )
+        self.parentsTablePanel = ChildrenTablePanel( self, database=database, mode=1 )
         self.partStructurePanel = PartStructurePanel( self, database=database )
         self.__doc_output_dialog = None
         self.setup_ui()
@@ -63,6 +72,7 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.partInfoDockWidget.setWidget( self.partInfoPanel )
         self.partChildrenDockWidget.setWidget( self.childrenTablePanel )
         self.partStructureDockWidget.setWidget( self.partStructurePanel )
+        self.partParentDockWidget.setWidget( self.parentsTablePanel )
         self.setDockNestingEnabled( True )
 
         self.exitMenuItem.triggered.connect( self.close )
@@ -76,7 +86,10 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.showOutputListMenuItem.triggered.connect( self.__show_output_list_dialog )
 
         # 实现标签的编辑功能
+        self.doTaggedMenuItem.triggered.connect( self.__tag_parts )
         self.tagEditModeMenuItem.triggered.connect( self.__on_change_tag_mode )
+        self.selectDefaultTagMenuItem.triggered.connect(self.__set_default_tag_set)
+        self.addTag2PartMenuItem.triggered.connect(self.__add_tag_2_part)
 
         # 关于统计功能
         self.allStatisticsAction.triggered.connect( self.__set_statistics_setting_as_combo )
@@ -93,10 +106,32 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
             i = 3
         self.__set_statistics_easy( i )
 
+    def __tag_parts(self):
+        # 给所选的 Part 打标签
+        parts = self.partListPanel.get_current_selected_parts()
+        if len(parts) < 1:
+            QMessageBox.warning(self, '', '没有选择部件。')
+            return
+        the_tag: Tag = self.tagTreePanel.get_current_selected_tag()
+        if the_tag is None:
+            QMessageBox.warning(self, '', '没有选择标签。')
+            return
+        resp = QMessageBox.question(self, '', '将这些部件，打上 \'{0}\' 的标签？'.format(the_tag),
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if resp == QMessageBox.No:
+            return
+        for p in parts:
+            self.__database.set_tag_2_part(the_tag.tag_id, p)
+        QMessageBox.information(self, '', 'Done!')
+
     def __set_statistics_easy(self, index):
         self.allStatisticsAction.setChecked( index == 1 )
         self.purchaseStatisticsAction.setChecked( index == 2 )
         self.assemblyStatisticsAction.setChecked( index == 3 )
+
+    def __set_default_tag_set(self):
+        dialog = NSetDefaultDialog(self, self.__database, self.__config_file)
+        dialog.show()
 
     def get_statistics_setting(self):
         """ 获取统计的设置 """
@@ -122,9 +157,11 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
     def do_when_part_list_select(self, part_id):
         parts = Part.get_parts( self.__database, part_id=part_id )
         p = parts[0]
+        self.__current_selected_part = p
         p.get_tags( self.__database )
         self.partInfoPanel.set_part_info( p, self.__database )
         self.childrenTablePanel.set_part_children( p, self.__database )
+        self.parentsTablePanel.set_part_children(p, self.__database)
 
     def do_when_tag_tree_select(self, tag_id):
         try:
@@ -194,6 +231,8 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         for i in range( c_c ):
             for j in range( r_c ):
                 item = data_source.item( j, i )
+                if item is None:
+                    continue
                 table.write( j + 1, i, item.text() )
         DataImporter.export_data_2_excel(self, file)
 
@@ -237,17 +276,55 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
 
         event.accept()
 
-    def add_config(self, sw_app):
+    def set_default_tag_group_2_add(self, tag_id):
+        self.__default_tag_group = tag_id
+
+    def __add_tag_2_part(self):
+        if self.__current_selected_part is None:
+            QMessageBox.information(self, '', '没有选择一个项目。', QMessageBox.Ok)
+            return
+        part_id = self.__current_selected_part.get_part_id()
+        p = Part.get_parts(self.__database, part_id=part_id)[0]
+        to_tag = None
+        if self.__default_tag_group > 0:
+            to_tag = Tag.get_tags(self.__database, tag_id=self.__default_tag_group)[0]
+        msg_1 = '{0}_{1}'.format(p.part_id, p.name)
+        msg_2 = '新标签'
+        if to_tag is not None:
+            msg_2 = to_tag.name
+        text, ok_pressed = QInputDialog.getText(self, msg_1, msg_2, QLineEdit.Normal, '')
+        if ok_pressed and text != '':
+            result = Tag.add_one_tag_2_part(self.__database, text, part_id, parent_tag_id=to_tag.tag_id)
+            the_tag_id = result[0]
+            if result[1]:
+                self.set_status_bar_text('{0}_{1} 使用了原有的标签。'.format(p.part_id, p.name))
+            else:
+                self.set_status_bar_text('新建了一个标签，编号：{0}，刷新标签清单后显示。'.format(the_tag_id))
+        self.do_when_part_list_select(p.get_part_id())
+
+    def add_config(self, sw_app, config_file):
         self.__sw_app = sw_app
+        self.__config_file = config_file
+        # 获取默认的 Tag
+        conn = sqlite3.connect( self.__config_file )
+        c = conn.cursor()
+        c.execute( 'SELECT config_value FROM display_config WHERE name=\'default_tag_group\'' )
+        self.__default_tag_group = int(c.fetchone()[0])
+        conn.close()
 
     def set_ready_for_statistics_display(self):
-        """ 设置好统计显示清单 """
-        pass
+        """ 设置好统计显示清单，数量添加在最后。 """
+        self.partListPanel.set_list_header_4_statistics()
 
-    def add_one_item_to_statistics_list(self, part_id, qty, unit):
+    def add_one_item_to_statistics_list(self, part_id, qty):
         """ 增加一个项目去统计显示清单 """
-        pass
+        self.partListPanel.add_one_part_4_statistics(part_id, qty)
 
-    def show_statistics_finish_flag(self):
+    def show_statistics_finish_flag(self, finish_type):
         """ 发出一个统计显示清单完成的信号 """
-        pass
+        if not finish_type:
+            self.set_status_bar_text('完成统计。')
+            QTableWidget.resizeColumnsToContents(self.partListPanel.partList)
+            QTableWidget.resizeRowsToContents(self.partListPanel.partList)
+        else:
+            self.set_status_bar_text('统计被中断。')
