@@ -5,7 +5,8 @@ class ExcelHandler2:
     """ 使用 xlrd 速度比较快 """
 
     def __init__(self, file_name):
-        self.__book = xlrd.open_workbook(file_name)
+        # 要加 formatting_info=True 才能获得单元格的格式
+        self.__book = xlrd.open_workbook(file_name, formatting_info=True)
 
     def close(self):
         pass
@@ -27,9 +28,12 @@ class ExcelHandler2:
             columns.append(col_name)
             data = []
             for row_index in range(1, ss.nrows):
-                if rinfomap.get(row_index, 0) and rinfomap[row_index].hiddent == 1:
+                if rinfomap.get(row_index, 0) and rinfomap[row_index].hidden == 1:
                     continue
                 tcell = ss.cell(row_index, col_index)
-                data.append(tcell.value)
+                vv = tcell.value
+                if vv is None:
+                    vv = ''
+                data.append(vv)
             datas[col_name] = data
         return columns, datas
