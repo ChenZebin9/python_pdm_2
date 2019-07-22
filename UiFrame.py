@@ -4,7 +4,7 @@ from PyQt5.QtGui import QIntValidator, QPixmap, QCursor
 from PyQt5.QtWidgets import (QFrame, QLabel, QTextEdit,
                              QListWidget, QHBoxLayout, QFormLayout, QVBoxLayout,
                              QPushButton, QComboBox, QTableWidget,
-                             QTableWidgetItem, QListWidgetItem,
+                             QTableWidgetItem, QListWidgetItem, QHeaderView,
                              QMenu)
 from PyQt5.QtCore import (QThread, pyqtSignal)
 from Part import Part, DoStatistics
@@ -255,10 +255,11 @@ class ChildrenTablePanel( QFrame ):
             description_item = QTableWidgetItem( p.description )
             description_item.setFlags( description_item.flags() & ~Qt.ItemIsEditable )
             comment_item = QTableWidgetItem( p.comment )
-            qty_1_item = QTableWidgetItem( str( r[2] ) )
-            qty_1_item.setData( Qt.UserRole, r[2] )
+            qty_1_item = QTableWidgetItem()
+            qty_1_item.setData( Qt.DisplayRole, r[2] )
             qty_1_item.setTextAlignment( Qt.AlignHCenter )
-            qty_2_item = QTableWidgetItem( str( r[3] ) )
+            qty_2_item = QTableWidgetItem()
+            qty_2_item.setData( Qt.DisplayRole, r[3] )
             qty_2_item.setData( Qt.UserRole, r[4] )
             qty_2_item.setTextAlignment( Qt.AlignHCenter )
             self.childrenTableWidget.setItem( index, 0, index_item )
@@ -326,7 +327,7 @@ class TagViewPanel( QFrame ):
 
     def __init_ui(self):
         self.cleanTextPushButton.setText( '清空' )
-        self.cleanTextPushButton.clicked.connect( lambda: self.filterLineEdit.setText( None ) )
+        self.cleanTextPushButton.clicked.connect( self.__reset_search )
         self.tagFilterListWidget.setFixedHeight( 100 )
         v_box = QVBoxLayout( self )
 
@@ -453,6 +454,11 @@ class TagViewPanel( QFrame ):
                 node.setText( 0, c.name )
                 node.setData( 0, Qt.UserRole, c )
 
+    def __reset_search(self):
+        self.filterLineEdit.setText('')
+        tags = Tag.get_tags( self.__database, name=None )
+        self.fill_data( tags )
+
     def __do_search(self):
         filter_text = self.filterLineEdit.text().strip()
         if filter_text == '':
@@ -536,6 +542,12 @@ class PartTablePanel( QFrame ):
         self.setLayout( vbox )
         if self.__parent is not None:
             self.partList.itemSelectionChanged.connect( self.__selected_part )
+
+        # 设置点击表头可以排序
+        header_goods = self.partList.horizontalHeader()
+        header_goods.sectionClicked.connect( self.__sort_by_column )
+        #
+        self.__sort_flags = {}
 
     def __selected_part(self):
         selected_row = self.partList.currentRow()
@@ -666,8 +678,10 @@ class PartTablePanel( QFrame ):
             self.partList.setItem( r_c, column_index, comment_item )
             column_index += 1
 
-        qty_item = QTableWidgetItem( str( qty ) )
+        qty_item = QTableWidgetItem()
+        qty_item.setData( Qt.DisplayRole, qty )
         self.partList.setItem( r_c, column_index, qty_item )
+        del qty_item
 
     def set_list_data(self, parts):
         columns_flags = self.__columns[0]
@@ -676,45 +690,49 @@ class PartTablePanel( QFrame ):
         self.partList.setHorizontalHeaderLabels( list( columns_name ) )
         r_number = len( parts ) if parts is not None else 0
         self.partList.setRowCount( r_number )
+        self.__sort_flags.clear()
         if r_number < 1:
             return
         index = 0
         the_begin_column_index = 0
-        other_column_count = 0
-        for j in range( 5, 11 ):
-            if columns_flags[j] == 1:
-                other_column_count += 1
+        other_column_count = len(columns_flags[5:-1])
         for p in parts:
             column_index = 0
             if columns_flags[0] == 1:
                 id_item = QTableWidgetItem( p.part_id )
                 id_item.setData( Qt.UserRole, p.get_part_id() )
                 self.partList.setItem( index, column_index, id_item )
+                del id_item
                 column_index += 1
             if columns_flags[1] == 1:
                 name_item = QTableWidgetItem( p.name )
                 self.partList.setItem( index, column_index, name_item )
+                del name_item
                 column_index += 1
             if columns_flags[2] == 1:
                 english_item = QTableWidgetItem( p.english_name )
                 self.partList.setItem( index, column_index, english_item )
+                del english_item
                 column_index += 1
             if columns_flags[3] == 1:
                 description_item = QTableWidgetItem( p.description )
                 self.partList.setItem( index, column_index, description_item )
+                del description_item
                 column_index += 1
             if columns_flags[4] == 1:
                 status_item = QTableWidgetItem( p.status )
                 self.partList.setItem( index, column_index, status_item )
+                del status_item
                 column_index += 1
 
             # 其它信息，可配置的
             the_begin_column_index = column_index
             column_index += other_column_count
 
-            if columns_flags[11] == 1:
+            if columns_flags[-1] == 1:
                 comment_item = QTableWidgetItem( p.comment )
                 self.partList.setItem( index, column_index, comment_item )
+                del comment_item
             index += 1
         QTableWidget.resizeColumnsToContents( self.partList )
         QTableWidget.resizeRowsToContents( self.partList )
@@ -725,13 +743,32 @@ class PartTablePanel( QFrame ):
             while self.fill_part_info_thread.isRunning():
                 time.sleep( 0.1 )
             self.__parent.set_status_bar_text( '开始填充。' )
-            self.fill_part_info_thread.set_data( columns_flags, columns_name,
-                                                 the_begin_column_index, parts )
+            col_names = []
+            for i in columns_flags[5:-1]:
+                r = self.__database.get_tags( tag_id=i )
+                col_names.append(r[0][1])
+            self.fill_part_info_thread.set_data( col_names, the_begin_column_index, parts )
             self.fill_part_info_thread.start()
+        self.partList.horizontalHeader().setSectionsClickable( False )
+        self.partList.horizontalHeader().setSortIndicatorShown( False )
+
+    def __sort_by_column(self, column_index):
+        # 列排列的相应函数
+        sort_flags = False
+        if column_index in self.__sort_flags:
+            sort_flags = self.__sort_flags[column_index]
+        if sort_flags:
+            self.partList.sortByColumn(column_index, Qt.AscendingOrder)
+            sort_flags = False
+        else:
+            self.partList.sortByColumn(column_index, Qt.DescendingOrder)
+            sort_flags = True
+        self.__sort_flags[column_index] = sort_flags
 
     def __fill_one_cell(self, row_index, column_index, text):
         item = QTableWidgetItem( text )
         self.partList.setItem( row_index, column_index, item )
+        del item
 
     def __all_cells_filled(self, is_paused):
         if is_paused:
@@ -741,6 +778,8 @@ class PartTablePanel( QFrame ):
         QTableWidget.resizeColumnsToContents( self.partList )
         QTableWidget.resizeRowsToContents( self.partList )
         self.partList.clearSelection()
+        self.partList.horizontalHeader().setSectionsClickable( True )
+        self.partList.horizontalHeader().setSortIndicatorShown( True )
 
     def get_current_parts_id(self):
         result = []
@@ -787,8 +826,7 @@ class FillPartInfo( QThread ):
         elif database[0] == 'SQLite3':
             self.__sqlite3_file = database[1]
 
-    def set_data(self, columns_flag, columns_name, column_index, parts, ):
-        self.__c_f = columns_flag
+    def set_data(self, columns_name, column_index, parts, ):
         self.__c_n = columns_name
         self.__c_i = column_index
         self.__parts = parts
@@ -807,11 +845,10 @@ class FillPartInfo( QThread ):
                 if self.__stop_flag:
                     break
                 cc = self.__c_i
-                for j in range( 5, 11 ):
-                    if self.__c_f[j] == 1:
-                        ss = p.get_specified_tag( self.__database, self.__c_n[cc] )
-                        self.one_cell_2_fill_signal.emit( index, cc, ss )
-                        cc += 1
+                for j in self.__c_n:
+                    ss = p.get_specified_tag( self.__database, j )
+                    self.one_cell_2_fill_signal.emit( index, cc, ss )
+                    cc += 1
                 index += 1
         except Exception as e:
             print( 'FillPartInfo Error: ' + str( e ) )
