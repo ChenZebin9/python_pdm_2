@@ -1,5 +1,6 @@
 from ui.ImportSettingDialog import *
-from PyQt5.QtWidgets import (QDialog, QTableWidgetItem, QComboBox, QTableWidget)
+from PyQt5.QtWidgets import (QDialog, QTableWidgetItem, QComboBox, QTableWidget, QMessageBox)
+from PyQt5.QtGui import QIntValidator
 from PyQt5.QtCore import Qt
 from Part import (Part, Tag)
 
@@ -17,6 +18,10 @@ class NImportSettingDialog(QDialog, Ui_Dialog):
         self.__result = None
         self.__excel_file = None
         self.__excel_data = None
+        self.__general_use = False
+        self.__row_index_control = False
+        self.__begin_row_index = 0
+        self.__end_row_index = 65536
 
     def setup_ui(self):
         super(NImportSettingDialog, self).setupUi(self)
@@ -25,11 +30,19 @@ class NImportSettingDialog(QDialog, Ui_Dialog):
         self.v_box.setContentsMargins(5, 5, 5, 5)
         self.setLayout( self.v_box )
         self.sheetComboBox.currentIndexChanged.connect(self.__on_changed_index)
+        self.beginRowLineEdit.setAlignment(Qt.AlignCenter)
+        self.endLineEdit.setAlignment(Qt.AlignCenter)
+        self.rowLimitCheckBox.stateChanged.connect(self.__set_row_line_edit_enable)
 
     def closeEvent(self, event):
         if self.__excel_file is not None:
             self.__excel_file.close()
         event.accept()
+
+    def __set_row_line_edit_enable(self, is_checked):
+        self.__row_index_control = is_checked
+        self.beginRowLineEdit.setEnabled(is_checked)
+        self.endLineEdit.setEnabled(is_checked)
 
     def __on_changed_index(self):
         if self.__excel_file is None:
@@ -39,6 +52,15 @@ class NImportSettingDialog(QDialog, Ui_Dialog):
             return
         sheet_name = self.sheetComboBox.currentText()
         ss = self.__excel_file.get_datas(sheet_name)
+
+        # 行设置
+        row_n = self.__excel_file.get_max_rows(sheet_name)
+        row_validator = QIntValidator(1, row_n)
+        self.beginRowLineEdit.setText('1')
+        self.beginRowLineEdit.setValidator(row_validator)
+        self.endLineEdit.setText(str(row_n))
+        self.endLineEdit.setValidator(row_validator)
+
         self.__excel_data = ss[1]
         for i in range(0, count):
             combo: QComboBox = self.dataConfigTableWidget.cellWidget(i, 1)
@@ -47,44 +69,82 @@ class NImportSettingDialog(QDialog, Ui_Dialog):
             combo.setCurrentIndex(-1)
 
     def accept(self):
+        self.__begin_row_index = int(self.beginRowLineEdit.text())
+        self.__end_row_index = int(self.endLineEdit.text())
         ps = []
         n = ''
         count = self.dataConfigTableWidget.rowCount()
         column_text = ''
-        for i in range( 0, count ):
-            combo: QComboBox = self.dataConfigTableWidget.cellWidget( i, 1 )
-            if combo.currentIndex() >= 0:
-                column_text = combo.currentText()
-                item: QTableWidgetItem = self.dataConfigTableWidget.item( i, 0 )
-                n = item.text()
-                break
-        all_data = None
-        if self.__mode == 'TXT':
-            all_data = self.__txt_data
-        elif self.__mode == 'EXCEL':
-            all_data = self.__excel_data[column_text]
-        if n == '零件号':
-            for nn in all_data:
-                if type(nn) == str:
-                    nn = nn.lstrip('0')
-                    if len(nn) < 1:
+        if not self.__general_use:
+            for i in range( 0, count ):
+                combo: QComboBox = self.dataConfigTableWidget.cellWidget( i, 1 )
+                if combo.currentIndex() >= 0:
+                    column_text = combo.currentText()
+                    item: QTableWidgetItem = self.dataConfigTableWidget.item( i, 0 )
+                    n = item.text()
+                    break
+            all_data = None
+            if self.__mode == 'TXT':
+                all_data = self.__txt_data
+            elif self.__mode == 'EXCEL' and not self.__general_use:
+                all_data = self.__excel_data[column_text]
+            if n == '零件号':
+                for nn in all_data:
+                    if not self.__check_if_in_row_control( nn[0] ):
                         continue
-                p_id = int(nn)
-                p = Part.get_parts(database=self.__database, part_id=p_id)
-                ps.extend(p)
+                    if type( nn[1] ) == str:
+                        nnn = nn[1].lstrip( '0' )
+                        if len( nnn ) < 1:
+                            continue
+                    p_id = int( nnn )
+                    p = Part.get_parts( database=self.__database, part_id=p_id )
+                    ps.extend( p )
+            else:
+                t = Tag.get_tags( database=self.__database, name=n )
+                if len( t ) < 1:
+                    raise Exception( '没有对应的父标签' )
+                for nn in all_data:
+                    if not self.__check_if_in_row_control( nn[0] ):
+                        continue
+                    tt = Tag.get_tags( database=self.__database, name=nn[1], parent_id=t[0].tag_id )
+                    if len( tt ) < 1:
+                        print( '没有对应的Tag： ' + nn[1] )
+                        continue
+                    p = Part.get_parts_from_tag( self.__database, tag_id=tt[0].tag_id )
+                    ps.extend( p )
+            self.__parent.show_parts_from_outside( ps )
         else:
-            t = Tag.get_tags(database=self.__database, name=n)
-            if len(t) < 1:
-                raise Exception('没有对应的父标签')
-            for nn in all_data:
-                tt = Tag.get_tags(database=self.__database, name=nn, parent_id=t[0].tag_id)
-                if len(tt) < 1:
-                    print('没有对应的Tag： ' + nn)
+            columns_text = []
+            for i in range(0, count):
+                combo: QComboBox = self.dataConfigTableWidget.cellWidget(i, 1)
+                if combo.currentIndex() < 0:
+                    QMessageBox.warning(self, '', '所有列没有选择完整。', QMessageBox.Ok)
+                    return
+                columns_text.append(combo.currentText())
+            self.__result = []
+            first_column_data = self.__excel_data[columns_text[0]]
+            cc = len(first_column_data)
+            for i in range(0, cc):
+                temp_record = []
+                first_cell = first_column_data[i]
+                if not self.__check_if_in_row_control(first_cell[0]):
                     continue
-                p = Part.get_parts_from_tag(self.__database, tag_id=tt[0].tag_id)
-                ps.extend(p)
-        self.__parent.show_parts_from_outside(ps)
+                temp_record.append(first_cell[1])
+                for column_header in columns_text[1:]:
+                    cell_data = self.__excel_data[column_header][i][1]
+                    temp_record.append(cell_data)
+                self.__result.append(temp_record)
+            self.__parent.fill_import_cache(self.__result)
         self.close()
+
+    def __check_if_in_row_control(self, row_nr):
+        if self.__row_index_control:
+            if self.__begin_row_index <= row_nr <= self.__end_row_index:
+                return True
+            else:
+                return False
+        else:
+            return True
 
     def get_result(self):
         return self.__result
@@ -113,9 +173,10 @@ class NImportSettingDialog(QDialog, Ui_Dialog):
         QTableWidget.resizeColumnToContents(self.dataConfigTableWidget, 0)
         QTableWidget.resizeRowsToContents(self.dataConfigTableWidget)
 
-    def set_excel_mode(self, rows, excel_file):
+    def set_excel_mode(self, rows, excel_file, general_use=False):
         self.__mode = 'EXCEL'
         self.__excel_file = excel_file
+        self.__general_use = general_use
         self.sheetComboBox.addItems(excel_file.get_sheets_name())
         self.dataConfigTableWidget.setColumnCount( 2 )
         self.dataConfigTableWidget.setHorizontalHeaderLabels( ['类型', '数据'] )

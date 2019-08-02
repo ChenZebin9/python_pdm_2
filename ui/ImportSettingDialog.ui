@@ -50,6 +50,38 @@
      <widget class="QTableWidget" name="dataConfigTableWidget"/>
     </item>
     <item>
+     <layout class="QHBoxLayout" name="h_box">
+      <item>
+       <widget class="QCheckBox" name="rowLimitCheckBox">
+        <property name="text">
+         <string>设置行范围</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="beginRowLineEdit">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>-&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="endLineEdit">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
      <widget class="QDialogButtonBox" name="buttonBox">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
