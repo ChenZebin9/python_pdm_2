@@ -1,15 +1,21 @@
 # coding=gbk
-from ui.CreatePickBillDialog import *
-from PyQt5.QtWidgets import (QDialog, QApplication, QLineEdit, QDateEdit, QMessageBox, QFileDialog, QHeaderView)
-from PyQt5.QtCore import (Qt, QDate)
-from PyQt5.QtGui import (QStandardItemModel, QStandardItem)
 import sys
+
 import clr
+import win32con
+import win32ui
+from PyQt5.QtCore import (Qt, QDate, QModelIndex)
+from PyQt5.QtGui import (QStandardItemModel, QStandardItem)
+from PyQt5.QtWidgets import (QDialog, QApplication, QLineEdit, QDateEdit, QMessageBox, QDialogButtonBox)
+
 from excel.ExcelHandler import (ExcelHandler2)
+from ui.CreatePickBillDialog import *
 from ui.NImportSettingDialog import (NImportSettingDialog)
 
 
 class NCreatePickBillDialog(QDialog, Ui_Dialog):
+
+    """ 通过导入Excel文件的数据，实现巨轮的领料单的打印输出。 """
 
     Column_names = ('合同号', '物料描述', '单位', '数量', '备注')
 
@@ -44,12 +50,19 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
         self.__table_modal.setHorizontalHeaderLabels( NCreatePickBillDialog.Column_names )
         self.itemsTableView.setModel(self.__table_modal)
 
+        self.theDialogButtonBox.clicked.connect(self.__buttonBox_clicked)
+
     def __add_items(self):
         try:
-            temp_names = QFileDialog.getOpenFileName(self, '选择数据文件', '', 'Excel files(*.xls)')
-            if len(temp_names[0]) < 1:
+            open_flags = win32con.OFN_FILEMUSTEXIST
+            fspec = 'Excel Files (*.xls, *.xlsx)|*.xls;*.xlsx||'
+            dlg = win32ui.CreateFileDialog( 1, None, None, open_flags, fspec )
+            selected_file = None
+            if dlg.DoModal() == win32con.IDOK:
+                selected_file = dlg.GetPathName()
+            if selected_file is None:
                 return
-            file_name = temp_names[0]
+            file_name = selected_file
             self.__one_import_data.clear()
             dialog = NImportSettingDialog( self, '领料数据', None )
             excel = ExcelHandler2(file_name)
@@ -67,30 +80,69 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
             QMessageBox.warning(self, '', str(ex), QMessageBox.Ok)
 
     def __remove_item(self):
-        print('Remove items')
+        resp = QMessageBox.question(self, '确认', '确定要移除这些行？', QMessageBox.Yes | QMessageBox.No)
+        if resp == QMessageBox.No:
+            return
+        indexes = self.itemsTableView.selectedIndexes()
+        removed_row_cc = 0
+        row_to_remove = []
+        for i in indexes:
+            ii: QModelIndex = i
+            row_to_remove.append(ii.row())
+        row_to_remove.sort()
+        for i in row_to_remove:
+            self.__table_modal.removeRow(i - removed_row_cc)
+            removed_row_cc += 1
 
-    def accept(self):
+    def __buttonBox_clicked(self, button):
+        if button is self.theDialogButtonBox.button(QDialogButtonBox.Ok):
+            self.__do_accept()
+        elif button is self.theDialogButtonBox.button(QDialogButtonBox.Cancel):
+            self.__do_close()
+
+    def __do_accept(self):
         try:
-            pdf_creator = CreatePickBill(self.__one_import_data, 'OPS项目部', self.__operatorLineEdit.text(),
+            r_n = self.__table_modal.rowCount()
+            if r_n < 1:
+                raise Exception('没有要输出的数据')
+            datas = []
+            c_n = len(NCreatePickBillDialog.Column_names)
+            for i in range(r_n):
+                row_data = []
+                for j in range(c_n):
+                    cell: QStandardItem = self.__table_modal.item(i, j)
+                    row_data.append(cell.text())
+                datas.append(row_data)
+            pdf_creator = CreatePickBill(datas, 'OPS项目部', self.__operatorLineEdit.text(),
                                          self.__timeSelector.text(), self.__billNrLineEdit.text())
-            pdf_creator.DoPrint('D:/aaa.pdf')
-            print( '成功生成！' )
+            # 选择要保存到的文件
+            dlg = win32ui.CreateFileDialog(0, None, None, win32con.OFN_OVERWRITEPROMPT, 'Pdf Files (*.pdf)|*.pdf||')
+            to_save_file = None
+            if dlg.DoModal() == win32con.IDOK:
+                to_save_file = dlg.GetPathName()
+            if to_save_file is None:
+                QMessageBox.warning(self, '取消', '终止输出！', QMessageBox.Ok)
+                return
+            if to_save_file.lower()[-4:] != '.pdf':
+                to_save_file += '.pdf'
+            pdf_creator.DoPrint(to_save_file)
+            QMessageBox.information(self, '完成', '输出至 {0} 文件。'.format(to_save_file), QMessageBox.Ok)
             self.close()
         except Exception as ex:
             QMessageBox.warning(self, '', str( ex ), QMessageBox.Ok )
 
-    def closeEvent(self, event):
-        event.accept()
+    def __do_close(self):
+        self.close()
 
     def fill_import_cache(self, data):
         self.__one_import_data = data.copy()
 
 
 if __name__ == '__main__':
+    clr.FindAssembly( 'dlls/PdfLib.dll' )
+    clr.AddReference( 'dlls/PdfLib' )
+    from PdfLib import CreatePickBill
     app = QApplication(sys.argv)
-    clr.FindAssembly( 'PdfLib.dll' )
-    clr.AddReference( 'PdfLib' )
-    from PdfLib import *
     theDialog = NCreatePickBillDialog(parent=None)
     theDialog.show()
     sys.exit(app.exec_())

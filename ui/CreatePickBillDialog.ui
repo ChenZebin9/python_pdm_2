@@ -127,38 +127,5 @@
   </widget>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>theDialogButtonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>Dialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>240</x>
-     <y>377</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>241</x>
-     <y>197</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>theDialogButtonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>Dialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>240</x>
-     <y>377</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>241</x>
-     <y>197</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>
