@@ -75,9 +75,33 @@ class DatabaseHandler(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def del_tag_from_part(self, tag_id, part_id):
+        pass
+
+    @abstractmethod
     def copy(self):
         pass
 
     @abstractmethod
     def get_parents(self, part_id):
+        pass
+
+    @abstractmethod
+    def get_pick_record_throw_erp(self, erp_id, which_company=1, top=2):
+        """
+        通过一个ERP物料编号，查找以往的领料记录；
+        which_company=1表示巨轮智能，=2表示巨轮中德；
+        top= 仅获取记录的前几条，当top<=0时，获取所有记录
+        输出格式：[[单号，数量，总去税金额，日期]] 或 None
+        """
+        pass
+
+    @abstractmethod
+    def get_price_from_self_record(self, part_id, top=2):
+        """
+        获取PDM中所保存的价格信息
+        :param part_id: 零件号
+        :param top: 仅获取记录的前几条，当top<=0时，获取所有记录
+        :return: [[单号，去税总金额，其它金额，数量，日期，供应商名称]] 或 None
+        """
         pass

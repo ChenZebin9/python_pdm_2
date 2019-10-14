@@ -3,6 +3,7 @@ import sqlite3
 from sqlite3 import Error
 from database_creator import DatabaseCreator
 import os
+import datetime
 
 db_file = 'greatoo_jj_3.db'
 
@@ -137,6 +138,10 @@ if fill_mission[5] == 1 and rsp == 'Y':
             print(ex)
         finally:
             index += 1
+            
+# 此次数据的版本号
+now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+t_c.execute('INSERT INTO Version VALUES (\'{0}\')'.format(now_time))
 
 if 1 in fill_mission:
     t_conn.commit()

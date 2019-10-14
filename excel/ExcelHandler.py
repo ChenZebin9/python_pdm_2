@@ -9,10 +9,14 @@ class ExcelHandler2:
         self.__book = xlrd.open_workbook(file_name, formatting_info=True)
 
     def close(self):
-        pass
+        self.__book.release_resources()
 
     def get_sheets_name(self):
         return self.__book.sheet_names()
+
+    def get_max_rows(self, sheet_name):
+        ss = self.__book.sheet_by_name(sheet_name)
+        return ss.nrows + 1
 
     def get_datas(self, sheet_name):
         ss = self.__book.sheet_by_name(sheet_name)
@@ -34,6 +38,7 @@ class ExcelHandler2:
                 vv = tcell.value
                 if vv is None:
                     vv = ''
-                data.append(vv)
+                # 增加行号的数据
+                data.append((row_index+1, str(vv)))
             datas[col_name] = data
         return columns, datas

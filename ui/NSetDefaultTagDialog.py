@@ -56,7 +56,7 @@ class NSetDefaultDialog(QDialog, Ui_Dialog):
         print( 'Default Tag to: {0}'.format(self.__select_tag) )
 
     def accept(self):
-        self.__parent.set_default_tag_group_2_add(1)
+        self.__parent.set_default_tag_group_2_add(self.__select_tag)
         self.__set_setting()
         self.close()
 

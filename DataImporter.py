@@ -39,7 +39,7 @@ class DataImporter:
     @staticmethod
     def export_data_2_excel(parent, data):
         fspec = 'Excel Files (*.xls)|*.xls||'
-        dlg = win32ui.CreateFileDialog(0, None, None, win32con.OFN_FILEMUSTEXIST, fspec)
+        dlg = win32ui.CreateFileDialog(0, None, None, win32con.OFN_OVERWRITEPROMPT, fspec)
         if dlg.DoModal() != win32con.IDOK:
             QMessageBox.information( parent, '', '放弃保存！', QMessageBox.Ok )
             return

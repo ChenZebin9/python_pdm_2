@@ -89,6 +89,12 @@ class DatabaseCreator:
         FROM part_view AS p INNER JOIN part_tag AS t ON p.id=t.part_id
         ORDER BY t.tag_id, p.id
         ''')
+        c.execute('''
+        CREATE TABLE Version
+        (
+            version DATETIME PRIMARY KEY
+        )
+        ''')
 
 
 if __name__ == '__main__':

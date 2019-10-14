@@ -1,15 +1,19 @@
 import os
 import time
-from PyQt5.QtGui import QIntValidator, QPixmap, QCursor
+from decimal import Decimal
+
+from PyQt5.QtCore import (QThread, pyqtSignal)
+from PyQt5.QtGui import (QIntValidator, QPixmap, QCursor, QStandardItemModel, QStandardItem)
 from PyQt5.QtWidgets import (QFrame, QLabel, QTextEdit,
                              QListWidget, QHBoxLayout, QFormLayout, QVBoxLayout,
                              QPushButton, QComboBox, QTableWidget,
-                             QTableWidgetItem, QListWidgetItem, QHeaderView,
+                             QTableWidgetItem, QListWidgetItem, QTableView,
                              QMenu)
-from PyQt5.QtCore import (QThread, pyqtSignal)
+
 from Part import Part, DoStatistics
-from ui.MyTreeWidget import *
+from db.DatabaseHandler import DatabaseHandler
 from db.SqliteHandler import SqliteHandler
+from ui.MyTreeWidget import *
 
 
 class PartInfoPanel( QFrame ):
@@ -38,10 +42,10 @@ class PartInfoPanel( QFrame ):
         formlayout.addRow( '描述', self.descriptionLineEdit )
         formlayout.addRow( '备注', self.commentTextEdit )
 
-        self.nameLineEdit.setContextMenuPolicy(Qt.NoContextMenu)
-        self.englishNameLineEdit.setContextMenuPolicy(Qt.NoContextMenu)
-        self.descriptionLineEdit.setContextMenuPolicy(Qt.NoContextMenu)
-        self.commentTextEdit.setContextMenuPolicy(Qt.NoContextMenu)
+        self.nameLineEdit.setContextMenuPolicy( Qt.NoContextMenu )
+        self.englishNameLineEdit.setContextMenuPolicy( Qt.NoContextMenu )
+        self.descriptionLineEdit.setContextMenuPolicy( Qt.NoContextMenu )
+        self.commentTextEdit.setContextMenuPolicy( Qt.NoContextMenu )
 
         tagLayout = QVBoxLayout( self )
         tagLabel = QLabel( '标签' )
@@ -83,12 +87,12 @@ class PartInfoPanelInMainWindow( QFrame ):
         self.imageLabel = QLabel( self )
         self.relationFilesList = QListWidget( self )
 
-        """ 标签过来清单的右键菜单 """
+        """ 标签清单的右键菜单 """
         self.__menu_4_tag_list = QMenu( parent=self.partInfo.tagListWidget )
         self.__del_tag_from_list = self.__menu_4_tag_list.addAction( '删除' )
         self.__copy_tag_name_from_list = self.__menu_4_tag_list.addAction( '复制标签文本' )
         self.__del_tag_from_list.triggered.connect( self.__remove_tag_from_part )
-        self.__copy_tag_name_from_list.triggered.connect(self.__copy_tag_name)
+        self.__copy_tag_name_from_list.triggered.connect( self.__copy_tag_name )
         self.__setup_ui()
 
     def __setup_ui(self):
@@ -116,7 +120,7 @@ class PartInfoPanelInMainWindow( QFrame ):
     def __copy_tag_name(self):
         the_tag: Tag = self.__current_select_tag.data( Qt.UserRole )
         clipboard = QApplication.clipboard()
-        clipboard.setText(the_tag.name)
+        clipboard.setText( the_tag.name )
 
     def __remove_tag_from_part(self):
         rsp = QMessageBox.question( self.__parent, '', '确定要移除该标签？',
@@ -124,14 +128,15 @@ class PartInfoPanelInMainWindow( QFrame ):
         if rsp == QMessageBox.No:
             return
         index = self.partInfo.tagListWidget.currentRow()
-        self.partInfo.tagListWidget.takeItem(index)
-        the_tag: Tag = self.__current_select_tag.data(Qt.UserRole)
+        self.partInfo.tagListWidget.takeItem( index )
+        the_tag: Tag = self.__current_select_tag.data( Qt.UserRole )
         tag_id = the_tag.tag_id
-        self.__database.del_tag_from_part(tag_id, self.partInfo.part_id)
+        self.__database.del_tag_from_part( tag_id, self.partInfo.part_id )
 
     def set_part_info(self, part, database):
         self.partInfo.set_part_info( part )
         files_list = database.get_files_2_part( part.get_part_id() )
+        self.relationFilesList.setCurrentItem( None )
         self.relationFilesList.clear()
         self.relationFilesList.addItems( files_list )
         img_data = database.get_thumbnail_2_part( part.get_part_id() )
@@ -158,7 +163,7 @@ class PartInfoPanelInMainWindow( QFrame ):
     def __linked_file_changed(self):
         try:
             item = self.relationFilesList.currentItem()
-            if self.__vault is None:
+            if self.__vault is None or item is None:
                 return
             file_name = item.text()
             datas_ = self.__vault.GetFileStatus( file_name )
@@ -367,7 +372,7 @@ class TagViewPanel( QFrame ):
                 shown = self.__item_this_time is not None
                 self.__rename_tag.setVisible( shown )
                 self.__sort_tag.setVisible( shown )
-                tag_in_clipper = self.tagTreeWidget.clipper_not_empty(self.__database)
+                tag_in_clipper = self.tagTreeWidget.clipper_not_empty( self.__database )
                 self.__cut_tag.setVisible( shown and not tag_in_clipper )
                 self.__del_tag.setVisible( shown )
                 self.__paste_tag_into.setVisible( tag_in_clipper )
@@ -388,18 +393,18 @@ class TagViewPanel( QFrame ):
         item = QListWidgetItem( self.__current_selected_tag.get_whole_name(), parent=self.tagFilterListWidget )
         item.setData( Qt.UserRole, self.__current_selected_tag )
         self.tagFilterListWidget.addItem( item )
-        self.__search_by_tag()
+        self.search_by_tag()
 
     def __on_del_from_filter(self):
         c_r = self.tagFilterListWidget.currentRow()
         item = self.tagFilterListWidget.takeItem( c_r )
         del item
-        self.__search_by_tag()
+        self.search_by_tag()
 
     def __on_clean_filter(self):
         self.tagFilterListWidget.clear()
 
-    def __search_by_tag(self):
+    def search_by_tag(self):
         if self.tagFilterListWidget.count() < 1:
             return
         result = set()
@@ -455,7 +460,7 @@ class TagViewPanel( QFrame ):
                 node.setData( 0, Qt.UserRole, c )
 
     def __reset_search(self):
-        self.filterLineEdit.setText('')
+        self.filterLineEdit.setText( '' )
         tags = Tag.get_tags( self.__database, name=None )
         self.fill_data( tags )
 
@@ -467,7 +472,7 @@ class TagViewPanel( QFrame ):
         self.fill_data( tags )
 
     def clipboard_is_not_empty(self):
-        return self.tagTreeWidget.clipper_not_empty(self.__database)
+        return self.tagTreeWidget.clipper_not_empty( self.__database )
 
     def get_current_selected_tag(self):
         # 当前所选的 Tag
@@ -534,8 +539,8 @@ class PartTablePanel( QFrame ):
         hbox.addWidget( self.cleanPushButton )
 
         self.idLineEdit.returnPressed.connect( self.do_search )
-        self.nameLineEdit.returnPressed.connect(self.do_search)
-        self.desLineEdit.returnPressed.connect(self.do_search)
+        self.nameLineEdit.returnPressed.connect( self.do_search )
+        self.desLineEdit.returnPressed.connect( self.do_search )
 
         vbox.addLayout( hbox )
         vbox.addWidget( self.partList )
@@ -605,14 +610,16 @@ class PartTablePanel( QFrame ):
                     tt.extend( self.__display_range )
                 if name is not None:
                     for p in tt:
-                        if p.name.find( name ) > -1:
+                        p_name = p.name.upper()
+                        if p_name.find( name.upper() ) > -1:
                             parts.append( p )
                 else:
                     parts.extend( tt )
                 tt.clear()
                 if english_name is not None:
                     for p in parts:
-                        if p.english_name.find( english_name ) > -1:
+                        p_name = p.english_name.upper()
+                        if p_name.find( english_name.upper() ) > -1:
                             tt.append( p )
                 else:
                     tt.extend( parts )
@@ -628,15 +635,17 @@ class PartTablePanel( QFrame ):
                                     name=name, english_name=english_name, description=description )
         self.set_list_data( parts )
 
-    def set_list_header_4_statistics(self):
+    def set_list_header_4_statistics(self, show_price=False):
         # 为统计进行一些准备
         fact_columns = list( self.__columns[1] )
         fact_columns.append( '数量' )
+        if show_price:
+            fact_columns.extend( ['单价', '总价'] )
         self.partList.setColumnCount( len( fact_columns ) )
         self.partList.setHorizontalHeaderLabels( list( fact_columns ) )
         self.partList.setRowCount( 0 )
 
-    def add_one_part_4_statistics(self, part_id, qty):
+    def add_one_part_4_statistics(self, part_id, qty, price=None):
         p: Part = Part.get_parts( self.__database, part_id=part_id )[0]
         r_c = self.partList.rowCount()
         self.partList.insertRow( r_c )
@@ -666,14 +675,16 @@ class PartTablePanel( QFrame ):
             column_index += 1
 
         # 其它信息，可配置的
-        for j in range( 5, 11 ):
-            if columns_flags[j] == 1:
-                sss = p.get_specified_tag( self.__database, columns_name[column_index] )
-                ss = QTableWidgetItem( sss )
-                self.partList.setItem( r_c, column_index, ss )
-                column_index += 1
+        column_start_index = column_index
+        column_end_index = len( columns_flags ) - 6
+        for j in range( 0, column_end_index ):
+            jj = j + column_start_index
+            sss = p.get_specified_tag( self.__database, columns_name[jj] )
+            ss = QTableWidgetItem( sss )
+            self.partList.setItem( r_c, column_index, ss )
+            column_index += 1
 
-        if columns_flags[11] == 1:
+        if columns_flags[-1] == 1:
             comment_item = QTableWidgetItem( p.comment )
             self.partList.setItem( r_c, column_index, comment_item )
             column_index += 1
@@ -682,8 +693,21 @@ class PartTablePanel( QFrame ):
         qty_item.setData( Qt.DisplayRole, qty )
         self.partList.setItem( r_c, column_index, qty_item )
         del qty_item
+        column_index += 1
+
+        if price is not None:
+            unit_price_item = QTableWidgetItem()
+            unit_price_item.setData( Qt.DisplayRole, price )
+            self.partList.setItem( r_c, column_index, unit_price_item )
+            sum_price_item = QTableWidgetItem()
+            column_index += 1
+            sum_price_item.setData( Qt.DisplayRole, price * qty )
+            self.partList.setItem( r_c, column_index, sum_price_item )
+            del unit_price_item
+            del sum_price_item
 
     def set_list_data(self, parts):
+        self.partList.setCurrentItem( None )
         columns_flags = self.__columns[0]
         columns_name = self.__columns[1]
         self.partList.setColumnCount( len( columns_name ) )
@@ -695,7 +719,7 @@ class PartTablePanel( QFrame ):
             return
         index = 0
         the_begin_column_index = 0
-        other_column_count = len(columns_flags[5:-1])
+        other_column_count = len( columns_flags[5:-1] )
         for p in parts:
             column_index = 0
             if columns_flags[0] == 1:
@@ -746,7 +770,7 @@ class PartTablePanel( QFrame ):
             col_names = []
             for i in columns_flags[5:-1]:
                 r = self.__database.get_tags( tag_id=i )
-                col_names.append(r[0][1])
+                col_names.append( r[0][1] )
             self.fill_part_info_thread.set_data( col_names, the_begin_column_index, parts )
             self.fill_part_info_thread.start()
         self.partList.horizontalHeader().setSectionsClickable( False )
@@ -758,10 +782,10 @@ class PartTablePanel( QFrame ):
         if column_index in self.__sort_flags:
             sort_flags = self.__sort_flags[column_index]
         if sort_flags:
-            self.partList.sortByColumn(column_index, Qt.AscendingOrder)
+            self.partList.sortByColumn( column_index, Qt.AscendingOrder )
             sort_flags = False
         else:
-            self.partList.sortByColumn(column_index, Qt.DescendingOrder)
+            self.partList.sortByColumn( column_index, Qt.DescendingOrder )
             sort_flags = True
         self.__sort_flags[column_index] = sort_flags
 
@@ -820,11 +844,7 @@ class FillPartInfo( QThread ):
         self.__parts = None
         self.__stop_flag = False
         self.__db_type = database[0]
-        self.__sqlite3_file = None
-        if database[0] == 'MSSQL':
-            self.__database = database[1]
-        elif database[0] == 'SQLite3':
-            self.__sqlite3_file = database[1]
+        self.__database = database[1]
 
     def set_data(self, columns_name, column_index, parts, ):
         self.__c_n = columns_name
@@ -838,8 +858,6 @@ class FillPartInfo( QThread ):
     # sqlite3 对象不能在不同的线程中使用，在run中才算另一个线程，仅在__init__赋值时，视为同一线程。
     def run(self):
         try:
-            if self.__sqlite3_file is not None:
-                self.__database = SqliteHandler( self.__sqlite3_file )
             index = 0
             for p in self.__parts:
                 if self.__stop_flag:
@@ -876,7 +894,7 @@ class PartStructurePanel( QFrame ):
 
         self.__init_ui()
 
-    def stop_background_thread( self ):
+    def stop_background_thread(self):
         """ 停止后台线程 """
         self.__stop_above_thread_signal.emit()
 
@@ -943,3 +961,58 @@ class PartStructurePanel( QFrame ):
                 self.__parent.set_status_bar_text( '开始统计。' )
                 self.statistics_thread.set_data( p.get_part_id(), stat_setting[1:] )
                 self.statistics_thread.start()
+
+
+class CostInfoPanel( QFrame ):
+    """
+    显示 Part 的采购（领料）成本的表格
+    """
+
+    Column_name = ('单号', '单价', '供应商（来源）', '日期')
+
+    def __init__(self, parent=None, database=None):
+        super().__init__( parent )
+        self.__parent = parent
+        self.__database: DatabaseHandler = database
+        self.__costTableView = QTableView( self )
+        self.__table_modal = QStandardItemModel()
+        self.__init_ui()
+
+    def __init_ui(self):
+        v_box = QVBoxLayout( self )
+        v_box.addWidget( self.__costTableView )
+        self.setLayout( v_box )
+
+        self.__costTableView.setModel( self.__table_modal )
+
+    def set_part_cost_info(self, the_part: Part):
+        self.__table_modal.clear()
+        self.__table_modal.setHorizontalHeaderLabels( CostInfoPanel.Column_name )
+        # 获取 ERP 领料信息的数据
+        erp_id = the_part.get_specified_tag( self.__database, '巨轮智能ERP物料编码' )
+        if erp_id is not '':
+            pick_records = self.__database.get_pick_record_throw_erp( erp_id )
+            if pick_records is not None:
+                for one_record in pick_records:
+                    unit_price = one_record[2] / one_record[1]
+                    one_row_in_table = [QStandardItem( one_record[0].strip() )]
+                    price_item = QStandardItem( '{:.2f}'.format( unit_price ) )
+                    price_item.setData( Qt.DisplayRole, unit_price )
+                    one_row_in_table.append( price_item )
+                    one_row_in_table.append( QStandardItem( '最近领料' ) )
+                    date_item = QStandardItem( one_record[3].strftime( "%Y-%m-%d" ) )
+                    one_row_in_table.append( date_item )
+                    self.__table_modal.appendRow( one_row_in_table )
+        pdm_records = self.__database.get_price_from_self_record( the_part.get_part_id() )
+        if pdm_records is not None:
+            for one_record in pdm_records:
+                unit_price = (one_record[1] + one_record[2]) / Decimal.from_float( one_record[3] )
+                bill_nr = '{:06d}'.format( one_record[0] )
+                one_row_in_table = [QStandardItem( bill_nr )]
+                price_item = QStandardItem( '{:.2f}'.format( unit_price ) )
+                supplier_item = QStandardItem( one_record[5] )
+                date_item = QStandardItem( one_record[4].strftime( "%Y-%m-%d" ) )
+                one_row_in_table.extend( [price_item, supplier_item, date_item] )
+                self.__table_modal.appendRow( one_row_in_table )
+        if self.__table_modal.rowCount() > 0:
+            self.__costTableView.resizeColumnsToContents()

@@ -4,6 +4,11 @@ import pymssql
 
 class MssqlHandler(DatabaseHandler):
 
+    def del_tag_from_part(self, tag_id, part_id):
+        sql = 'DELETE FROM JJCom.PartTag WHERE tag_id={0} AND part_id={1}'.format(tag_id, part_id)
+        self.__c.execute(sql)
+        self.__conn.commit()
+
     def get_parents(self, part_id):
         sql = 'SELECT b.Number, b.ParentPart, a.Description1, a.Description4, c.StatusDescrption,' \
               ' a.Description2, b.Comment, b.Quantity, b.ActualQty, b.PartRelationID' \
@@ -19,12 +24,18 @@ class MssqlHandler(DatabaseHandler):
         return rs
 
     def copy(self):
+        # 能否用本身的 conn 作为参数传递？待测试。
         return 'MSSQL', MssqlHandler(self.__server, self.__database, self.__user, self.__password)
 
     def set_tag_2_part(self, tag_id, part_id):
+        check_tag_link = 'SELECT part_id FROM JJCom.PartTag WHERE part_id={0} AND tag_id={1}'.format(part_id, tag_id)
+        self.__c.execute(check_tag_link)
+        if len(self.__c.fetchall()) > 0:
+            return False
         insert_tag_link = 'INSERT INTO JJCom.PartTag VALUES ({0}, {1})'.format(part_id, tag_id)
         self.__c.execute(insert_tag_link)
         self.__conn.commit()
+        return True
 
     def rename_one_tag(self, tag_id, tag_name):
         update_tag_sql = 'UPDATE JJCom.Tag SET tag_name=\'{0}\' WHERE id={1}'.format(tag_name, tag_id)
@@ -174,6 +185,8 @@ class MssqlHandler(DatabaseHandler):
         return rs
 
     def close(self):
+        # if self.__c is not None:
+        #     self.__c.close()
         if self.__conn is not None:
             self.__conn.close()
 
@@ -191,3 +204,42 @@ class MssqlHandler(DatabaseHandler):
         else:
             sql = 'UPDATE JJCom.Tag SET parent_id=NULL WHERE id={0}'.format(tag_id)
         self.__c.execute(sql)
+
+    def get_pick_record_throw_erp(self, erp_id, which_company=1, top=2):
+        """ 获取巨轮智能的ERP领料记录 """
+        sql_top = ''
+        if top > 0:
+            sql_top = 'TOP({0}) '.format(top)
+        sql = 'SELECT {1}BillNumber, Qty, Price, PickDate ' \
+              'FROM JJStorage.ErpPickingRecord WHERE PartNumber=\'{0}\' ' \
+              'AND PickDate > \'2018-1-1\' ORDER BY PickDate DESC'.format(erp_id, sql_top)
+        self.__c.execute(sql)
+        rs = self.__c.fetchall()
+        if len(rs) < 1:
+            sql = 'SELECT {1}BillNumber, Qty, Price, PickDate ' \
+                  'FROM JJStorage.ErpPickingRecord WHERE PartNumber=\'{0}\' ' \
+                  'ORDER BY PickDate DESC'.format( erp_id, sql_top )
+            self.__c.execute( sql )
+            rs = self.__c.fetchall()
+            if len(rs) < 1:
+                return None
+            else:
+                return rs
+        return rs
+
+    def get_price_from_self_record(self, part_id, top=2):
+        """ 获取本系统的价格记录信息 """
+        sql_top = ''
+        if top > 0:
+            sql_top = 'TOP({0}) '.format( top )
+        sql = 'SELECT {1}i.ListID, i.PriceWithTax, i.OtherCost, i.Amount, l.QuotedDate, s.Name ' \
+              'FROM ' \
+              'JJCost.QuotationItem AS i INNER JOIN JJCost.Quotation AS l ON i.ListID=l.QuotationID ' \
+              'INNER JOIN JJCost.Supplier AS s ON l.SupplierID=s.SupplierID ' \
+              'WHERE PartID={0} ORDER BY l.QuotedDate DESC'.format(part_id, sql_top)
+        self.__c.execute(sql)
+        rs = self.__c.fetchall()
+        if len(rs) < 1:
+            return None
+        return rs
+

@@ -1,9 +1,10 @@
 import sys
 
 from PyQt5.QtCore import (Qt, QMimeData)
-from PyQt5.QtGui import (QDragEnterEvent, QDragMoveEvent, QDropEvent, QDrag, QKeyEvent, QClipboard)
+from PyQt5.QtGui import (QDragEnterEvent, QDragMoveEvent, QDropEvent, QDrag, QKeyEvent)
 from PyQt5.QtWidgets import (QTreeWidget, QAbstractItemView, QApplication,
                              QTreeWidgetItem, QMessageBox, QInputDialog, QLineEdit)
+
 from Part import Tag
 
 
@@ -141,17 +142,19 @@ class MyTreeWidget2(QTreeWidget):
             if self.__item_at_context_menu is None:
                 tag_id = self.__database.create_one_tag(text, None)
                 top_level = True
+                p_node = self
             else:
                 the_tag: Tag = self.__item_at_context_menu.data(0, Qt.UserRole)
                 tag_id = self.__database.create_one_tag(text, the_tag.tag_id)
+                p_node = self.__item_at_context_menu
             new_tag = Tag.get_tags(self.__database, tag_id=tag_id)[0]
-            new_node: QTreeWidgetItem = QTreeWidgetItem(self)
+            new_node: QTreeWidgetItem = QTreeWidgetItem(p_node)
             new_node.setText(0, text)
             new_node.setData(0, Qt.UserRole, new_tag)
             if top_level:
                 self.addTopLevelItem(new_node)
             else:
-                # 有问题？
+                # 有问题？建立 QTreeWidgetItem 时，应该注意构造函数的参数。
                 ii: QTreeWidgetItem = self.__item_at_context_menu
                 ii.addChild(new_node)
 
@@ -185,6 +188,20 @@ class MyTreeWidget2(QTreeWidget):
             the_tag.name = text
             ii.setData(0, Qt.UserRole, the_tag)
 
+    def sort_tag(self):
+        ii: QTreeWidgetItem = self.__item_at_context_menu
+        the_tag: Tag = ii.data(0, Qt.UserRole)
+        done_tag = the_tag.sort_children_by_name( self.__database )
+        if done_tag[0]:
+            new_children = done_tag[1]
+            ii.takeChildren()
+            for cc in new_children:
+                nn = QTreeWidgetItem(ii)
+                nn.setText(0, cc.name)
+                nn.setData(0, Qt.UserRole, cc)
+                ii.addChild(nn)
+        self.__database.save_change()
+
     def cut_tag(self):
         items = []
         if self.__multi_select:
@@ -207,7 +224,6 @@ class MyTreeWidget2(QTreeWidget):
                 if old_parent is not n_item:
                     QMessageBox.warning(self.__parent, '', '不同级别的节点无法进行剪切操作。', QMessageBox.Ok)
                     return
-        mm_data = MyTreeItemMimeData('tag', items)
         if old_parent is None:
             for item in items:
                 self.takeTopLevelItem(self.indexOfTopLevelItem(item))
@@ -216,10 +232,9 @@ class MyTreeWidget2(QTreeWidget):
                 old_parent.takeChild(old_parent.indexOfChild(item))
         for item in items:
             t: Tag = item.data(0, Qt.UserRole)
+            # 将 tag 放置在一个名为“剪切板”的 tag 下面，编号为0。
             self.__database.set_tag_parent(t.tag_id, 0)
         self.__database.save_change()
-        clipboard: QClipboard = QApplication.clipboard()
-        clipboard.setMimeData(mm_data)
 
     def __get_item_index(self, item: QTreeWidgetItem):
         if item.parent() is None:
@@ -232,19 +247,26 @@ class MyTreeWidget2(QTreeWidget):
         if self.__multi_select:
             QMessageBox.warning(self.__parent, '', '按下 Ctrl 时，不允许进行粘帖操作。', QMessageBox.Ok)
             return
-        clipboard: QClipboard = QApplication.clipboard()
-        mm_data = clipboard.mimeData()
-        items = mm_data.drag_item()
+        items = Tag.get_tags(self.__database, parent_id=0)
         if to_item is None:
             last_top_index = self.topLevelItemCount()
-            cc = 0
-            for ii in items:
-                t: Tag = ii.data(0, Qt.UserRole)
-                self.__database.set_tag_parent(t.tag_id, None)
-                self.insertTopLevelItem(last_top_index + cc, ii)
+            ii = QTreeWidgetItem( self )
+            t = items[0]
+            ii.setText(0, t.name)
+            self.__database.set_tag_parent(t.tag_id, None)
+            ii.setData(0, Qt.UserRole, t)
+            self.insertTopLevelItem(last_top_index, ii)
+            cc = 1
+            f_ii = ii
+            for i in range(1, len(items)):
+                t = items[i]
+                ii = QTreeWidgetItem(self)
+                ii.setText(0, t.name)
+                ii.setData(0, Qt.UserRole, t)
+                self.__database.set_tag_parent( t.tag_id, None )
+                self.insertTopLevelItem( last_top_index + cc, ii )
                 cc += 1
-            self.__save_node_sort(items[0])
-            clipboard.clear()
+            self.__save_node_sort(f_ii)
         else:
             resp = QMessageBox.question(self.__parent, '', '同级粘帖？',
                                         QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
@@ -253,40 +275,51 @@ class MyTreeWidget2(QTreeWidget):
                 to_index = self.__get_item_index(to_item) + 1
                 pp = to_item.parent()
                 if pp is None:
-                    for ii in items:
+                    for t in items:
+                        ii = QTreeWidgetItem(self)
+                        ii.setText(0, t.name)
+                        ii.setData(0, Qt.UserRole, t)
                         self.insertTopLevelItem(to_index, ii)
-                        t: Tag = ii.data( 0, Qt.UserRole )
                         self.__database.set_tag_parent( t.tag_id, None )
                         to_index += 1
                 else:
                     p_t: Tag = pp.data(0, Qt.UserRole)
-                    for ii in items:
-                        t: Tag = ii.data( 0, Qt.UserRole )
+                    for t in items:
+                        ii = QTreeWidgetItem(pp)
+                        ii.setText(0, t.name)
+                        ii.setData(0, Qt.UserRole, t)
                         self.__database.set_tag_parent( t.tag_id, p_t.tag_id )
                         pp.insertChild(to_index, ii)
                         to_index += 1
                 self.__save_node_sort(to_item)
-                clipboard.clear()
             elif resp == QMessageBox.No:
                 """ 粘帖至下一级 """
                 to_index = to_item.childCount()
                 p_t: Tag = to_item.data(0, Qt.UserRole)
-                for ii in items:
-                    t: Tag = ii.data( 0, Qt.UserRole )
+                ii = QTreeWidgetItem(to_item)
+                ii.setText(0, items[0].name)
+                ii.setData(0, Qt.UserRole, items[0])
+                f_ii = ii
+                self.__database.set_tag_parent(items[0].tag_id, p_t.tag_id)
+                to_item.insertChild(to_index, ii)
+                to_index += 1
+                for i in range(1, len(items)):
+                    t = items[i]
+                    ii = QTreeWidgetItem(to_item)
+                    ii.setText(0, t.name)
+                    ii.setData( 0, Qt.UserRole, t )
                     self.__database.set_tag_parent( t.tag_id, p_t.tag_id )
                     to_item.insertChild(to_index, ii)
                     to_index += 1
-                self.__save_node_sort(items[0])
+                self.__save_node_sort(f_ii)
                 if not to_item.isExpanded():
                     to_item.setExpanded(True)
-                clipboard.clear()
         self.__database.save_change()
 
     @staticmethod
-    def clipper_not_empty():
-        clipboard: QClipboard = QApplication.clipboard()
-        mm_data = clipboard.mimeData()
-        return type(mm_data) == MyTreeItemMimeData
+    def clipper_not_empty(database):
+        tags = database.get_tags(parent_id=0)
+        return len(tags) > 0
 
 
 class MyTreeItemMimeData(QMimeData):

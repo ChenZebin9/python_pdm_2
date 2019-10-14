@@ -1,7 +1,6 @@
 import os
 import shutil
 import sys
-import win32ui
 
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QCursor, QColor, QBrush

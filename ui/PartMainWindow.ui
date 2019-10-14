@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>物料管理</string>
+   <string>产品数据管理</string>
   </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
@@ -53,6 +53,7 @@
     <addaction name="add2TreeViewMenuItem"/>
     <addaction name="statisticsInTimeAction"/>
     <addaction name="menu"/>
+    <addaction name="showPriceAction"/>
    </widget>
    <widget class="QMenu" name="windowsMenu">
     <property name="title">
@@ -126,7 +127,7 @@
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_5"/>
+   <widget class="QWidget" name="purchaseContents"/>
   </widget>
   <widget class="QDockWidget" name="partStructureDockWidget">
    <property name="windowTitle">
@@ -215,6 +216,9 @@
    <property name="statusTip">
     <string>为某项项目打上标签。</string>
    </property>
+   <property name="shortcut">
+    <string>F4</string>
+   </property>
    <property name="visible">
     <bool>false</bool>
    </property>
@@ -271,6 +275,17 @@
    </property>
    <property name="shortcut">
     <string>F3</string>
+   </property>
+  </action>
+  <action name="showPriceAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>显示价格</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
    </property>
   </action>
  </widget>

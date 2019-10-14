@@ -2,12 +2,11 @@
 
 # Form implementation generated from reading ui file 'PartMainWindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -61,9 +60,9 @@ class Ui_MainWindow(object):
         MainWindow.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.partParentDockWidget)
         self.purchaseDockWidget = QtWidgets.QDockWidget(MainWindow)
         self.purchaseDockWidget.setObjectName("purchaseDockWidget")
-        self.dockWidgetContents_5 = QtWidgets.QWidget()
-        self.dockWidgetContents_5.setObjectName("dockWidgetContents_5")
-        self.purchaseDockWidget.setWidget(self.dockWidgetContents_5)
+        self.purchaseContents = QtWidgets.QWidget()
+        self.purchaseContents.setObjectName("purchaseContents")
+        self.purchaseDockWidget.setWidget(self.purchaseContents)
         MainWindow.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.purchaseDockWidget)
         self.partStructureDockWidget = QtWidgets.QDockWidget(MainWindow)
         self.partStructureDockWidget.setObjectName("partStructureDockWidget")
@@ -112,6 +111,10 @@ class Ui_MainWindow(object):
         self.selectDefaultTagMenuItem.setObjectName("selectDefaultTagMenuItem")
         self.addTag2PartMenuItem = QtWidgets.QAction(MainWindow)
         self.addTag2PartMenuItem.setObjectName("addTag2PartMenuItem")
+        self.showPriceAction = QtWidgets.QAction(MainWindow)
+        self.showPriceAction.setCheckable(True)
+        self.showPriceAction.setVisible(False)
+        self.showPriceAction.setObjectName("showPriceAction")
         self.operationMenu.addSeparator()
         self.operationMenu.addAction(self.add2OutputListMenuItem)
         self.operationMenu.addAction(self.showOutputListMenuItem)
@@ -128,6 +131,7 @@ class Ui_MainWindow(object):
         self.dataMenu.addAction(self.add2TreeViewMenuItem)
         self.dataMenu.addAction(self.statisticsInTimeAction)
         self.dataMenu.addAction(self.menu.menuAction())
+        self.dataMenu.addAction(self.showPriceAction)
         self.windowsMenu.addAction(self.resetDocksMenuItem)
         self.settingMenu.addAction(self.columnViewMenuItem)
         self.tagMenu.addAction(self.tagEditModeMenuItem)
@@ -177,6 +181,7 @@ class Ui_MainWindow(object):
         self.tagEditModeMenuItem.setStatusTip(_translate("MainWindow", "激活标签页的编辑功能。"))
         self.doTaggedMenuItem.setText(_translate("MainWindow", "打标签"))
         self.doTaggedMenuItem.setStatusTip(_translate("MainWindow", "为某项项目打上标签。"))
+        self.doTaggedMenuItem.setShortcut(_translate("MainWindow", "F4"))
         self.statisticsInTimeAction.setText(_translate("MainWindow", "实时统计"))
         self.allStatisticsAction.setText(_translate("MainWindow", "完全"))
         self.purchaseStatisticsAction.setText(_translate("MainWindow", "投料"))
@@ -186,5 +191,5 @@ class Ui_MainWindow(object):
         self.selectDefaultTagMenuItem.setToolTip(_translate("MainWindow", "新创建标签时，默认加入该标签。"))
         self.addTag2PartMenuItem.setText(_translate("MainWindow", "添加标签"))
         self.addTag2PartMenuItem.setShortcut(_translate("MainWindow", "F3"))
-
+        self.showPriceAction.setText(_translate("MainWindow", "显示价格"))
 
