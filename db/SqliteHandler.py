@@ -183,10 +183,13 @@ class SqliteHandler( DatabaseHandler ):
         return rs[0][0]
 
     def close(self):
-        if self.__c is not None:
-            self.__c.close()
-        if self.__conn is not None:
-            self.__conn.close()
+        try:
+            if self.__c is not None:
+                self.__c.close()
+            if self.__conn is not None:
+                self.__conn.close()
+        except:
+            pass
 
     def sort_one_tag_to_index(self, tag_id, target_index):
         sql = 'UPDATE tag SET sort_index={0} WHERE id={1}'.format( target_index, tag_id )
@@ -206,19 +209,3 @@ class SqliteHandler( DatabaseHandler ):
     def get_price_from_self_record(self, part_id, top=2):
         """ 获取本系统的价格记录信息 """
         return None
-
-    def get_storage(self, part_id):
-        sql = f'SELECT * FROM storage_part WHERE part_id={part_id}'
-        self.__c.execute( sql )
-        rs = self.__c.fetchall()
-        if len( rs ) < 1:
-            return 0.0, 0.0
-        else:
-            qty_1 = 0.0
-            qty_2 = 0.0
-            for r in rs:
-                if r[2] is not None:
-                    qty_1 += r[2]
-                if r[4] is not None:
-                    qty_2 += r[4]
-            return qty_1, qty_2

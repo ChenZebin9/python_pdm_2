@@ -100,7 +100,7 @@ class PartInfoPanelInMainWindow( QFrame ):
         hbox.addWidget( self.partInfo )
         self.imageLabel.setFixedSize( 200, 200 )
         self.imageLabel.setAlignment( Qt.AlignCenter )
-        hbox.addWidget( self.imageLabel )
+        hbox.addWidget( self.imageLabel, 0, Qt.AlignRight )
         hbox.addWidget( self.relationFilesList )
         self.relationFilesList.itemDoubleClicked.connect( self.__open_file )
         self.relationFilesList.itemSelectionChanged.connect( self.__linked_file_changed )

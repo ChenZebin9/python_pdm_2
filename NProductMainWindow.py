@@ -2,7 +2,7 @@
 import sys
 
 from PyQt5.Qt import Qt
-from PyQt5.QtGui import QCursor, QStandardItemModel, QStandardItem
+from PyQt5.QtGui import QCursor, QStandardItemModel, QStandardItem, QBrush, QColor
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QHBoxLayout, QSplitter,
                              QFrame, QPushButton, QVBoxLayout, QLabel, QTableView,
                              QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QMenu,
@@ -158,25 +158,25 @@ class ProductTab( QFrame ):
         bottom_layout.addLayout( bottom_layout_4 )
         self.__bottomPanel.setLayout( bottom_layout )
         splitter1.addWidget( self.__bottomPanel )
-        self.productView.setStyleSheet(
-            '''
-            QTreeWidget::item
-            {
-                border-right: 1px solid red;
-                border-bottom: 1px solid red;
-                padding: 2px;
-                margin: 0px;
-                margin-left: -2px;
-            }
-            QTreeWidget::item:hover
-            {
-                background-color: rgb(0,255,0);
-            }
-            QTreeWidget::item:selected
-            {
-                background-color: rgb(192,192,192);
-            }
-            ''' )
+        # self.productView.setStyleSheet(
+        #     '''
+        #     QTreeWidget::item
+        #     {
+        #         border-right: 1px solid red;
+        #         border-bottom: 1px solid red;
+        #         padding: 2px;
+        #         margin: 0px;
+        #         margin-left: -2px;
+        #     }
+        #     QTreeWidget::item:hover
+        #     {
+        #         background-color: rgb(0,255,0);
+        #     }
+        #     QTreeWidget::item:selected
+        #     {
+        #         background-color: rgb(192,192,192);
+        #     }
+        #     ''' )
         self.productInfoModel.setHorizontalHeaderLabels( ('项目', '数值') )
         self.productInfoTable.setModel( self.productInfoModel )
         self.productInfoTable.verticalHeader().hide()
@@ -315,10 +315,8 @@ class ProductTab( QFrame ):
         self.productInfoModel.setHorizontalHeaderLabels( ('项目', '数值') )
         self.productInfoTable.horizontalHeader().setStretchLastSection( True )
         info_s = self.__database.get_other_product_info( product_id=product_obj.product_id )
-        the_keys = list( info_s.keys() ).copy()
-        the_keys.sort()
-        for k in the_keys:
-            one_row = [QStandardItem( k ), QStandardItem( info_s[k] )]
+        for info in info_s:
+            one_row = [QStandardItem( info[0] ), QStandardItem( info[1] )]
             self.productInfoModel.appendRow( one_row )
         if self.productInfoModel.rowCount() > 0:
             self.productInfoTable.resizeColumnsToContents()
@@ -349,6 +347,8 @@ class ProductTab( QFrame ):
                     continue
                 one_pp_data = [pp.product_id, pp.product_comment, pp.status_comment, pp.config]
                 one_row = QTreeWidgetItem()
+                if self.__database.is_saled(pp.product_id):
+                    one_row.setBackground(1, QBrush(QColor("#FFFF33")))
                 i = 0
                 for pp_d in one_pp_data:
                     if pp_d is not None:
@@ -412,7 +412,7 @@ class ProductTab( QFrame ):
 
 if __name__ == '__main__':
     app = QApplication( sys.argv )
-    database = SqliteHandler( r'db/produce_datas.db' )
+    database = SqliteHandler( r'db/product_datas.db' )
     theDialog = NProductMainWindow( parent=None, database=database )
     theDialog.show()
     sys.exit( app.exec_() )

@@ -35,6 +35,15 @@ if __name__ == '__main__':
     app = QApplication( sys.argv )
     entrance_dialog = NEntranceDialog( parent=None )
     func_index = entrance_dialog.exec()
+
+    config = configparser.ConfigParser()
+    if not config.read( 'pdm_config.ini', encoding='GBK' ):
+        raise Exception( 'INI file not found.' )
+    server = config.get( 'Online', 'server' )
+    user = config.get( 'Online', 'user' )
+    password = config.get( 'Online', 'password' )
+    database_name = config.get( 'Online', 'database' )
+
     if func_index == 1:
         from NPartMainWindow import NPartMainWindow
         from db.DatabaseHandler import DatabaseHandler
@@ -44,9 +53,7 @@ if __name__ == '__main__':
         database_handler: DatabaseHandler = None
         init_config: InitConfig = None
         try:
-            config = configparser.ConfigParser()
-            if not config.read( 'pdm_config.ini', encoding='GBK' ):
-                raise Exception( 'INI file not found.' )
+
             init_config = InitConfig()
             mode = config.getint( 'Config', 'Mode' )
             work_folder = None
@@ -68,10 +75,6 @@ if __name__ == '__main__':
                     vault.Login( vault_name )
                     user_name = vault.GetUserName()
                     work_folder = vault.GetRootFolder()
-                    server = config.get( 'Online', 'server' )
-                    user = config.get( 'Online', 'user' )
-                    password = config.get( 'Online', 'password' )
-                    database_name = config.get( 'Online', 'database' )
                     database_handler = MssqlHandler( server, database_name, user, password )
                 except:
                     print( '无法进入在线登陆模式。' )
@@ -94,9 +97,16 @@ if __name__ == '__main__':
                 database_handler.close()
     elif func_index == 2:
         from NProductMainWindow import NProductMainWindow
-        from db.ProductDatasHandler import SqliteHandler as ProductDatabase
+        # from db.ProductDatasHandler import SqliteHandler as ProductDatabase
+        from db.ProductDatasHandler import MssqlHandler as ProductDatabase
 
-        database = ProductDatabase( r'db/produce_datas.db' )
+        # config = configparser.ConfigParser()
+        # if not config.read( 'pdm_config.ini', encoding='GBK' ):
+        #     raise Exception( 'INI file not found.' )
+        # database_folder = config.get( 'Database', 'databasefolder' )
+        # database = ProductDatabase( f'{database_folder}/product_datas.db' )
+
+        database = ProductDatabase(server=server, user=user, password=password, database=database_name)
         theDialog = NProductMainWindow( parent=None, database=database )
         theDialog.show()
         sys.exit( app.exec_() )
@@ -104,4 +114,5 @@ if __name__ == '__main__':
         pass
     elif func_index == 4:
         import NCreatePickBillDialog
+
         NCreatePickBillDialog.run_function()

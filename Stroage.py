@@ -2,7 +2,7 @@
 import configparser
 
 from db.MssqlHandler import MssqlHandler
-from db.SqliteHandler import SqliteHandler
+import sqlite3
 from Part import Part
 import xlwt
 import xlrd
@@ -26,27 +26,28 @@ class CalculateSupply:
     # 采购的列表，key - part_id，value - 为现场、库存，投料的数据
     purchase_parts = {}
 
-    def __init__(self, requirements, storage_database, part_database):
+    def __init__(self, requirements, storage_database_cursor, part_database):
         self.__require_dict: dict = requirements
-        self.__storage_database = storage_database
+        # 基础信息数据库
         self.__part_database = part_database
-        self.__mode = 1
+        # 获取库存的数据库
+        self.__c = storage_database_cursor
         # 一些数据的传送
         # 当前所计算的物料
         self.__current_part = None
         # 全局化的 Excel 行号
         self.__global_r_index = 1
+        # 库存数据
+        self.__storage_data = {}
 
-    def do_calculate(self, mode=1):
-        self.__mode = mode
-        if mode == 1:
-            for k in self.__require_dict.keys():
-                self.__do_calculate( k, self.__require_dict[k] )
-        elif mode == 0:
-            pass
+    def do_calculate(self):
+        for k in self.__require_dict.keys():
+            self.__do_calculate( k, self.__require_dict[k] )
 
     # parent_part 即要形成一个树形的菜单
     def __do_calculate(self, part_id, qty, parent_part=None):
+        if qty <= 0.0:
+            return
         part_s = Part.get_parts( self.__part_database, part_id=part_id )
         if len( part_s ) < 1:
             self.__current_part = None
@@ -112,11 +113,12 @@ class CalculateSupply:
             return result
 
     def __compare_supply(self, part_id, qty):
-        r = self.__storage_database.get_storage( part_id )
+        r = self.__get_storage( part_id )
         if r is None:
             return 0.0, 0.0, qty
         if r[0] < 0.0:
             qty -= r[0]
+            self.__storage_data[part_id][0] = 0.0
             in_site_stock = 0.0
         else:
             in_site_stock = r[0]
@@ -133,6 +135,33 @@ class CalculateSupply:
                 return in_site_stock, in_storage_stock, qty - in_site_stock - in_storage_stock
             else:
                 return in_site_stock, qty - in_site_stock, 0.0
+
+    def __get_storage(self, part_id):
+        # 获取库存
+        if part_id in self.__storage_data:
+            return self.__storage_data[part_id]
+        r = self.__get_storage_from_database( part_id )
+        if r is None:
+            return None
+        self.__storage_data[part_id] = [r[0], r[1]]
+        return r
+
+    def __get_storage_from_database(self, part_id):
+        # 注意 lock_stock_1 的数据是共有的
+        sql = f'SELECT stock_1, lock_stock_1, stock_3 FROM storage_part WHERE part_id={part_id}'
+        self.__c.execute( sql )
+        rs = self.__c.fetchall()
+        if len( rs ) < 1:
+            return 0.0, 0.0
+        else:
+            qty_1 = 0.0
+            qty_2 = 0.0
+            r_qty_1 = 0.0
+            for r in rs:
+                r_qty_1 = r[1]
+                qty_1 += r[0]
+                qty_2 += r[2]
+            return qty_1 - r_qty_1, qty_2
 
     def do_material_summary(self):
         if len( self.machining_parts ) < 1:
@@ -280,8 +309,8 @@ if __name__ == '__main__':
     if not config.read( 'pdm_config.ini', encoding='GBK' ):
         raise Exception( 'INI file not found.' )
 
-    database_file = config.get( 'Database', 'DatabaseFile' )
-    s_database = SqliteHandler( database_file )
+    s_database = sqlite3.connect( r'db/produce_datas.db' )
+    cc = s_database.cursor()
 
     server = config.get( 'Online', 'server' )
     user = config.get( 'Online', 'user' )
@@ -304,11 +333,12 @@ if __name__ == '__main__':
             source_data[one_row[0]] = one_row[2]
         if len( source_data ) < 1:
             sys.exit( 0 )
-        obj = CalculateSupply( source_data, s_database, p_database )
-        print( '开始统计(mode=1)...' )
-        obj.do_calculate( mode=1 )
+        obj = CalculateSupply( source_data, cc, p_database )
+        print( '开始统计...' )
+        obj.do_calculate()
         obj.do_material_summary()
         obj.export_2_excel()
     finally:
+        cc.close()
         s_database.close()
         p_database.close()

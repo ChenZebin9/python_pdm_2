@@ -108,11 +108,11 @@ class NProductInfoDialog( QDialog, Ui_Dialog ):
             parent_product = '\'{0}\''.format( self.parentCombo.currentText() )
         else:
             parent_product = 'NULL'
+        tag_s = {'类型': self.typeCombo.currentText(),
+                 '状态': self.initStatusCombo.currentText(),
+                 '物料归类': self.costTypeCombo.currentText()}
         if self.__dialog_mode == 1 or self.__dialog_mode == 3:
             data_s = [product_id, product_type, status, cost_type, p_comment, s_comment, config, parent_product]
-            tag_s = {'类型': self.typeCombo.currentText(),
-                     '状态': self.initStatusCombo.currentText(),
-                     '物料归类': self.costTypeCombo.currentText()}
             try:
                 self.__database.insert_product_record( data=data_s, tag=tag_s )
                 QMessageBox.information( self, '', '完成产品{0}的插入。'.format( product_id ),
@@ -122,7 +122,10 @@ class NProductInfoDialog( QDialog, Ui_Dialog ):
         elif self.__dialog_mode == 2:
             data_s = [product_id, product_type, status, cost_type, p_comment, s_comment, config, parent_product]
             try:
-                self.__database.update_prduct( data_s )
+                self.__database.update_product( data_s )
+                # 更新标签
+                for t in tag_s.keys():
+                    self.__database.change_product_tag(product_id, t, tag_s[t])
                 QMessageBox.information( self, '', '完成产品{0}的更新。'.format( product_id ) )
             except Exception as e:
                 QMessageBox.warning( self, '更新出错', e, QMessageBox.Yes, QMessageBox.Yes )

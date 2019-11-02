@@ -116,7 +116,7 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
                     cell: QStandardItem = self.__table_modal.item( i, j )
                     row_data.append( cell.text() )
                 datas.append( row_data )
-            pdf_creator = PdfLib.CreatePickBill( datas, 'OPS项目部', self.__operatorLineEdit.text(),
+            pdf_creator = PdfLib.CreatePickBill( datas, '中德OPS项目部', self.__operatorLineEdit.text(),
                                                  self.__timeSelector.text(), self.__billNrLineEdit.text() )
             # 选择要保存到的文件
             dlg = win32ui.CreateFileDialog( 0, None, None, win32con.OFN_OVERWRITEPROMPT, 'Pdf Files (*.pdf)|*.pdf||' )
