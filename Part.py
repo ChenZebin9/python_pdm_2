@@ -59,8 +59,8 @@ class Part:
         pdm_records = database.get_price_from_self_record( part_id=part_id, top=1 )
         if pdm_records is not None:
             r = pdm_records[0]
-            qty = Decimal.from_float( r[3] )
-            price = (r[1] + r[2]) / qty
+            qty = Decimal.from_float( r[4] )
+            price = (r[1] + r[2]) / (1.0 + r[3]) / qty
             return float( price )
         return float( 0.0 )
 
@@ -312,8 +312,9 @@ class DoStatistics( QThread ):
 class Product:
     """ 代表一个产品 """
 
-    def __init__(self, product_id, product_comment, status_comment, config):
+    def __init__(self, product_id, actual_status, product_comment, status_comment, config):
         self.product_id = product_id
+        self.actual_status = actual_status
         self.product_comment = product_comment
         self.status_comment = status_comment
         self.config = config
@@ -325,7 +326,7 @@ class Product:
         rs = database.get_products( product_id, product_comment, status_comment, config, top )
         result = []
         for r in rs:
-            pp = Product( r[0], r[7], r[8], r[9] )
+            pp = Product( r[0], r[2], r[7], r[8], r[9] )
             t_children = pp.get_children( database )
             if t_children is not None:
                 pp.children.extend( t_children )
@@ -346,7 +347,7 @@ class Product:
             return None
         result = []
         for r in rs:
-            pp = Product( r[0], r[7], r[8], r[9] )
+            pp = Product( r[0], r[2], r[7], r[8], r[9] )
             result.append( pp )
         return result
 
@@ -362,7 +363,7 @@ class Product:
         rs = database.get_products_2_tag( tag_id )
         result = []
         for r in rs:
-            pp = Product( r[0], r[7], r[8], r[9] )
+            pp = Product( r[0], r[2], r[7], r[8], r[9] )
             result.append( pp )
         return result
 

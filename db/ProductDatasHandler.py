@@ -295,9 +295,13 @@ class SqliteHandler:
     def is_saled(self, product_id):
         self.__c.execute( f'SELECT * FROM Sale_SoldOutDetail WHERE productId=\'{product_id}\'' )
         rs = self.__c.fetchall()
-        if len(rs) >= 1:
+        if len( rs ) >= 1:
             return True
         return False
+
+    # 根据日期预先估计出服务单号
+    def pre_get_service_record_id(self, the_date):
+        pass
 
 
 class MssqlHandler:
@@ -443,11 +447,10 @@ class MssqlHandler:
         rs = self.__c.fetchall()
         if len( rs ) > 0:
             raise Exception( '该产品包含了子产品，暂时无法进行删除。' )
-        self.__c.execute( 'DELETE FROM JJProduce.ServiceRecord WHERE ProductId=\'{0}\''.format( product_id ) )
+        self.__c.execute( 'DELETE FROM JJSale.ServiceRecord WHERE ProductId=\'{0}\''.format( product_id ) )
         self.__c.execute( 'DELETE FROM JJSale.ProductShipped WHERE Product=\'{0}\''.format( product_id ) )
         self.__c.execute( 'DELETE FROM JJSale.ProductSale WHERE Product=\'{0}\''.format( product_id ) )
         self.__c.execute( 'DELETE FROM JJProduce.ProductTag WHERE ProductId=\'{0}\''.format( product_id ) )
-        # self.__c.execute( 'DELETE FROM Product_ID4Customer WHERE assemblyId=\'{0}\''.format( product_id ) )
         self.__c.execute( 'DELETE FROM JJProduce.Product WHERE ProductId=\'{0}\''.format( product_id ) )
         self.__conn.commit()
 
@@ -465,7 +468,8 @@ class MssqlHandler:
         if len( rs ) < 1:
             raise Exception( '目标编号不存在对应的产品。' )
         self.__c.execute(
-            'UPDATE JJSale.ServiceRecord SET ProductId=\'{0}\' WHERE ProductId=\'{1}\''.format( target_id, original_id ) )
+            'UPDATE JJSale.ServiceRecord SET ProductId=\'{0}\' WHERE ProductId=\'{1}\''.format( target_id,
+                                                                                                original_id ) )
         self.__c.execute(
             'UPDATE JJSale.ProductShipped SET Product=\'{0}\' WHERE Product=\'{1}\''.format( target_id, original_id ) )
         self.__c.execute(
@@ -483,7 +487,7 @@ class MssqlHandler:
         #                                                                                          original_id ) )
         self.__c.execute(
             'UPDATE JJProduce.Product SET ParentProduct=\'{0}\' WHERE ParentProduct=\'{1}\''.format( target_id,
-                                                                                                   original_id ) )
+                                                                                                     original_id ) )
         self.__conn.commit()
 
     def get_other_product_info(self, product_id):
@@ -553,15 +557,19 @@ class MssqlHandler:
 
     # 在 parent_tag 下面，改变为 current_tag，删除其它的 tag
     def change_product_tag(self, product_id, parent_tag_name, current_tag_name):
-        self.__c.execute( f'SELECT * FROM JJProduce.Tag WHERE TagName=\'{parent_tag_name}\' AND ParentId IS NULL' )
+        # TEXT变量要进行转换，不能直接用=(equal to)
+        sql = f'SELECT * FROM JJProduce.Tag WHERE CONVERT(VARCHAR, TagName)=\'{parent_tag_name}\' AND ParentId IS NULL'
+        self.__c.execute( sql )
         rs = self.__c.fetchall()
         if len( rs ) < 1:
             raise Exception( f'提供的\'{parent_tag_name}\'便签有异常。' )
         parent_tag_id = rs[0][0]
-        self.__c.execute( f'SELECT * FROM JJProduce.Tag WHERE TagName=\'{current_tag_name}\' AND ParentId={parent_tag_id}' )
+        sql = f'SELECT * FROM JJProduce.Tag ' \
+            f'WHERE CONVERT(VARCHAR, TagName)=\'{current_tag_name}\' AND ParentId={parent_tag_id}'
+        self.__c.execute( sql )
         rs = self.__c.fetchall()
         if len( rs ) < 1:
-            raise Exception( f'\'{parent_tag_name}\'标签不包括\'{current_tag_name}\'标签。' )
+            raise Exception( f'{parent_tag_name}标签不包括{current_tag_name}标签。' )
         current_tag_index = rs[0][0]
         # 查看产品下面有没有此类标签
         sql = f'SELECT p.ProductId, t.id FROM JJProduce.ProductTag AS p INNER JOIN JJProduce.Tag AS t ON t.Id=p.TagId ' \
@@ -581,14 +589,75 @@ class MssqlHandler:
             self.__c.execute( f'INSERT INTO JJProduce.ProductTag VALUES ({product_id}, {current_tag_index})' )
             self.__conn.commit()
 
-    # 获取售后记录
-    def get_after_sale_service(self, product_id):
-        pass
-
     # 查看是否售出
     def is_saled(self, product_id):
         self.__c.execute( f'SELECT * FROM JJSale.SoldOutDetail WHERE ProductId=\'{product_id}\'' )
         rs = self.__c.fetchall()
-        if len(rs) >= 1:
+        if len( rs ) >= 1:
             return True
         return False
+
+    # 查看销售情况
+    def get_saled_customer(self, product_id):
+        sql = f'SELECT ContractCompany, TerminalCompany FROM JJSale.SoldOutDetail WHERE ProductId=\'{product_id}\''
+        self.__c.execute( sql )
+        rs = self.__c.fetchall()
+        return rs
+
+    def get_products_from_customer(self, short_name):
+        ''' 根据客户的短名称，获取产品 '''
+        sql = f'SELECT ProductId FROM JJSale.SoldOutDetail ' \
+            f'WHERE ContractCompany=\'{short_name}\' OR TerminalCompany=\'{short_name}\''
+        self.__c.execute( sql )
+        rs = self.__c.fetchall()
+        r_rs = []
+        for r in rs:
+            t_r = self.get_products_by_id( r[0] )[0]
+            r_rs.append( (t_r[0], t_r[2], t_r[7], t_r[8], t_r[9]) )
+        return r_rs
+
+    # 根据日期预先估计出服务单号
+    def pre_get_service_record_id(self, the_date):
+        format_date = 'AS{0}'.format( the_date )
+        self.__c.execute( f'SELECT ServiceId FROM JJSale.ServiceRecord '
+                          f'WHERE ServiceId LIKE \'{format_date}%\' ORDER BY ServiceId DESC' )
+        rs = self.__c.fetchall()
+        if len( rs ) < 1:
+            return f'AS{the_date}-1'
+        f = rs[0][0]
+        n = f[-1:]
+        i = int( n ) + 1
+        return f'AS{the_date}-{i}'
+
+    # 获取雇用的人员
+    def get_usable_operators(self):
+        self.__c.execute( f'SELECT Name, PersonCode FROM JJCom.HR WHERE Status=0' )
+        rs = self.__c.fetchall()
+        return rs
+
+    # 添加售后服务记录
+    def insert_service_record(self, record_id, product_id, the_date, operator, description):
+        the_sql = f'INSERT INTO JJSale.ServiceRecord VALUES (\'{record_id}\', \'{product_id}\', ' \
+            f'\'{the_date}\', \'{operator}\', \'{description}\')'
+        self.__c.execute( the_sql )
+        self.__conn.commit()
+
+    # 获取售后记录
+    def get_service_record(self, product_id):
+        the_sql = f'SELECT ServiceId, Description FROM JJSale.ServiceRecord WHERE ProductId=\'{product_id}\''
+        self.__c.execute( the_sql )
+        rs = self.__c.fetchall()
+        return rs
+
+    # 获取客户的清单
+    # 返回：短名称、长名称
+    def get_customers(self, filter=None):
+        the_sql = 'SELECT * FROM JJSale.Company'
+        if filter is not None:
+            the_sql += f' WHERE Name LIKE \'%{filter}%\''
+        self.__c.execute( the_sql )
+        rs = self.__c.fetchall()
+        result = []
+        for r in rs:
+            result.append( (r[2], r[1]) )
+        return result

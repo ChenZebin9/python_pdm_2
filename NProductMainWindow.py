@@ -2,16 +2,18 @@
 import sys
 
 from PyQt5.Qt import Qt
+from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QCursor, QStandardItemModel, QStandardItem, QBrush, QColor
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QHBoxLayout, QSplitter,
                              QFrame, QPushButton, QVBoxLayout, QLabel, QTableView,
                              QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QMenu,
-                             QInputDialog, QAbstractItemView)
+                             QInputDialog, QAbstractItemView, QDateEdit, QTabWidget)
 
 from Part import Tag, Product
 from UiFrame import TagViewPanel
 from ui.NProductInfoDialog import *
 from ui.ProductMainWindow import *
+from ui.ProductServiceRecordDialog import Ui_Dialog as ServiceRecordDialog
 
 
 class NProductMainWindow( QMainWindow, Ui_MainWindow ):
@@ -19,21 +21,18 @@ class NProductMainWindow( QMainWindow, Ui_MainWindow ):
     def __init__(self, parent=None, database=None):
         super( NProductMainWindow, self ).__init__( parent )
         self.__database = database
-        self.__productTab = ProductTab( self, database=database )
+        self.__productTab = ProductPanel( self, database=database )
         self.setup_ui()
         self.__init_data()
 
     def setup_ui(self):
         super( NProductMainWindow, self ).setupUi( self )
 
-        product_tab_layout = QHBoxLayout( self.productTab )
-        product_tab_layout.addWidget( self.__productTab )
-        self.productTab.setLayout( product_tab_layout )
-        self.setCentralWidget( self.tabWidget )
+        self.setCentralWidget( self.__productTab )
 
-        self.tabWidget.setCurrentIndex( 0 )
         self.exitAction.triggered.connect( self.__close )
         self.addProductAction.triggered.connect( self.__add_product )
+        self.addServiceRecordAction.triggered.connect( self.__add_service_record )
 
     def __init_data(self):
         self.__productTab.init_data()
@@ -45,10 +44,89 @@ class NProductMainWindow( QMainWindow, Ui_MainWindow ):
         dialog = NProductInfoDialog( self, database=self.__database )
         dialog.exec_()
 
+    def __add_service_record(self):
+        dialog = NProductServiceRecordDialog( self, database=self.__database )
+        dialog.exec_()
+
     def closeEvent(self, event):
         if self.__database is not None:
             self.__database.close()
         event.accept()
+
+
+class NProductServiceRecordDialog( QDialog, ServiceRecordDialog ):
+
+    def __init__(self, parent=None, database=None, product_id=None):
+        self.__parent = parent
+        self.__database = database
+        self.__product_id = product_id
+        super( NProductServiceRecordDialog, self ).__init__( parent )
+        self.recordIdEdit = QLineEdit( self )
+        self.productIdCombo = QComboBox( self )
+        self.dateEdit = QDateEdit( self )
+        self.operatorCombo = QComboBox( self )
+        self.descriptionEdit = QLineEdit( self )
+        self.__persons = {}
+        self.setup_ui()
+
+    def setup_ui(self):
+        super( NProductServiceRecordDialog, self ).setupUi( self )
+        self.setWindowModality( Qt.ApplicationModal )
+        self.dateEdit.setCalendarPopup( True )
+        self.h_layout.setContentsMargins( 5, 5, 5, 5 )
+
+        self.f_layout.addRow( '服务单号', self.recordIdEdit )
+        self.f_layout.addRow( '产品编号', self.productIdCombo )
+        self.f_layout.addRow( '日期', self.dateEdit )
+        self.f_layout.addRow( '主要人员', self.operatorCombo )
+        self.f_layout.addRow( '服务描述', self.descriptionEdit )
+
+        self.setLayout( self.h_layout )
+
+        # 初始化数据
+        self.dateEdit.setDate( QDate.currentDate() )
+        self.dateEdit.dateChanged.connect( self.__on_date_changed )
+        temp = self.__database.get_products()
+        for t in temp:
+            self.productIdCombo.addItem( t[0] )
+        if self.__product_id is not None:
+            self.productIdCombo.setEnabled( False )
+            self.productIdCombo.setCurrentText( self.__product_id )
+        temp = self.__database.get_usable_operators()
+        for t in temp:
+            self.__persons[t[0]] = t[1]
+        self.operatorCombo.addItems( self.__persons.keys() )
+        self.operatorCombo.setCurrentIndex( -1 )
+        self.productIdCombo.setCurrentIndex( -1 )
+
+    def __on_date_changed(self, the_date: QDate):
+        format_date = the_date.toString( 'yyMMdd' )
+        record_id = self.__database.pre_get_service_record_id( format_date )
+        self.recordIdEdit.setText( record_id )
+
+    def accept(self):
+        is_reject = False
+        record_id = self.recordIdEdit.text()
+        description = self.descriptionEdit.text()
+        if record_id is None or len( record_id ) < 1 or record_id.isspace():
+            QMessageBox.warning( self, '数据不完整', '没有服务单号！' )
+            is_reject = True
+        elif self.productIdCombo.currentIndex() < 0:
+            QMessageBox.warning( self, '数据不完整', '没有选择产品！' )
+            is_reject = True
+        elif self.operatorCombo.currentIndex() < 0:
+            QMessageBox.warning( self, '数据不完整', '没有选择售后人员！' )
+            is_reject = True
+        elif description is None or len( description ) < 1 or description.isspace():
+            QMessageBox.warning( self, '数据不完整', '必须填写服务内容！' )
+            is_reject = True
+        if is_reject:
+            self.reject()
+            return
+        self.__database.insert_service_record( record_id, self.productIdCombo.currentText(), self.dateEdit.text(),
+                                               self.__persons[self.operatorCombo.currentText()], description )
+        QMessageBox.information( self, '', '创建服务记录成功！' )
+        self.close()
 
 
 class TagViewInProductTab( TagViewPanel ):
@@ -76,11 +154,13 @@ class TagViewInProductTab( TagViewPanel ):
         self.parent.show_products_from_outside( r_list )
 
 
-class ProductTab( QFrame ):
+class ProductPanel( QFrame ):
 
     def __init__(self, parent=None, database=None):
         super( QFrame, self ).__init__( parent )
+        self.__leftTopTabLayout = QTabWidget( parent )
         self.__tagPanel = TagViewInProductTab( parent=self, database=database )
+        self.__customerPanel = CustomerView( parent=self, database=database )
         self.__database = database
         self.__topRightPanel = QFrame( self )
         self.productIdLineEdit = QLineEdit( self )
@@ -100,6 +180,7 @@ class ProductTab( QFrame ):
         self.statusInfoTable = QTableView( self )
         self.afterSaleInfoTable = QTableView( self )
         self.productInfoModel = QStandardItemModel()
+        self.serviceRecordModel = QStandardItemModel()
 
         # 右键菜单
         self.__menu_4_product_list = QMenu( parent=self.productView )
@@ -122,7 +203,10 @@ class ProductTab( QFrame ):
         splitter2.setStretchFactor( 0, 2 )
         splitter2.setStretchFactor( 1, 1 )
 
-        splitter2.addWidget( self.__tagPanel )
+        # splitter2.addWidget( self.__tagPanel )
+        splitter2.addWidget( self.__leftTopTabLayout )
+        self.__leftTopTabLayout.addTab( self.__tagPanel, '标签' )
+        self.__leftTopTabLayout.addTab( self.__customerPanel, '客户' )
 
         top_right_layout = QVBoxLayout()
         top_right_layout_top = QHBoxLayout()
@@ -142,14 +226,17 @@ class ProductTab( QFrame ):
         bottom_layout = QHBoxLayout()
         bottom_layout_1 = QVBoxLayout()
         bottom_layout_1.addWidget( QLabel( '基本信息' ) )
+        self.productInfoTable.setFixedWidth( 300 )
         bottom_layout_1.addWidget( self.productInfoTable )
         bottom_layout.addLayout( bottom_layout_1 )
         bottom_layout_2 = QVBoxLayout()
         bottom_layout_2.addWidget( QLabel( '标签' ) )
+        self.tagInfoList.setFixedWidth( 200 )
         bottom_layout_2.addWidget( self.tagInfoList )
         bottom_layout.addLayout( bottom_layout_2 )
         bottom_layout_3 = QVBoxLayout()
         bottom_layout_3.addWidget( QLabel( '状态变化记录' ) )
+        self.statusInfoTable.setFixedWidth( 200 )
         bottom_layout_3.addWidget( self.statusInfoTable )
         bottom_layout.addLayout( bottom_layout_3 )
         bottom_layout_4 = QVBoxLayout()
@@ -158,31 +245,39 @@ class ProductTab( QFrame ):
         bottom_layout.addLayout( bottom_layout_4 )
         self.__bottomPanel.setLayout( bottom_layout )
         splitter1.addWidget( self.__bottomPanel )
-        # self.productView.setStyleSheet(
-        #     '''
-        #     QTreeWidget::item
-        #     {
-        #         border-right: 1px solid red;
-        #         border-bottom: 1px solid red;
-        #         padding: 2px;
-        #         margin: 0px;
-        #         margin-left: -2px;
-        #     }
-        #     QTreeWidget::item:hover
-        #     {
-        #         background-color: rgb(0,255,0);
-        #     }
-        #     QTreeWidget::item:selected
-        #     {
-        #         background-color: rgb(192,192,192);
-        #     }
-        #     ''' )
+        self.productView.setStyleSheet(
+            '''
+            QTreeWidget::item
+            {
+                border-right: 1px solid red;
+                border-bottom: 1px solid red;
+                padding: 2px;
+                margin: 0px;
+                margin-left: -2px;
+            }
+            QTreeWidget::item:hover
+            {
+                background-color: rgb(0,255,0);
+            }
+            QTreeWidget::item:selected
+            {
+                background-color: rgb(192,192,192);
+            }
+            ''' )
         self.productInfoModel.setHorizontalHeaderLabels( ('项目', '数值') )
         self.productInfoTable.setModel( self.productInfoModel )
         self.productInfoTable.verticalHeader().hide()
         self.productInfoTable.setEditTriggers( QAbstractItemView.NoEditTriggers )
         self.productInfoTable.setSelectionBehavior( QAbstractItemView.SelectRows )
         self.productInfoTable.setSelectionMode( QAbstractItemView.SingleSelection )
+
+        self.serviceRecordModel.setHorizontalHeaderLabels( ('编号', '描述') )
+        self.afterSaleInfoTable.setModel( self.serviceRecordModel )
+        self.afterSaleInfoTable.verticalHeader().hide()
+        self.afterSaleInfoTable.setEditTriggers( QAbstractItemView.NoEditTriggers )
+        self.afterSaleInfoTable.setSelectionBehavior( QAbstractItemView.SelectRows )
+        self.afterSaleInfoTable.setSelectionMode( QAbstractItemView.SingleSelection )
+
         h_box.addWidget( splitter1 )
         self.setLayout( h_box )
 
@@ -227,7 +322,7 @@ class ProductTab( QFrame ):
             try:
                 self.__database.update_product_other_info( self.current_product.product_id, int( i_s ), text )
             except Exception as ex:
-                QMessageBox.warning(self, '', ex.__str__())
+                QMessageBox.warning( self, '', ex.__str__() )
 
     def __on_custom_context_menu_requested(self, pos):
         item: QTreeWidgetItem = self.productView.itemAt( pos )
@@ -261,6 +356,7 @@ class ProductTab( QFrame ):
                                             QMessageBox.No | QMessageBox.Yes, QMessageBox.No )
                 if rsp == QMessageBox.Yes:
                     self.__database.delete_product( self.current_product.product_id )
+                    self.productView.clearSelection()
                     if self.current_product_item.parent() is None:
                         ii = self.productView.indexOfTopLevelItem( self.current_product_item )
                         self.productView.takeTopLevelItem( ii )
@@ -311,6 +407,7 @@ class ProductTab( QFrame ):
             one_item.setData( Qt.UserRole, t )
             self.tagInfoList.addItem( one_item )
         # 显示其它信息
+        # 产品相关信息
         self.productInfoModel.clear()
         self.productInfoModel.setHorizontalHeaderLabels( ('项目', '数值') )
         self.productInfoTable.horizontalHeader().setStretchLastSection( True )
@@ -318,8 +415,24 @@ class ProductTab( QFrame ):
         for info in info_s:
             one_row = [QStandardItem( info[0] ), QStandardItem( info[1] )]
             self.productInfoModel.appendRow( one_row )
+        # 将销售情况添加入其中
+        info_s_2 = self.__database.get_saled_customer( product_id=product_obj.product_id )
+        if len( info_s_2 ) > 0:
+            self.productInfoModel.appendRow( [QStandardItem( '客户' ), QStandardItem( info_s_2[0][0] )] )
+            if info_s_2[0][1] is not None:
+                self.productInfoModel.appendRow( [QStandardItem( '终端客户' ), QStandardItem( info_s_2[0][1] )] )
         if self.productInfoModel.rowCount() > 0:
             self.productInfoTable.resizeColumnsToContents()
+        # 产品的售后服务记录
+        self.serviceRecordModel.clear()
+        self.serviceRecordModel.setHorizontalHeaderLabels( ('编号', '描述') )
+        self.afterSaleInfoTable.horizontalHeader().setStretchLastSection( True )
+        service_info_s = self.__database.get_service_record( product_id=product_obj.product_id )
+        for info in service_info_s:
+            one_row = [QStandardItem( info[0] ), QStandardItem( info[1] )]
+            self.serviceRecordModel.appendRow( one_row )
+        if self.serviceRecordModel.rowCount() > 0:
+            self.afterSaleInfoTable.resizeColumnsToContents()
 
     def do_when_tag_tree_select(self, tag_id):
         products = Product.get_products_from_tag( self.__database, tag_id )
@@ -331,6 +444,7 @@ class ProductTab( QFrame ):
         self.__tagPanel.fill_data( tags )
         products = Product.get_products( self.__database, top=True )
         self.fill_products_table( products )
+        self.__customerPanel.do_search()
 
     """
     search_parent: 是否要往上追溯
@@ -340,15 +454,13 @@ class ProductTab( QFrame ):
         self.productView.clear()
         self.temp_list.clear()
         if columns_setting is None:
-            self.productView.setColumnCount( 4 )
-            self.productView.setHeaderLabels( ['编号', '产品备注', '状态备注', '配置'] )
+            self.productView.setColumnCount( 5 )
+            self.productView.setHeaderLabels( ['编号', '状态', '产品备注', '状态备注', '配置'] )
             for pp in products:
                 if pp.product_id in self.temp_list.keys():
                     continue
-                one_pp_data = [pp.product_id, pp.product_comment, pp.status_comment, pp.config]
+                one_pp_data = [pp.product_id, pp.actual_status, pp.product_comment, pp.status_comment, pp.config]
                 one_row = QTreeWidgetItem()
-                if self.__database.is_saled(pp.product_id):
-                    one_row.setBackground(1, QBrush(QColor("#FFFF33")))
                 i = 0
                 for pp_d in one_pp_data:
                     if pp_d is not None:
@@ -379,7 +491,7 @@ class ProductTab( QFrame ):
             to_node.addChild( one_row )
             return
         previous_one_row = QTreeWidgetItem()
-        data_s = [pp.product_id, pp.product_comment, pp.status_comment, pp.config]
+        data_s = [pp.product_id, pp.actual_status, pp.product_comment, pp.status_comment, pp.config]
         i = 0
         for d in data_s:
             if d is not None:
@@ -397,7 +509,7 @@ class ProductTab( QFrame ):
             return
         if column_setting is None:
             for cc in product.children:
-                one_cc_data = [cc.product_id, cc.product_comment, cc.status_comment, cc.config]
+                one_cc_data = [cc.product_id, cc.actual_status, cc.product_comment, cc.status_comment, cc.config]
                 next_one_row = QTreeWidgetItem()
                 i = 0
                 for cc_d in one_cc_data:
@@ -410,9 +522,58 @@ class ProductTab( QFrame ):
                 self.__add_product_children( cc, next_one_row, column_setting )
 
 
-if __name__ == '__main__':
-    app = QApplication( sys.argv )
-    database = SqliteHandler( r'db/product_datas.db' )
-    theDialog = NProductMainWindow( parent=None, database=database )
-    theDialog.show()
-    sys.exit( app.exec_() )
+class CustomerView( QFrame ):
+
+    def __init__(self, parent=None, database=None):
+        super().__init__( parent )
+        self.__parent = parent
+        self.__database = database
+        self.filterLineEdit = QLineEdit( self )
+        self.cleanTextPushButton = QPushButton( self )
+        self.customersList = QListWidget( self )
+        self.__init_ui()
+
+    def __init_ui(self):
+        self.cleanTextPushButton.setText( '清空' )
+        v_box = QVBoxLayout( self )
+
+        filter_h_box = QHBoxLayout( self )
+        filter_h_box.addWidget( QLabel( '过滤' ) )
+        filter_h_box.addWidget( self.filterLineEdit )
+        filter_h_box.addWidget( self.cleanTextPushButton )
+
+        v_box.addLayout( filter_h_box )
+        v_box.addWidget( self.customersList )
+
+        self.setLayout( v_box )
+
+        self.cleanTextPushButton.clicked.connect( self.__reset_search )
+        self.filterLineEdit.returnPressed.connect( lambda: self.do_search( with_filter=True ) )
+        self.customersList.currentItemChanged.connect( self.__select_customer_changed )
+
+    def do_search(self, with_filter=False):
+        if with_filter:
+            tt = self.filterLineEdit.text().strip()
+            if tt == '':
+                tt = None
+            rs = self.__database.get_customers( filter=tt )
+        else:
+            rs = self.__database.get_customers()
+        self.customersList.clear()
+        for r in rs:
+            one_item = QListWidgetItem( r[1] )
+            one_item.setData( Qt.UserRole, r[0] )
+            self.customersList.addItem( one_item )
+
+    def __reset_search(self):
+        self.filterLineEdit.setText( '' )
+        self.do_search( with_filter=False )
+
+    def __select_customer_changed(self, item: QListWidgetItem):
+        if item is not None:
+            data = item.data( Qt.UserRole )
+            temp_data = self.__database.get_products_from_customer( data )
+            real_products = []
+            for t in temp_data:
+                real_products.append( Product( *t ) )
+            self.__parent.show_products_from_outside( real_products )

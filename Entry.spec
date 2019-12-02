@@ -1,10 +1,10 @@
-# -*- mode: python -*-
+# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
 
 a = Analysis(['Entry.py'],
-             pathex=['E:\\OneDrive\\OneDrive\\Program\\Python\\python_pdm_2'],
+             pathex=['D:\\weiyun\\OneDrive\\Program\\Python\\python_pdm_2'],
              binaries=[],
              datas=[],
              hiddenimports=[],
@@ -33,4 +33,5 @@ coll = COLLECT(exe,
                a.datas,
                strip=False,
                upx=True,
+               upx_exclude=[],
                name='Entry')

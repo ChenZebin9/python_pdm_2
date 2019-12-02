@@ -2,7 +2,6 @@
 from PyQt5.QtWidgets import (QDialog, QComboBox, QLineEdit,
                              QTextEdit, QCheckBox, QMessageBox)
 
-from db.ProductDatasHandler import SqliteHandler
 from ui.ProductInfoDialog import *
 
 
@@ -10,7 +9,7 @@ class NProductInfoDialog( QDialog, Ui_Dialog ):
 
     def __init__(self, parent=None, database=None, product_id=None, mode=1):
         self.__parent = parent
-        self.__database: SqliteHandler = database
+        self.__database = database
         super( NProductInfoDialog, self ).__init__( parent )
         self.productIdEdit = QLineEdit( self )
         self.productCommentEdit = QTextEdit( self )

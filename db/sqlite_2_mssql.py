@@ -65,7 +65,9 @@ def create_product_tables(database):
     (
         PersonCode CHAR(7) NOT NULL PRIMARY KEY,
         Name VARCHAR(50) NOT NULL,
-        Comment TEXT
+        Comment TEXT,
+        Status TINYINT NOT NULL DEFAULT 0,
+        CHECK (Status=0 OR Status=1)
     );
     ''' )
     c.execute( '''
@@ -200,7 +202,7 @@ def create_product_tables(database):
     c.execute( '''
     CREATE VIEW [JJSale].[SoldOutDetail]
     AS SELECT [p].[ProductId], [p].[ProductType], [p].[ProductComment], [p].[Config], [p].[StatusComment],
-    [s].[ContractCode], [s].[ContractDate], [c].[Name] AS [ContractCompany], [c_1].[name] AS [TerminalCompany]
+    [s].[ContractCode], [s].[ContractDate], [c].[ShortName] AS [ContractCompany], [c_1].[ShortName] AS [TerminalCompany]
     FROM ([JJProduce].[Product] AS [p] INNER JOIN ([JJSale].[Company] AS [c] INNER JOIN
     ([JJSale].[ProductSale] AS [sp] INNER JOIN [JJSale].[Contract] AS [s] ON [sp].[Contract] = [s].[ContractCode])
     ON [c].[CompanyCode] = [s].[Company]) ON [p].[ProductId] = [sp].[Product]) LEFT JOIN

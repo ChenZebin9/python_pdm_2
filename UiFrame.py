@@ -1006,12 +1006,13 @@ class CostInfoPanel( QFrame ):
         pdm_records = self.__database.get_price_from_self_record( the_part.get_part_id() )
         if pdm_records is not None:
             for one_record in pdm_records:
-                unit_price = (one_record[1] + one_record[2]) / Decimal.from_float( one_record[3] )
+                unit_price = (one_record[1] + one_record[2]) / Decimal.from_float(
+                    1.0 + one_record[3] ) / Decimal.from_float( one_record[4] )
                 bill_nr = '{:06d}'.format( one_record[0] )
                 one_row_in_table = [QStandardItem( bill_nr )]
                 price_item = QStandardItem( '{:.2f}'.format( unit_price ) )
-                supplier_item = QStandardItem( one_record[5] )
-                date_item = QStandardItem( one_record[4].strftime( "%Y-%m-%d" ) )
+                supplier_item = QStandardItem( one_record[6] )
+                date_item = QStandardItem( one_record[5].strftime( "%Y-%m-%d" ) )
                 one_row_in_table.extend( [price_item, supplier_item, date_item] )
                 self.__table_modal.appendRow( one_row_in_table )
         if self.__table_modal.rowCount() > 0:

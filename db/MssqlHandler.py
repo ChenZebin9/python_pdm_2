@@ -232,7 +232,7 @@ class MssqlHandler(DatabaseHandler):
         sql_top = ''
         if top > 0:
             sql_top = 'TOP({0}) '.format( top )
-        sql = 'SELECT {1}i.ListID, i.PriceWithTax, i.OtherCost, i.Amount, l.QuotedDate, s.Name ' \
+        sql = 'SELECT {1}i.ListID, i.PriceWithTax, i.OtherCost, l.TaxRate, i.Amount, l.QuotedDate, s.Name ' \
               'FROM ' \
               'JJCost.QuotationItem AS i INNER JOIN JJCost.Quotation AS l ON i.ListID=l.QuotationID ' \
               'INNER JOIN JJCost.Supplier AS s ON l.SupplierID=s.SupplierID ' \

@@ -20,9 +20,9 @@ if db_dir_1 != '':
     db_dir = db_dir_1
 print('输出的目录为：' + db_dir)
 
-version = '1.0'
-distpath = '{0}dist\\'.format(db_dir)
-workpath = '{0}build\\'.format(db_dir)
+version = '1.5'
+distpath = '{0}\\dist\\'.format(db_dir)
+workpath = '{0}\\build\\'.format(db_dir)
 create_dir(db_dir)
 create_dir(distpath)
 create_dir(workpath)
@@ -41,11 +41,10 @@ print(cmd)
 p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 p.wait()
 
-files_2_copy = ['pdm_config.ini', 'rt_config.db', 'db\\greatoo_jj_4.db']
+files_2_copy = ['pdm_config.ini', 'rt_config.db', 'db\\greatoo_jj_5.db']
 target_db_dir = '{0}Entry\\db\\'.format(distpath)
 print(target_db_dir)
-if not os.path.exists(target_db_dir):
-    os.mkdir(target_db_dir)
+create_dir(target_db_dir)
 
 for f in files_2_copy:
     print('From {0}'.format(f))

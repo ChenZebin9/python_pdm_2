@@ -102,6 +102,6 @@ class DatabaseHandler(metaclass=ABCMeta):
         获取PDM中所保存的价格信息
         :param part_id: 零件号
         :param top: 仅获取记录的前几条，当top<=0时，获取所有记录
-        :return: [[单号，去税总金额，其它金额，数量，日期，供应商名称]] 或 None
+        :return: [[单号，含税总金额，其它金额（含税），税率，数量，日期，供应商名称]] 或 None
         """
         pass
