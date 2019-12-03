@@ -4,7 +4,7 @@ import os
 
 from PyQt5.QtWidgets import (QMessageBox)
 
-from excel.ExcelHandler import (ExcelHandler2)
+from excel.ExcelHandler import (ExcelHandler3)
 from ui.NImportSettingDialog import (NImportSettingDialog)
 
 
@@ -30,7 +30,7 @@ class DataImporter:
                 dialog.show()
             else:
                 # EXCEL文件的处理，使用 xlrd 比 xlwings 的读取速度快很多
-                excel = ExcelHandler2(file_name)
+                excel = ExcelHandler3(file_name)
                 dialog.set_excel_mode(rows, excel)
                 dialog.show()
         except Exception as ex:
