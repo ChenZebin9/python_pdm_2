@@ -287,27 +287,58 @@ class SqliteHandler:
             self.__c.execute( f'INSERT INTO Product_Tag VALUES ({product_id}, {current_tag_index})' )
             self.__conn.commit()
 
-    # 获取售后记录
-    def get_after_sale_service(self, product_id):
-        pass
-
     # 查看是否售出
-    def is_saled(self, product_id):
+    def is_sold(self, product_id):
         self.__c.execute( f'SELECT * FROM Sale_SoldOutDetail WHERE productId=\'{product_id}\'' )
         rs = self.__c.fetchall()
         if len( rs ) >= 1:
             return True
         return False
 
-    # 根据日期预先估计出服务单号
     def pre_get_service_record_id(self, the_date):
+        """根据日期预先估计出服务单号"""
+        # TODO sqlite, pre_get_service_record_id
+        pass
+
+    def get_sold_customer(self, product_id):
+        """根据产品编号，查看销售情况"""
+        # TODO sqlite, get_sold_customer
+        pass
+
+    def get_products_from_customer(self, short_name):
+        """ 根据客户的短名称，获取产品 """
+        # TODO sqlite, get_products_from_customer
+        pass
+
+    def get_usable_operators(self):
+        """获取雇用的人员"""
+        # TODO sqlite, get_usable_operators
+        pass
+
+    def insert_service_record(self, record_id, product_id, the_date, operator, description):
+        """添加售后服务记录"""
+        # TODO sqlite, insert_service_record
+        pass
+
+    def get_service_record(self, product_id):
+        """获取售后记录"""
+        # TODO sqlite, get_service_record
+        pass
+
+    def get_customers(self, the_filter=None):
+        """
+        # 获取客户的清单
+        # 返回：短名称、长名称
+        """
+        # TODO sqlite, get_customer
         pass
 
 
 class MssqlHandler:
 
-    def __init__(self, server, user, password, database='Greatoo_JJ_Database'):
-        self.__conn = pymssql.connect( server=server, user=user, password=password, database=database )
+    def __init__(self, server,  database, user, password):
+        self.__conn = pymssql.connect( server=server, user=user,
+                                       password=password, database=database, login_timeout=10 )
         self.__c = self.__conn.cursor()
 
     def close(self):
@@ -590,7 +621,7 @@ class MssqlHandler:
             self.__conn.commit()
 
     # 查看是否售出
-    def is_saled(self, product_id):
+    def is_sold(self, product_id):
         self.__c.execute( f'SELECT * FROM JJSale.SoldOutDetail WHERE ProductId=\'{product_id}\'' )
         rs = self.__c.fetchall()
         if len( rs ) >= 1:
@@ -598,14 +629,14 @@ class MssqlHandler:
         return False
 
     # 查看销售情况
-    def get_saled_customer(self, product_id):
+    def get_sold_customer(self, product_id):
         sql = f'SELECT ContractCompany, TerminalCompany FROM JJSale.SoldOutDetail WHERE ProductId=\'{product_id}\''
         self.__c.execute( sql )
         rs = self.__c.fetchall()
         return rs
 
     def get_products_from_customer(self, short_name):
-        ''' 根据客户的短名称，获取产品 '''
+        """ 根据客户的短名称，获取产品 """
         sql = f'SELECT ProductId FROM JJSale.SoldOutDetail ' \
             f'WHERE ContractCompany=\'{short_name}\' OR TerminalCompany=\'{short_name}\''
         self.__c.execute( sql )
@@ -651,10 +682,10 @@ class MssqlHandler:
 
     # 获取客户的清单
     # 返回：短名称、长名称
-    def get_customers(self, filter=None):
+    def get_customers(self, the_filter=None):
         the_sql = 'SELECT * FROM JJSale.Company'
-        if filter is not None:
-            the_sql += f' WHERE Name LIKE \'%{filter}%\''
+        if the_filter is not None:
+            the_sql += f' WHERE Name LIKE \'%{the_filter}%\''
         self.__c.execute( the_sql )
         rs = self.__c.fetchall()
         result = []

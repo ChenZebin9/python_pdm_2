@@ -3,8 +3,8 @@ import sys
 import os
 import sqlite3
 
-from PyQt5.QtWidgets import QApplication
-from NEntranceDialog import NEntranceDialog
+from PyQt5.QtWidgets import QApplication, QMessageBox
+from ui.NEntranceDialog import NEntranceDialog
 
 
 class InitConfig:
@@ -30,6 +30,28 @@ class InitConfig:
         conn.close()
 
 
+def Get_mssql_config(config: configparser, lock_mode=None):
+    """ 获取在线或者离线模式，MSSQL的设置。 """
+    mode = config.getint( 'Config', 'mode' )
+    server = 'localhost'
+    user = 'zebin'
+    password = '8893945'
+    database_name = 'Greatoo_JJ_Database'
+    if lock_mode is not None:
+        mode = lock_mode
+    if mode == 0:
+        server = config.get( 'Online', 'server' )
+        user = config.get( 'Online', 'user' )
+        password = config.get( 'Online', 'password' )
+        database_name = config.get( 'Online', 'database' )
+    elif mode == 1:
+        server = config.get( 'Offline', 'local_server' )
+        user = config.get( 'Offline', 'local_user' )
+        password = config.get( 'Offline', 'local_password' )
+        database_name = config.get( 'Offline', 'local_database' )
+    return mode, server, database_name, user, password
+
+
 if __name__ == '__main__':
     """ app = QApplication(sys.argv) 要放置在最前面，否则会出现许多可怪的问题。 """
     app = QApplication( sys.argv )
@@ -39,13 +61,10 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     if not config.read( 'pdm_config.ini', encoding='GBK' ):
         raise Exception( 'INI file not found.' )
-    server = config.get( 'Online', 'server' )
-    user = config.get( 'Online', 'user' )
-    password = config.get( 'Online', 'password' )
-    database_name = config.get( 'Online', 'database' )
-
+    database_setting = Get_mssql_config( config )
+    mode = database_setting[0]
     if func_index == 1:
-        from NPartMainWindow import NPartMainWindow
+        from ui.NPartMainWindow import NPartMainWindow
         from db.DatabaseHandler import DatabaseHandler
         from db.SqliteHandler import SqliteHandler
         from db.MssqlHandler import MssqlHandler
@@ -53,9 +72,8 @@ if __name__ == '__main__':
         database_handler: DatabaseHandler = None
         init_config: InitConfig = None
         try:
-
             init_config = InitConfig()
-            mode = config.getint( 'Config', 'Mode' )
+            mode = config.getint( 'Config', 'mode' )
             work_folder = None
             user_name = None
             vault = None
@@ -75,44 +93,49 @@ if __name__ == '__main__':
                     vault.Login( vault_name )
                     user_name = vault.GetUserName()
                     work_folder = vault.GetRootFolder()
-                    database_handler = MssqlHandler( server, database_name, user, password )
+                    database_handler = MssqlHandler( *database_setting[1:] )
                 except:
                     print( '无法进入在线登陆模式。' )
                     vault = None
                     mode = 1
             if mode == 1:
-                work_folder = config.get( 'Database', 'Folder' )
-                user_name = config.get( 'Database', 'UserName' )
-                database_file = config.get( 'Database', 'DatabaseFile' )
-                database_handler = SqliteHandler( database_file )
+                database_type = config.getint( 'Offline', 'database_type' )
+                work_folder = config.get( 'Offline', 'folder' )
+                if database_type == 2:
+                    # 使用 Sqlite 的数据库模式
+                    user_name = config.get( 'Offline', 'userName' )
+                    database_file = config.get( 'Offline', 'database_file' )
+                    database_handler = SqliteHandler( database_file )
+                elif database_type == 1:
+                    # 使用 MSSQL 的数据库模式
+                    database_setting = Get_mssql_config( config, lock_mode=1 )
+                    database_handler = MssqlHandler( *database_setting[1:] )
             myWin = NPartMainWindow( database=database_handler, username=user_name,
                                      work_folder=work_folder, pdm_vault=vault, mode=mode )
             myWin.add_config_and_init( solidWorks_app, init_config.db_name )
             myWin.show()
             sys.exit( app.exec_() )
-        # except Exception as e:
-        #     print('Error: ' + str(e))
+        except Exception as ex:
+            QMessageBox.warning( None, '启动时出错', str( ex ) )
         finally:
             if database_handler is not None:
                 database_handler.close()
     elif func_index == 2:
-        from NProductMainWindow import NProductMainWindow
-        # from db.ProductDatasHandler import SqliteHandler as ProductDatabase
+        from ui2.NProductMainWindow import NProductMainWindow
         from db.ProductDatasHandler import MssqlHandler as ProductDatabase
 
-        # config = configparser.ConfigParser()
-        # if not config.read( 'pdm_config.ini', encoding='GBK' ):
-        #     raise Exception( 'INI file not found.' )
-        # database_folder = config.get( 'Database', 'databasefolder' )
-        # database = ProductDatabase( f'{database_folder}/product_datas.db' )
-
-        database = ProductDatabase(server=server, user=user, password=password, database=database_name)
-        theDialog = NProductMainWindow( parent=None, database=database )
-        theDialog.show()
-        sys.exit( app.exec_() )
+        try:
+            database = ProductDatabase( *database_setting[1:] )
+            theDialog = NProductMainWindow( parent=None, database=database )
+            theDialog.show()
+            sys.exit( app.exec_() )
+        except Exception as ex:
+            QMessageBox.warning( None, '启动时出错', str( ex ) )
+            sys.exit( -1 )
     elif func_index == 3:
+        """ 配料管理 """
         pass
     elif func_index == 4:
-        import NCreatePickBillDialog
+        from ui3 import NCreatePickBillDialog
 
-        NCreatePickBillDialog.run_function()
+        NCreatePickBillDialog.run_function( database_setting )

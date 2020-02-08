@@ -2,11 +2,31 @@ from db.DatabaseHandler import *
 import pymssql
 
 
-class MssqlHandler(DatabaseHandler):
+class MssqlHandler( DatabaseHandler ):
+
+    def get_storing(self, part_id=None, position=None):
+        sql = 'SELECT * FROM JJStorage.Storing'
+        if part_id is not None or position is not None:
+            sql += ' WHERE'
+            if part_id is not None:
+                sql += f' PartId={part_id}'
+            if position is not None:
+                if part_id is not None:
+                    sql += ' AND'
+                c = len( position )
+                for i in range( c ):
+                    if i > 0:
+                        sql += ' OR'
+                    sql += f' Position=\'{position[i]}\''
+        self.__c.execute( sql )
+        r = self.__c.fetchall()
+        if len( r ) < 1:
+            return None
+        return r
 
     def del_tag_from_part(self, tag_id, part_id):
-        sql = 'DELETE FROM JJCom.PartTag WHERE tag_id={0} AND part_id={1}'.format(tag_id, part_id)
-        self.__c.execute(sql)
+        sql = 'DELETE FROM JJCom.PartTag WHERE tag_id={0} AND part_id={1}'.format( tag_id, part_id )
+        self.__c.execute( sql )
         self.__conn.commit()
 
     def get_parents(self, part_id):
@@ -16,7 +36,7 @@ class MssqlHandler(DatabaseHandler):
               ' INNER JOIN JJPart.PartStatus AS c ON a.StatusType=c.StatusID)' \
               ' ON b.ParentPart=a.PartID' \
               ' WHERE b.ChildPart={0}' \
-              ' ORDER BY b.ParentPart, b.PartRelationID'.format(part_id)
+              ' ORDER BY b.ParentPart, b.PartRelationID'.format( part_id )
         self.__c.execute( sql )
         rs = self.__c.fetchall()
         if len( rs ) < 1:
@@ -25,50 +45,51 @@ class MssqlHandler(DatabaseHandler):
 
     def copy(self):
         # 能否用本身的 conn 作为参数传递？待测试。
-        return 'MSSQL', MssqlHandler(self.__server, self.__database, self.__user, self.__password)
+        return 'MSSQL', MssqlHandler( self.__server, self.__database, self.__user, self.__password )
 
     def set_tag_2_part(self, tag_id, part_id):
-        check_tag_link = 'SELECT part_id FROM JJCom.PartTag WHERE part_id={0} AND tag_id={1}'.format(part_id, tag_id)
-        self.__c.execute(check_tag_link)
-        if len(self.__c.fetchall()) > 0:
+        check_tag_link = 'SELECT part_id FROM JJCom.PartTag WHERE part_id={0} AND tag_id={1}'.format( part_id, tag_id )
+        self.__c.execute( check_tag_link )
+        if len( self.__c.fetchall() ) > 0:
             return False
-        insert_tag_link = 'INSERT INTO JJCom.PartTag VALUES ({0}, {1})'.format(part_id, tag_id)
-        self.__c.execute(insert_tag_link)
+        insert_tag_link = 'INSERT INTO JJCom.PartTag VALUES ({0}, {1})'.format( part_id, tag_id )
+        self.__c.execute( insert_tag_link )
         self.__conn.commit()
         return True
 
     def rename_one_tag(self, tag_id, tag_name):
-        update_tag_sql = 'UPDATE JJCom.Tag SET tag_name=\'{0}\' WHERE id={1}'.format(tag_name, tag_id)
-        self.__c.execute(update_tag_sql)
+        update_tag_sql = 'UPDATE JJCom.Tag SET tag_name=\'{0}\' WHERE id={1}'.format( tag_name, tag_id )
+        self.__c.execute( update_tag_sql )
         self.__conn.commit()
 
     def del_one_tag(self, tag_id):
-        del_link_sql = 'DELETE FROM JJCom.PartTag WHERE tag_id={0}'.format(tag_id)
-        self.__c.execute(del_link_sql)
-        del_tag_sql = 'DELETE FROM JJCom.Tag WHERE id={0}'.format(tag_id)
-        self.__c.execute(del_tag_sql)
+        del_link_sql = 'DELETE FROM JJCom.PartTag WHERE tag_id={0}'.format( tag_id )
+        self.__c.execute( del_link_sql )
+        del_tag_sql = 'DELETE FROM JJCom.Tag WHERE id={0}'.format( tag_id )
+        self.__c.execute( del_tag_sql )
         self.__conn.commit()
 
     def create_one_tag(self, name, parent_id):
         tag_count = 'SELECT MAX(id) FROM JJCom.Tag'
-        self.__c.execute(tag_count)
+        self.__c.execute( tag_count )
         next_id = self.__c.fetchone()[0] + 1
         if parent_id is None:
             sort_count = 'SELECT MAX(sort_index) FROM JJCom.Tag WHERE parent_id is NULL'
-            self.__c.execute(sort_count)
+            self.__c.execute( sort_count )
             next_sort_index = self.__c.fetchone()[0] + 1
-            insert_sql = 'INSERT INTO JJCom.Tag VALUES ({0}, \'{1}\', NULL, {2})'.format(next_id, name, next_sort_index)
+            insert_sql = 'INSERT INTO JJCom.Tag VALUES ({0}, \'{1}\', NULL, {2})'.format( next_id, name,
+                                                                                          next_sort_index )
         else:
-            sort_count = 'SELECT MAX(sort_index) FROM JJCom.Tag WHERE parent_id={0}'.format(parent_id)
-            self.__c.execute(sort_count)
+            sort_count = 'SELECT MAX(sort_index) FROM JJCom.Tag WHERE parent_id={0}'.format( parent_id )
+            self.__c.execute( sort_count )
             the_sort = self.__c.fetchone()[0]
             if the_sort is None:
                 next_sort_index = 1
             else:
                 next_sort_index = the_sort + 1
-            insert_sql = 'INSERT INTO JJCom.Tag VALUES ({0}, \'{1}\', {2}, {3})'.format(next_id, name,
-                                                                                    parent_id, next_sort_index)
-        self.__c.execute(insert_sql)
+            insert_sql = 'INSERT INTO JJCom.Tag VALUES ({0}, \'{1}\', {2}, {3})'.format( next_id, name,
+                                                                                         parent_id, next_sort_index )
+        self.__c.execute( insert_sql )
         self.__conn.commit()
         return next_id
 
@@ -77,7 +98,8 @@ class MssqlHandler(DatabaseHandler):
         self.__database = database
         self.__user = user
         self.__password = password
-        self.__conn = pymssql.connect(server=server, user=user, password=password, database=database)
+        self.__conn = pymssql.connect( server=server, user=user, password=password, database=database,
+                                       login_timeout=10 )
         self.__c = self.__conn.cursor()
 
     def get_parts(self, part_id=None, name=None, english_name=None, description=None):
@@ -86,9 +108,9 @@ class MssqlHandler(DatabaseHandler):
         from_database = 'FROM JJPart.Part AS t INNER JOIN JJPart.PartStatus AS s ON t.StatusType=s.StatusID'
         default_where = '(t.StatusType=90 OR t.StatusType=100)'
         if part_id is None and name is None and english_name is None and description is None:
-            sql = '{0} {1} WHERE {2} ORDER BY t.PartID'.format(select_cmd, from_database, default_where)
+            sql = '{0} {1} WHERE {2} ORDER BY t.PartID'.format( select_cmd, from_database, default_where )
         elif part_id is not None:
-            sql = '{0} {1} WHERE {3} AND t.PartID={2}'.format(select_cmd, from_database, part_id, default_where)
+            sql = '{0} {1} WHERE {3} AND t.PartID={2}'.format( select_cmd, from_database, part_id, default_where )
         else:
             search_filter = ''
             if name is not None:
@@ -114,19 +136,19 @@ class MssqlHandler(DatabaseHandler):
             sql = 'SELECT * FROM JJCom.Tag WHERE'
             factor = False
             if tag_id is not None:
-                sql = '{1} id={0}'.format(tag_id, sql)
+                sql = '{1} id={0}'.format( tag_id, sql )
                 factor = True
             if name is not None:
                 if factor:
                     sql += ' AND'
-                sql = '{1} tag_name LIKE \'%{0}%\''.format(name, sql)
+                sql = '{1} tag_name LIKE \'%{0}%\''.format( name, sql )
                 factor = True
             if parent_id is not None:
                 if factor:
                     sql += ' AND'
-                sql = '{1} parent_id={0}'.format(parent_id, sql)
+                sql = '{1} parent_id={0}'.format( parent_id, sql )
             sql += ' ORDER BY sort_index, id'
-        self.__c.execute(sql)
+        self.__c.execute( sql )
         return self.__c.fetchall()
 
     def get_tags_2_part(self, part_id):
@@ -147,7 +169,10 @@ class MssqlHandler(DatabaseHandler):
         rs = self.__c.fetchall()
         if len( rs ) < 1:
             return None
-        return rs[0][0]
+        temp = []
+        for r in rs:
+            temp.append( r[0] )
+        return ' '.join( temp )
 
     def get_parts_2_tag(self, tag_id):
         sql = 'SELECT id, name, english_name, description, status, comment ' \
@@ -200,28 +225,28 @@ class MssqlHandler(DatabaseHandler):
 
     def set_tag_parent(self, tag_id, parent_id):
         if parent_id is not None:
-            sql = 'UPDATE JJCom.Tag SET parent_id={0} WHERE id={1}'.format(parent_id, tag_id)
+            sql = 'UPDATE JJCom.Tag SET parent_id={0} WHERE id={1}'.format( parent_id, tag_id )
         else:
-            sql = 'UPDATE JJCom.Tag SET parent_id=NULL WHERE id={0}'.format(tag_id)
-        self.__c.execute(sql)
+            sql = 'UPDATE JJCom.Tag SET parent_id=NULL WHERE id={0}'.format( tag_id )
+        self.__c.execute( sql )
 
     def get_pick_record_throw_erp(self, erp_id, which_company=1, top=2):
         """ 获取巨轮智能的ERP领料记录 """
         sql_top = ''
         if top > 0:
-            sql_top = 'TOP({0}) '.format(top)
+            sql_top = 'TOP({0}) '.format( top )
         sql = 'SELECT {1}BillNumber, Qty, Price, PickDate ' \
               'FROM JJStorage.ErpPickingRecord WHERE PartNumber=\'{0}\' ' \
-              'AND PickDate > \'2018-1-1\' ORDER BY PickDate DESC'.format(erp_id, sql_top)
-        self.__c.execute(sql)
+              'AND PickDate > \'2018-1-1\' ORDER BY PickDate DESC'.format( erp_id, sql_top )
+        self.__c.execute( sql )
         rs = self.__c.fetchall()
-        if len(rs) < 1:
+        if len( rs ) < 1:
             sql = 'SELECT {1}BillNumber, Qty, Price, PickDate ' \
                   'FROM JJStorage.ErpPickingRecord WHERE PartNumber=\'{0}\' ' \
                   'ORDER BY PickDate DESC'.format( erp_id, sql_top )
             self.__c.execute( sql )
             rs = self.__c.fetchall()
-            if len(rs) < 1:
+            if len( rs ) < 1:
                 return None
             else:
                 return rs
@@ -232,14 +257,21 @@ class MssqlHandler(DatabaseHandler):
         sql_top = ''
         if top > 0:
             sql_top = 'TOP({0}) '.format( top )
-        sql = 'SELECT {1}i.ListID, i.PriceWithTax, i.OtherCost, l.TaxRate, i.Amount, l.QuotedDate, s.Name ' \
-              'FROM ' \
+        sql = 'SELECT {1}i.ListID, i.PriceWithTax, i.OtherCost, CONVERT(DECIMAL, l.TaxRate), ' \
+              'CONVERT(DECIMAL, i.Amount), l.QuotedDate, s.Name FROM ' \
               'JJCost.QuotationItem AS i INNER JOIN JJCost.Quotation AS l ON i.ListID=l.QuotationID ' \
               'INNER JOIN JJCost.Supplier AS s ON l.SupplierID=s.SupplierID ' \
-              'WHERE PartID={0} ORDER BY l.QuotedDate DESC'.format(part_id, sql_top)
-        self.__c.execute(sql)
+              'WHERE PartID={0} ORDER BY l.QuotedDate DESC'.format( part_id, sql_top )
+        self.__c.execute( sql )
         rs = self.__c.fetchall()
-        if len(rs) < 1:
+        if len( rs ) < 1:
             return None
         return rs
 
+    def get_erp_data(self, erp_code):
+        sql = f'SELECT ErpCode, ErpDescription, ErpUnit FROM JJStorage.ErpBasicData WHERE ErpCode=\'{erp_code}\''
+        self.__c.execute( sql )
+        rs = self.__c.fetchall()
+        if len( rs ) < 1:
+            return erp_code, '', ''
+        return rs[0]

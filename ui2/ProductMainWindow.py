@@ -2,11 +2,13 @@
 
 # Form implementation generated from reading ui file 'ProductMainWindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.11.3
+# Created by: PyQt5 UI code generator 5.13.0
 #
 # WARNING! All changes made in this file will be lost!
 
+
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -22,7 +24,7 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 722, 23))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 722, 26))
         self.menubar.setObjectName("menubar")
         self.productTopMenu = QtWidgets.QMenu(self.menubar)
         self.productTopMenu.setObjectName("productTopMenu")
@@ -40,8 +42,20 @@ class Ui_MainWindow(object):
         self.addProductAction.setObjectName("addProductAction")
         self.addServiceRecordAction = QtWidgets.QAction(MainWindow)
         self.addServiceRecordAction.setObjectName("addServiceRecordAction")
+        self.addCustomerAction = QtWidgets.QAction(MainWindow)
+        self.addCustomerAction.setObjectName("addCustomerAction")
+        self.addSaleContractAction = QtWidgets.QAction(MainWindow)
+        self.addSaleContractAction.setObjectName("addSaleContractAction")
+        self.editCustomerAction = QtWidgets.QAction(MainWindow)
+        self.editCustomerAction.setObjectName("editCustomerAction")
+        self.editSaleContractAction = QtWidgets.QAction(MainWindow)
+        self.editSaleContractAction.setObjectName("editSaleContractAction")
         self.productTopMenu.addAction(self.addProductAction)
         self.productTopMenu.addAction(self.addServiceRecordAction)
+        self.customerTopMenu.addAction(self.addCustomerAction)
+        self.customerTopMenu.addAction(self.addSaleContractAction)
+        self.customerTopMenu.addAction(self.editCustomerAction)
+        self.customerTopMenu.addAction(self.editSaleContractAction)
         self.menu.addAction(self.exitAction)
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.productTopMenu.menuAction())
@@ -60,4 +74,7 @@ class Ui_MainWindow(object):
         self.exitAction.setShortcut(_translate("MainWindow", "Ctrl+Q"))
         self.addProductAction.setText(_translate("MainWindow", "添加产品"))
         self.addServiceRecordAction.setText(_translate("MainWindow", "添加售后记录"))
-
+        self.addCustomerAction.setText(_translate("MainWindow", "新建客户"))
+        self.addSaleContractAction.setText(_translate("MainWindow", "新建销售合同"))
+        self.editCustomerAction.setText(_translate("MainWindow", "编辑客户"))
+        self.editSaleContractAction.setText(_translate("MainWindow", "编辑销售合同"))

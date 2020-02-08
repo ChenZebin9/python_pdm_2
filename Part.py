@@ -5,7 +5,6 @@ from decimal import Decimal
 from PyQt5.QtCore import (QThread, pyqtSignal)
 
 from db.DatabaseHandler import DatabaseHandler
-from db.SqliteHandler import SqliteHandler
 
 
 class Part:
@@ -59,8 +58,7 @@ class Part:
         pdm_records = database.get_price_from_self_record( part_id=part_id, top=1 )
         if pdm_records is not None:
             r = pdm_records[0]
-            qty = Decimal.from_float( r[4] )
-            price = (r[1] + r[2]) / (1.0 + r[3]) / qty
+            price = (r[1] + r[2]) / (Decimal.from_float( 1.0 ) + r[3]) / r[4]
             return float( price )
         return float( 0.0 )
 
@@ -297,7 +295,7 @@ class DoStatistics( QThread ):
                 # 统计要装配的
                 if p_type == '图纸' or p_type == '文档':
                     continue
-                if pur_type == '自制' or pur_type == '采购':
+                if pur_type == '自制' or pur_type == '采购' or pur_type == '装配':
                     self.__add_2_result( c[1].get_part_id(), qty * c[2] )
                     continue
                 self.__do_statistics( qty * c[2] )

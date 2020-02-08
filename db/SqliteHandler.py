@@ -4,6 +4,9 @@ import sqlite3
 
 class SqliteHandler( DatabaseHandler ):
 
+    def get_storing(self, part_id=None, position=None):
+        pass
+
     def del_tag_from_part(self, tag_id, part_id):
         sql = 'DELETE FROM part_tag WHERE tag_id={0} AND part_id={1}'.format( tag_id, part_id )
         self.__c.execute( sql )
@@ -180,7 +183,10 @@ class SqliteHandler( DatabaseHandler ):
         rs = self.__c.fetchall()
         if len( rs ) < 1:
             return None
-        return rs[0][0]
+        temp = []
+        for r in rs:
+            temp.append( r[0] )
+        return ' '.join( temp )
 
     def close(self):
         try:
@@ -209,3 +215,6 @@ class SqliteHandler( DatabaseHandler ):
     def get_price_from_self_record(self, part_id, top=2):
         """ 获取本系统的价格记录信息 """
         return None
+
+    def get_erp_data(self, erp_code):
+        pass

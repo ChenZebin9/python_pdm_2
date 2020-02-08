@@ -92,7 +92,7 @@ class DatabaseHandler(metaclass=ABCMeta):
         通过一个ERP物料编号，查找以往的领料记录；
         which_company=1表示巨轮智能，=2表示巨轮中德；
         top= 仅获取记录的前几条，当top<=0时，获取所有记录
-        输出格式：[[单号，数量，总去税金额，日期]] 或 None
+        输出格式：[[单号，数量 Decimal，总去税金额 Decimal，日期]] 或 None
         """
         pass
 
@@ -102,6 +102,21 @@ class DatabaseHandler(metaclass=ABCMeta):
         获取PDM中所保存的价格信息
         :param part_id: 零件号
         :param top: 仅获取记录的前几条，当top<=0时，获取所有记录
-        :return: [[单号，含税总金额，其它金额（含税），税率，数量，日期，供应商名称]] 或 None
+        :return: [[单号，含税总金额 Decimal，其它金额（含税）Decimal，税率 Decimal，数量 Decimal，日期，供应商名称]] 或 None
+        """
+        pass
+
+    @abstractmethod
+    def get_erp_data(self, erp_code):
+        """ 通过中德物料编码获取其它信息 """
+        pass
+
+    @abstractmethod
+    def get_storing(self, part_id=None, position=None):
+        """
+        通过零件号和仓位代号，获取仓储数据
+        :param position: 一个列表 list，代表一个或多个仓位代码
+        :param part_id: 零件号
+        :return: 仓储数据 [零件号，仓位代码，数量，最近修改日期，单价]
         """
         pass

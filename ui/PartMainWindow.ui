@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>23</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="operationMenu">
@@ -34,6 +34,9 @@
     <addaction name="exitMenuItem"/>
    </widget>
    <widget class="QMenu" name="dataMenu">
+    <property name="tearOffEnabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>列表</string>
     </property>
@@ -77,9 +80,16 @@
     <addaction name="selectDefaultTagMenuItem"/>
     <addaction name="addTag2PartMenuItem"/>
    </widget>
+   <widget class="QMenu" name="storingMenu">
+    <property name="title">
+     <string>配料</string>
+    </property>
+    <addaction name="showStorageMenuItem"/>
+   </widget>
    <addaction name="operationMenu"/>
    <addaction name="dataMenu"/>
    <addaction name="tagMenu"/>
+   <addaction name="storingMenu"/>
    <addaction name="windowsMenu"/>
    <addaction name="settingMenu"/>
   </widget>
@@ -286,6 +296,14 @@
    </property>
    <property name="visible">
     <bool>false</bool>
+   </property>
+  </action>
+  <action name="showStorageMenuItem">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>显示仓储数据</string>
    </property>
   </action>
  </widget>

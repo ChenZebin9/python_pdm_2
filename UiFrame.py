@@ -93,7 +93,13 @@ class PartInfoPanelInMainWindow( QFrame ):
         self.__copy_tag_name_from_list = self.__menu_4_tag_list.addAction( '复制标签文本' )
         self.__del_tag_from_list.triggered.connect( self.__remove_tag_from_part )
         self.__copy_tag_name_from_list.triggered.connect( self.__copy_tag_name )
+        # self.__menu_4_relation_file_list = QMenu( parent=self.relationFilesList )
+        # self.__do_single_file_output_menu = self.__menu_4_relation_file_list.addAction( '输出' )
+        # self.__do_single_file_output_menu.triggered.connect( self.__do_single_file_output )
         self.__setup_ui()
+
+        """ 额外的参数传递变量 """
+        self.__output_filename = ''
 
     def __setup_ui(self):
         hbox = QHBoxLayout( self )
@@ -108,14 +114,26 @@ class PartInfoPanelInMainWindow( QFrame ):
 
         self.partInfo.tagListWidget.setContextMenuPolicy( Qt.CustomContextMenu )
         self.partInfo.tagListWidget.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
+        # self.relationFilesList.setContextMenuPolicy( Qt.CustomContextMenu )
+        # self.relationFilesList.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
 
     def __on_custom_context_menu_requested(self, pos):
-        if self.partInfo.tagListWidget.count() < 1:
-            return
-        item = self.partInfo.tagListWidget.itemAt( pos )
-        self.__current_select_tag = item
-        if item is not None:
-            self.__menu_4_tag_list.exec( QCursor.pos() )
+        if self.sender() == self.partInfo.tagListWidget:
+            if self.partInfo.tagListWidget.count() < 1:
+                return
+            item = self.partInfo.tagListWidget.itemAt( pos )
+            self.__current_select_tag = item
+            if item is not None:
+                self.__menu_4_tag_list.exec( QCursor.pos() )
+        elif self.sender() == self.relationFilesList:
+            if self.relationFilesList.count() < 1:
+                return
+            item = self.relationFilesList.itemAt( pos )
+            if item is not None and self.__vault is not None:
+                self.__output_filename = '{0}{1}'.format( self.__work_folder, item.text() )
+                self.__menu_4_relation_file_list.exec( QCursor.pos() )
+            else:
+                self.__output_filename = ''
 
     def __copy_tag_name(self):
         the_tag: Tag = self.__current_select_tag.data( Qt.UserRole )
@@ -132,6 +150,9 @@ class PartInfoPanelInMainWindow( QFrame ):
         the_tag: Tag = self.__current_select_tag.data( Qt.UserRole )
         tag_id = the_tag.tag_id
         self.__database.del_tag_from_part( tag_id, self.partInfo.part_id )
+
+    # def __do_single_file_output(self):
+    #     print( '输出：' + self.__output_filename )
 
     def set_part_info(self, part, database):
         self.partInfo.set_part_info( part )
@@ -1006,8 +1027,8 @@ class CostInfoPanel( QFrame ):
         pdm_records = self.__database.get_price_from_self_record( the_part.get_part_id() )
         if pdm_records is not None:
             for one_record in pdm_records:
-                unit_price = (one_record[1] + one_record[2]) / Decimal.from_float(
-                    1.0 + one_record[3] ) / Decimal.from_float( one_record[4] )
+                unit_price = (one_record[1] + one_record[2]) / (Decimal.from_float( 1.0 ) + one_record[3]) / \
+                             (one_record[4])
                 bill_nr = '{:06d}'.format( one_record[0] )
                 one_row_in_table = [QStandardItem( bill_nr )]
                 price_item = QStandardItem( '{:.2f}'.format( unit_price ) )

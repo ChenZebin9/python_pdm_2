@@ -1,19 +1,18 @@
 # coding=gbk
-import sys
 
 from PyQt5.Qt import Qt
 from PyQt5.QtCore import QDate
-from PyQt5.QtGui import QCursor, QStandardItemModel, QStandardItem, QBrush, QColor
-from PyQt5.QtWidgets import (QMainWindow, QApplication, QHBoxLayout, QSplitter,
+from PyQt5.QtGui import QCursor, QStandardItemModel, QStandardItem
+from PyQt5.QtWidgets import (QMainWindow, QHBoxLayout, QSplitter,
                              QFrame, QPushButton, QVBoxLayout, QLabel, QTableView,
                              QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QMenu,
                              QInputDialog, QAbstractItemView, QDateEdit, QTabWidget)
 
 from Part import Tag, Product
 from UiFrame import TagViewPanel
-from ui.NProductInfoDialog import *
-from ui.ProductMainWindow import *
-from ui.ProductServiceRecordDialog import Ui_Dialog as ServiceRecordDialog
+from ui2.NProductInfoDialog import *
+from ui2.ProductMainWindow import *
+from ui2.ProductServiceRecordDialog import Ui_Dialog as ServiceRecordDialog
 
 
 class NProductMainWindow( QMainWindow, Ui_MainWindow ):
@@ -33,12 +32,32 @@ class NProductMainWindow( QMainWindow, Ui_MainWindow ):
         self.exitAction.triggered.connect( self.__close )
         self.addProductAction.triggered.connect( self.__add_product )
         self.addServiceRecordAction.triggered.connect( self.__add_service_record )
+        self.addCustomerAction.triggered.connect( lambda: self.__handle_customer( mode=1 ) )
+        self.editCustomerAction.triggered.connect( lambda: self.__handle_customer( mode=2 ) )
+        self.addSaleContractAction.triggered.connect( lambda: self.__handle_sale_contract( mode=1 ) )
+        self.editSaleContractAction.triggered.connect( lambda: self.__handle_sale_contract( mode=2 ) )
 
     def __init_data(self):
         self.__productTab.init_data()
 
     def __close(self):
         self.close()
+
+    def __handle_customer(self, mode=1):
+        """
+        新建或编辑客户的对话框
+        :param mode: 对话框类型，1=新建，2=编辑
+        :return:
+        """
+        pass
+
+    def __handle_sale_contract(self, mode=1):
+        """
+        新建或编辑销售合同的对话框
+        :param mode: 对话框类型，1=新建，2=编辑
+        :return:
+        """
+        pass
 
     def __add_product(self):
         dialog = NProductInfoDialog( self, database=self.__database )
@@ -416,7 +435,7 @@ class ProductPanel( QFrame ):
             one_row = [QStandardItem( info[0] ), QStandardItem( info[1] )]
             self.productInfoModel.appendRow( one_row )
         # 将销售情况添加入其中
-        info_s_2 = self.__database.get_saled_customer( product_id=product_obj.product_id )
+        info_s_2 = self.__database.get_sold_customer( product_id=product_obj.product_id )
         if len( info_s_2 ) > 0:
             self.productInfoModel.appendRow( [QStandardItem( '客户' ), QStandardItem( info_s_2[0][0] )] )
             if info_s_2[0][1] is not None:
@@ -556,7 +575,7 @@ class CustomerView( QFrame ):
             tt = self.filterLineEdit.text().strip()
             if tt == '':
                 tt = None
-            rs = self.__database.get_customers( filter=tt )
+            rs = self.__database.get_customers( the_filter=tt )
         else:
             rs = self.__database.get_customers()
         self.customersList.clear()

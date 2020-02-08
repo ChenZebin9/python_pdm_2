@@ -1,25 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="截至2019年11月2日的一系列改进，主要有：&#10;1.主要数据库将转向原有的MSSQL；&#10;2.增加了中德ERP物料的信息。">
+    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="截至2019年12月2日的一系列改进，主要有：&#10;1. 完善产品管理，能查看销售、售后记录；&#10;2. 完善产品的管理功能；&#10;3. 增加创建售后记录的功能。">
+      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/chen.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/chen.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Entry.spec" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.spec" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/NProductMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DataImporter.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataImporter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Entry.pyw" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.pyw" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NCreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NEntranceDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NEntranceDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NPartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NPartMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/NProductMainWindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Part.py" beforeDir="false" afterPath="$PROJECT_DIR$/Part.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UiFrame.py" beforeDir="false" afterPath="$PROJECT_DIR$/UiFrame.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/DatabaseHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/DatabaseHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/MssqlHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/MssqlHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/ProductDatasHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/ProductDatasHandler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/greatoo_jj_5.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/sqlite_2_mssql.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/sqlite_2_mssql.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/file_version_info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/file_version_info.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/SqliteHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/SqliteHandler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/product_datas.db" beforeDir="false" afterPath="$PROJECT_DIR$/db/product_datas.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/sqlite_2_mssql.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/produce_data_exchange.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/excel/ExcelHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/excel/ExcelHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pdm_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/pdm_config.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rt_config.db" beforeDir="false" afterPath="$PROJECT_DIR$/rt_config.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/DocOutputDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/DocOutputDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/NProductInfoDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NProductInfoDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/ProductMainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/ProductMainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/CreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/CreatePickBillDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/NImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NImportSettingDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/NProductInfoDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/NProductInfoDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/ProductInfoDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductInfoDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/ProductInfoDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductInfoDialog.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/ProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/ProductMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductMainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/ProductServiceRecordDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/ProductServiceRecordDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.ui" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -31,64 +45,8 @@
     <SUITE FILE_PATH="coverage/python_pdm_2$ui_test.coverage" NAME="ui_test Coverage Results" MODIFIED="1522507732963" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/python_pdm_2$xml_message.coverage" NAME="xml_message Coverage Results" MODIFIED="1522500835816" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
-  <component name="DockManager">
-    <window id="1">
-      <content type="file-editors">
-        <state>
-          <leaf>
-            <file pinned="false" current-in-tab="true">
-              <entry file="file://$PROJECT_DIR$/NProductMainWindow.py">
-                <provider selected="true" editor-type-id="text-editor">
-                  <state relative-caret-position="718">
-                    <caret line="557" column="25" lean-forward="true" selection-start-line="557" selection-start-column="25" selection-end-line="557" selection-end-column="25" />
-                    <folding>
-                      <element signature="e#13#23#0" expanded="true" />
-                    </folding>
-                  </state>
-                </provider>
-              </entry>
-            </file>
-          </leaf>
-        </state>
-      </content>
-    </window>
-  </component>
   <component name="FavoritesManager">
     <favorites_list name="python_pdm_2" />
-  </component>
-  <component name="FileEditorManager">
-    <leaf>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/UiFrame.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="149">
-              <caret line="983" column="31" lean-forward="true" selection-start-line="983" selection-start-column="31" selection-end-line="983" selection-end-column="31" />
-              <folding>
-                <element signature="e#0#9#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/pdm_config.ini">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="76">
-              <caret line="4" column="10" selection-start-line="4" selection-start-column="10" selection-end-line="4" selection-end-column="10" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/db/sqlite_2_mssql.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="157">
-              <caret line="200" column="9" lean-forward="true" selection-start-line="200" selection-start-column="9" selection-end-line="200" selection-end-column="9" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-    </leaf>
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -101,77 +59,36 @@
     <option name="ROOT_SYNC" value="DONT_SYNC" />
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="IdeDocumentHistory">
-    <option name="CHANGED_PATHS">
-      <list>
-        <option value="$PROJECT_DIR$/Entry.pyw" />
-        <option value="$PROJECT_DIR$/ui/DocOutputDialog.py" />
-        <option value="$PROJECT_DIR$/db/MssqlHandler.py" />
-        <option value="$PROJECT_DIR$/db/DatabaseHandler.py" />
-        <option value="$PROJECT_DIR$/UiFrame.py" />
-        <option value="$PROJECT_DIR$/ui/NProductInfoDialog.py" />
-        <option value="$PROJECT_DIR$/db/sqlite_2_mssql.py" />
-        <option value="$PROJECT_DIR$/Part.py" />
-        <option value="$PROJECT_DIR$/db/ProductDatasHandler.py" />
-        <option value="$PROJECT_DIR$/NProductMainWindow.py" />
-        <option value="$PROJECT_DIR$/pdm_config.ini" />
-      </list>
-    </option>
-  </component>
   <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
   <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
   <component name="JsGulpfileManager">
     <detection-done>true</detection-done>
     <sorting>DEFINITION_ORDER</sorting>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="108" />
-    <option name="y" value="217" />
-    <option name="width" value="1296" />
-    <option name="height" value="1040" />
-  </component>
   <component name="ProjectId" id="1PQ3zzPYQCnCcZwQKmq69BBTrH5" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <ConfirmationsSetting value="1" id="Add" />
   </component>
-  <component name="ProjectView">
-    <navigator proportions="" version="1">
-      <foldersAlwaysOnTop value="true" />
-    </navigator>
-    <panes>
-      <pane id="ProjectPane">
-        <subPane>
-          <expand>
-            <path>
-              <item name="python_pdm_2" type="b2602c69:ProjectViewProjectNode" />
-              <item name="python_pdm_2" type="462c0819:PsiDirectoryNode" />
-            </path>
-          </expand>
-          <select />
-        </subPane>
-      </pane>
-      <pane id="Scope" />
-    </panes>
-  </component>
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../../WorkDocuments/access_2_sqlite3/refine_database.py" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/ui2" />
     <property name="settings.editor.selected.configurable" value="reference.settingsdialog.IDE.editor.colors" />
   </component>
   <component name="PyDebuggerOptionsProvider">
     <option name="myPyQtBackend" value="PyQt5" />
   </component>
   <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\weiyun\OneDrive\Program\Python\python_pdm_2\ui" />
+      <recent name="D:\weiyun\OneDrive\Program\Python\python_pdm_2\ui3" />
+      <recent name="D:\Documents\OneDrive\Program\Python\python_pdm_2\ui" />
+      <recent name="D:\weiyun\OneDrive\Program\Python\python_pdm_2\ui2" />
+      <recent name="D:\Documents\OneDrive\Program\Python\python_pdm_2\db" />
+    </key>
     <key name="CopyFile.RECENT_KEYS">
       <recent name="E:\OneDrive\OneDrive\Program\Python\python_pdm_2\db" />
       <recent name="D:\Documents\OneDrive\Program\Python\python_pdm_2" />
-    </key>
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="D:\Documents\OneDrive\Program\Python\python_pdm_2\db" />
-      <recent name="D:\Documents\OneDrive\Program\Python\python_pdm_2\ui" />
-      <recent name="D:\Documents\OneDrive\Program\Python\python_pdm_2" />
-      <recent name="C:\Users\Administrator\OneDrive\Program\Python\python_pdm_2\db" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -186,7 +103,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.Entry">
     <configuration name="Entry" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="python_pdm_2" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -208,9 +125,31 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="NProduceMainWindow" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="python_pdm_2" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/ui2" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/ui2/NProduceMainWindow.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
         <item itemvalue="Python.Entry" />
+        <item itemvalue="Python.NProduceMainWindow" />
       </list>
     </recent_temporary>
   </component>
@@ -351,7 +290,21 @@
       <option name="project" value="LOCAL" />
       <updated>1572661689702</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="截至2019年12月2日的一系列改进，主要有：&#10;1. 完善产品管理，能查看销售、售后记录；&#10;2. 完善产品的管理功能；&#10;3. 增加创建售后记录的功能。">
+      <created>1575273203280</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1575273203280</updated>
+    </task>
+    <task id="LOCAL-00020" summary="采用openpyxl作为处理Excel的模块。">
+      <created>1575354214306</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1575354214306</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="TodoView" selected-index="1">
@@ -362,28 +315,6 @@
       <are-packages-shown value="true" />
       <is-autoscroll-to-source value="true" />
     </todo-panel>
-  </component>
-  <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1296" height="1000" extended-state="6" />
-    <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.628707" visible="true" weight="0.24960254" />
-      <window_info id="Structure" order="1" sideWeight="0.371293" side_tool="true" weight="0.24960254" />
-      <window_info id="Favorites" order="2" sideWeight="0.3714609" side_tool="true" weight="0.24960254" />
-      <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.32977462" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.32858837" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.36773428" />
-      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
-      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
-      <window_info anchor="bottom" id="TODO" order="6" weight="0.32977462" />
-      <window_info anchor="bottom" id="Version Control" order="7" weight="0.32858837" />
-      <window_info anchor="bottom" id="Terminal" order="8" />
-      <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" weight="0.32938388" />
-      <window_info anchor="bottom" id="Python Console" order="10" />
-      <window_info anchor="right" id="Commander" order="0" weight="0.4" />
-      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
-      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
-    </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="1" />
@@ -409,26 +340,13 @@
         <entry key="MAIN">
           <value>
             <State>
-              <option name="RECENTLY_FILTERED_USER_GROUPS">
-                <collection />
-              </option>
-              <option name="RECENTLY_FILTERED_BRANCH_GROUPS">
-                <collection />
-              </option>
               <option name="COLUMN_WIDTH">
                 <map>
                   <entry key="2" value="160" />
                   <entry key="3" value="160" />
                 </map>
               </option>
-              <option name="COLUMN_ORDER">
-                <list>
-                  <option value="0" />
-                  <option value="1" />
-                  <option value="2" />
-                  <option value="3" />
-                </list>
-              </option>
+              <option name="COLUMN_ORDER" />
             </State>
           </value>
         </entry>
@@ -468,7 +386,9 @@
     <MESSAGE value="基本实现了原先预期的生成PDF格式的领料单的功能，包括：增加、移除、输出文件可选择。" />
     <MESSAGE value="截至2019年10月14日的一系列改进，主要有：&#10;1.Entry统一程序入口；&#10;2.fill_storage_data及Storage配合实现投料撞库。" />
     <MESSAGE value="截至2019年11月2日的一系列改进，主要有：&#10;1.主要数据库将转向原有的MSSQL；&#10;2.增加了中德ERP物料的信息。" />
-    <option name="LAST_COMMIT_MESSAGE" value="截至2019年11月2日的一系列改进，主要有：&#10;1.主要数据库将转向原有的MSSQL；&#10;2.增加了中德ERP物料的信息。" />
+    <MESSAGE value="截至2019年12月2日的一系列改进，主要有：&#10;1. 完善产品管理，能查看销售、售后记录；&#10;2. 完善产品的管理功能；&#10;3. 增加创建售后记录的功能。" />
+    <MESSAGE value="采用openpyxl作为处理Excel的模块。" />
+    <option name="LAST_COMMIT_MESSAGE" value="采用openpyxl作为处理Excel的模块。" />
   </component>
   <component name="debuggerHistoryManager">
     <expressions id="watch">
@@ -478,147 +398,6 @@
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
     </expressions>
-  </component>
-  <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/NPartMainWindow.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="75">
-          <caret line="69" column="54" lean-forward="true" selection-start-line="69" selection-start-column="54" selection-end-line="69" selection-end-column="54" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/db/MssqlHandler.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="445">
-          <caret line="227" column="17" lean-forward="true" selection-start-line="227" selection-start-column="17" selection-end-line="227" selection-end-column="17" />
-          <folding>
-            <element signature="e#0#32#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ui/DocOutputDialog.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3040">
-          <caret line="169" column="29" selection-start-line="169" selection-start-column="29" selection-end-line="169" selection-end-column="29" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/db/DatabaseHandler.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1976">
-          <caret line="104" column="37" selection-start-line="104" selection-start-column="37" selection-end-line="104" selection-end-column="37" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ui/NSetDefaultTagDialog.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="323">
-          <caret line="17" column="50" lean-forward="true" selection-start-line="17" selection-start-column="50" selection-end-line="17" selection-end-column="50" />
-          <folding>
-            <element signature="e#0#36#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/db/fill_storage_data.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="342">
-          <caret line="23" column="9" selection-start-line="23" selection-start-column="9" selection-end-line="23" selection-end-column="9" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37/Lib/codecs.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="163">
-          <caret line="292" selection-start-line="292" selection-end-line="292" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ui/NProductInfoDialog.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="909">
-          <caret line="123" column="56" lean-forward="true" selection-start-line="123" selection-start-column="56" selection-end-line="123" selection-end-column="56" />
-          <folding>
-            <element signature="e#13#136#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ui/ProductMainWindow.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="133">
-          <caret line="13" column="35" lean-forward="true" selection-start-line="13" selection-start-column="35" selection-end-line="13" selection-end-column="35" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Entry.pyw">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="315">
-          <caret line="99" column="39" selection-start-line="99" selection-start-column="39" selection-end-line="99" selection-end-column="39" />
-          <folding>
-            <element signature="e#0#19#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/db/ProductDatasHandler.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="168">
-          <caret line="604" column="17" lean-forward="true" selection-start-line="604" selection-start-column="17" selection-end-line="604" selection-end-column="17" />
-          <folding>
-            <element signature="e#72#86#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Part.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="263">
-          <caret line="323" column="17" lean-forward="true" selection-start-line="323" selection-start-column="17" selection-end-line="323" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/NProductMainWindow.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="718">
-          <caret line="557" column="25" lean-forward="true" selection-start-line="557" selection-start-column="25" selection-end-line="557" selection-end-column="25" />
-          <folding>
-            <element signature="e#13#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/UiFrame.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="149">
-          <caret line="983" column="31" lean-forward="true" selection-start-line="983" selection-start-column="31" selection-end-line="983" selection-end-column="31" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/pdm_config.ini">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="76">
-          <caret line="4" column="10" selection-start-line="4" selection-start-column="10" selection-end-line="4" selection-end-column="10" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/db/sqlite_2_mssql.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="157">
-          <caret line="200" column="9" lean-forward="true" selection-start-line="200" selection-start-column="9" selection-end-line="200" selection-end-column="9" />
-        </state>
-      </provider>
-    </entry>
   </component>
   <component name="masterDetails">
     <states>

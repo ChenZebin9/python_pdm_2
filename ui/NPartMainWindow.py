@@ -37,7 +37,7 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.childrenTablePanel = ChildrenTablePanel( self, database=database )
         self.parentsTablePanel = ChildrenTablePanel( self, database=database, mode=1 )
         self.partStructurePanel = PartStructurePanel( self, database=database )
-        self.partCostPanel = CostInfoPanel(self, database=database)
+        self.partCostPanel = CostInfoPanel( self, database=database )
         self.__doc_output_dialog = None
         self.setup_ui()
         self.__all_dockWidget = [self.tagDockWidget, self.partInfoDockWidget,
@@ -74,7 +74,7 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.partChildrenDockWidget.setWidget( self.childrenTablePanel )
         self.partStructureDockWidget.setWidget( self.partStructurePanel )
         self.partParentDockWidget.setWidget( self.parentsTablePanel )
-        self.purchaseDockWidget.setWidget(self.partCostPanel)
+        self.purchaseDockWidget.setWidget( self.partCostPanel )
         self.setDockNestingEnabled( True )
 
         # 这种方式关闭时出现异常，暂时屏蔽
@@ -91,8 +91,8 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         # 实现标签的编辑功能
         self.doTaggedMenuItem.triggered.connect( self.__tag_parts )
         self.tagEditModeMenuItem.triggered.connect( self.__on_change_tag_mode )
-        self.selectDefaultTagMenuItem.triggered.connect(self.__set_default_tag_set)
-        self.addTag2PartMenuItem.triggered.connect(self.__add_tag_2_part)
+        self.selectDefaultTagMenuItem.triggered.connect( self.__set_default_tag_set )
+        self.addTag2PartMenuItem.triggered.connect( self.__add_tag_2_part )
 
         # 关于统计功能
         self.allStatisticsAction.triggered.connect( self.__set_statistics_setting_as_combo )
@@ -100,8 +100,9 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.assemblyStatisticsAction.triggered.connect( self.__set_statistics_setting_as_combo )
 
         # 关于一些权限的设定
-        if self.__username == "陈泽斌":
-            self.showPriceAction.setVisible(True)
+        # if self.__username == "陈泽斌":
+        #     self.showPriceAction.setVisible( True )
+        self.showPriceAction.setVisible( True )
 
     def __set_statistics_setting_as_combo(self):
         i = 2
@@ -116,20 +117,20 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
     def __tag_parts(self):
         # 给所选的 Part 打标签
         parts = self.partListPanel.get_current_selected_parts()
-        if len(parts) < 1:
-            QMessageBox.warning(self, '', '没有选择部件。')
+        if len( parts ) < 1:
+            QMessageBox.warning( self, '', '没有选择部件。' )
             return
         the_tag: Tag = self.tagTreePanel.get_current_selected_tag()
         if the_tag is None:
-            QMessageBox.warning(self, '', '没有选择标签。')
+            QMessageBox.warning( self, '', '没有选择标签。' )
             return
-        resp = QMessageBox.question(self, '', '将这些部件，打上 \'{0}\' 的标签？'.format(the_tag),
-                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        resp = QMessageBox.question( self, '', '将这些部件，打上 \'{0}\' 的标签？'.format( the_tag ),
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No )
         if resp == QMessageBox.No:
             return
         for p in parts:
-            self.__database.set_tag_2_part(the_tag.tag_id, p)
-        QMessageBox.information(self, '', 'Done!')
+            self.__database.set_tag_2_part( the_tag.tag_id, p )
+        QMessageBox.information( self, '', 'Done!' )
 
     def __set_statistics_easy(self, index):
         self.allStatisticsAction.setChecked( index == 1 )
@@ -137,7 +138,7 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.assemblyStatisticsAction.setChecked( index == 3 )
 
     def __set_default_tag_set(self):
-        dialog = NSetDefaultDialog(self, self.__database, self.__config_file)
+        dialog = NSetDefaultDialog( self, self.__database, self.__config_file )
         dialog.show()
 
     def get_statistics_setting(self):
@@ -156,7 +157,7 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
             mode_string = '(离线模式)'
         else:
             mode_string = '(在线模式)'
-        self.setWindowTitle( '产品数据管理 __用户：{0} {1}'.format(self.__username, mode_string) )
+        self.setWindowTitle( '产品数据管理 __用户：{0} {1}'.format( self.__username, mode_string ) )
 
     def __on_change_tag_mode(self, check_status):
         self.doTaggedMenuItem.setVisible( check_status )
@@ -169,8 +170,8 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         p.get_tags( self.__database )
         self.partInfoPanel.set_part_info( p, self.__database )
         self.childrenTablePanel.set_part_children( p, self.__database )
-        self.parentsTablePanel.set_part_children(p, self.__database)
-        self.partCostPanel.set_part_cost_info(p)
+        self.parentsTablePanel.set_part_children( p, self.__database )
+        self.partCostPanel.set_part_cost_info( p )
 
     def do_when_tag_tree_select(self, tag_id):
         try:
@@ -243,18 +244,18 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
                 if item is None:
                     continue
                 table.write( j + 1, i, item.text() )
-        DataImporter.export_data_2_excel(self, file)
+        DataImporter.export_data_2_excel( self, file )
 
     def set_display_columns(self, columns_data):
         self.partListPanel.set_display_columns( columns_data )
 
     def __set_part_view_column(self):
         if self.__columns_setting_dialog is None:
-            tt = self.__database.get_tags(parent_id=None)
+            tt = self.__database.get_tags( parent_id=None )
             column_lists = []
             for t in tt:
-                column_lists.append((t[0], t[1]))
-            self.__columns_setting_dialog = NPartColumnSettingDialog(self, column_lists, self.__config_file)
+                column_lists.append( (t[0], t[1]) )
+            self.__columns_setting_dialog = NPartColumnSettingDialog( self, column_lists, self.__config_file )
         self.__columns_setting_dialog.show()
 
     def refresh_part_list(self):
@@ -311,28 +312,28 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
 
     def __add_tag_2_part(self):
         if self.__current_selected_part is None:
-            QMessageBox.information(self, '', '没有选择一个项目。', QMessageBox.Ok)
+            QMessageBox.information( self, '', '没有选择一个项目。', QMessageBox.Ok )
             return
         part_id = self.__current_selected_part.get_part_id()
-        p = Part.get_parts(self.__database, part_id=part_id)[0]
+        p = Part.get_parts( self.__database, part_id=part_id )[0]
         to_tag = None
         if self.__default_tag_group > 0:
-            to_tag = Tag.get_tags(self.__database, tag_id=self.__default_tag_group)[0]
-        msg_1 = '{0}_{1}'.format(p.part_id, p.name)
+            to_tag = Tag.get_tags( self.__database, tag_id=self.__default_tag_group )[0]
+        msg_1 = '{0}_{1}'.format( p.part_id, p.name )
         msg_2 = '新标签'
         if to_tag is not None:
             msg_2 = to_tag.name
-        text, ok_pressed = QInputDialog.getText(self, msg_1, msg_2, QLineEdit.Normal, '')
+        text, ok_pressed = QInputDialog.getText( self, msg_1, msg_2, QLineEdit.Normal, '' )
         if ok_pressed and text != '':
-            result = Tag.add_one_tag_2_part(self.__database, text, part_id, parent_tag_id=to_tag.tag_id)
+            result = Tag.add_one_tag_2_part( self.__database, text, part_id, parent_tag_id=to_tag.tag_id )
             the_tag_id = result[0]
             if result[1] == 1:
-                self.set_status_bar_text('{0}_{1} 使用了原有的标签。'.format(p.part_id, p.name))
+                self.set_status_bar_text( '{0}_{1} 使用了原有的标签。'.format( p.part_id, p.name ) )
             elif result[1] == 0:
-                self.set_status_bar_text('新建了一个标签，编号：{0}，刷新标签清单后显示。'.format(the_tag_id))
+                self.set_status_bar_text( '新建了一个标签，编号：{0}，刷新标签清单后显示。'.format( the_tag_id ) )
             elif result[1] == 2:
-                self.set_status_bar_text('该便签已经存在了。')
-        self.do_when_part_list_select(p.get_part_id())
+                self.set_status_bar_text( '该便签已经存在了。' )
+        self.do_when_part_list_select( p.get_part_id() )
 
     def add_config_and_init(self, sw_app, config_file):
         self.__sw_app = sw_app
@@ -343,15 +344,15 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         column_lists = []
         for t in tt:
             column_lists.append( (t[0], t[1]) )
-        self.__columns_setting_dialog = NPartColumnSettingDialog(self, column_lists, config_file)
+        self.__columns_setting_dialog = NPartColumnSettingDialog( self, column_lists, config_file )
         columns = self.__columns_setting_dialog.get_columns_setting()
-        self.partListPanel.set_columns(columns)
+        self.partListPanel.set_columns( columns )
 
         # 获取默认的 Tag
         conn = sqlite3.connect( self.__config_file )
         c = conn.cursor()
         c.execute( 'SELECT config_value FROM display_config WHERE name=\'default_tag_group\'' )
-        self.__default_tag_group = int(c.fetchone()[0])
+        self.__default_tag_group = int( c.fetchone()[0] )
         conn.close()
 
         self.__init_data()
@@ -359,22 +360,22 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
     def set_ready_for_statistics_display(self):
         """ 设置好统计显示清单，数量添加在最后。 """
         is_price_shown = self.showPriceAction.isChecked()
-        self.partListPanel.set_list_header_4_statistics(is_price_shown)
+        self.partListPanel.set_list_header_4_statistics( is_price_shown )
 
     def add_one_item_to_statistics_list(self, part_id, qty, price):
         """ 增加一个项目去统计显示清单 """
         if not self.showPriceAction.isChecked():
             price = None
-        self.partListPanel.add_one_part_4_statistics(part_id, qty, price)
+        self.partListPanel.add_one_part_4_statistics( part_id, qty, price )
 
     def show_statistics_finish_flag(self, finish_type, sum_price):
         """ 发出一个统计显示清单完成的信号 """
         if not finish_type:
             if not self.showPriceAction.isChecked():
-                self.set_status_bar_text('完成统计。')
+                self.set_status_bar_text( '完成统计。' )
             else:
-                self.set_status_bar_text('完成统计，总金额：{:.2f}'.format(sum_price))
-            QTableWidget.resizeColumnsToContents(self.partListPanel.partList)
-            QTableWidget.resizeRowsToContents(self.partListPanel.partList)
+                self.set_status_bar_text( '完成统计，总金额：{:.2f}'.format( sum_price ) )
+            QTableWidget.resizeColumnsToContents( self.partListPanel.partList )
+            QTableWidget.resizeRowsToContents( self.partListPanel.partList )
         else:
-            self.set_status_bar_text('统计被中断。')
+            self.set_status_bar_text( '统计被中断。' )

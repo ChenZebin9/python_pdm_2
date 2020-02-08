@@ -33,7 +33,7 @@
      <x>0</x>
      <y>0</y>
      <width>722</width>
-     <height>23</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="productTopMenu">
@@ -47,6 +47,10 @@
     <property name="title">
      <string>客户</string>
     </property>
+    <addaction name="addCustomerAction"/>
+    <addaction name="addSaleContractAction"/>
+    <addaction name="editCustomerAction"/>
+    <addaction name="editSaleContractAction"/>
    </widget>
    <widget class="QMenu" name="menu">
     <property name="title">
@@ -75,6 +79,26 @@
   <action name="addServiceRecordAction">
    <property name="text">
     <string>添加售后记录</string>
+   </property>
+  </action>
+  <action name="addCustomerAction">
+   <property name="text">
+    <string>新建客户</string>
+   </property>
+  </action>
+  <action name="addSaleContractAction">
+   <property name="text">
+    <string>新建销售合同</string>
+   </property>
+  </action>
+  <action name="editCustomerAction">
+   <property name="text">
+    <string>编辑客户</string>
+   </property>
+  </action>
+  <action name="editSaleContractAction">
+   <property name="text">
+    <string>编辑销售合同</string>
    </property>
   </action>
  </widget>

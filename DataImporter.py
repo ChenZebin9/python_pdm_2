@@ -4,7 +4,7 @@ import os
 
 from PyQt5.QtWidgets import (QMessageBox)
 
-from excel.ExcelHandler import (ExcelHandler3)
+from excel.ExcelHandler import (ExcelHandler3, ExcelHandler2)
 from ui.NImportSettingDialog import (NImportSettingDialog)
 
 
@@ -15,31 +15,34 @@ class DataImporter:
         try:
             openFlags = win32con.OFN_FILEMUSTEXIST
             fspec = 'Excel Files (*.xls, *.xlsx)|*.xls;*.xlsx|Text Files (*.txt)|*.txt||'
-            dlg = win32ui.CreateFileDialog(1, None, None, openFlags, fspec)
+            dlg = win32ui.CreateFileDialog( 1, None, None, openFlags, fspec )
             selected_file = None
             if dlg.DoModal() == win32con.IDOK:
                 selected_file = dlg.GetPathName()
             if selected_file is None:
                 return None
             file_name = selected_file
-            dialog = NImportSettingDialog(parent, title, database)
+            dialog = NImportSettingDialog( parent, title, database )
             rows = ('零件号', '巨轮智能ERP物料编码', '巨轮中德ERP物料编码', '外部编码')
-            if file_name.upper().endswith('TXT'):
+            if file_name.upper().endswith( 'TXT' ):
                 # TXT文件的处理，只有一栏
-                dialog.set_txt_mode(rows, file_name)
+                dialog.set_txt_mode( rows, file_name )
                 dialog.show()
             else:
                 # EXCEL文件的处理，使用 xlrd 比 xlwings 的读取速度快很多
-                excel = ExcelHandler3(file_name)
-                dialog.set_excel_mode(rows, excel)
+                if file_name[-3:].upper() == 'XLS':
+                    excel = ExcelHandler2( file_name )
+                else:
+                    excel = ExcelHandler3( file_name )
+                dialog.set_excel_mode( rows, excel )
                 dialog.show()
         except Exception as ex:
-            QMessageBox.warning(parent, '', str(ex), QMessageBox.Ok)
+            QMessageBox.warning( parent, '', str( ex ), QMessageBox.Ok )
 
     @staticmethod
     def export_data_2_excel(parent, data):
         fspec = 'Excel Files (*.xls)|*.xls||'
-        dlg = win32ui.CreateFileDialog(0, None, None, win32con.OFN_OVERWRITEPROMPT, fspec)
+        dlg = win32ui.CreateFileDialog( 0, None, None, win32con.OFN_OVERWRITEPROMPT, fspec )
         if dlg.DoModal() != win32con.IDOK:
             QMessageBox.information( parent, '', '放弃保存！', QMessageBox.Ok )
             return

@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QDialog, QTableWidgetItem, QComboBox, QTableWidget,
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtCore import Qt
 from Part import (Part, Tag)
+from excel import ExcelHandler
 
 
 class NImportSettingDialog( QDialog, Ui_Dialog ):
@@ -16,7 +17,8 @@ class NImportSettingDialog( QDialog, Ui_Dialog ):
         self.__mode = 'TXT'
         self.__txt_data = []
         self.__result = None
-        self.__excel_file = None
+        self.__excel_file: ExcelHandler = None
+        self.__default_data = None
         self.__excel_data = None
         self.__general_use = False
         self.__row_index_control = False
@@ -118,25 +120,35 @@ class NImportSettingDialog( QDialog, Ui_Dialog ):
                     ps.extend( p )
             self.__parent.show_parts_from_outside( ps )
         else:
+            # 获取默认值
+            real_default_data = []
+            for i in range( 0, count ):
+                cell_item: QTableWidgetItem = self.dataConfigTableWidget.item( i, 2 )
+                real_default_data.append( cell_item.text() )
             columns_text = []
             for i in range( 0, count ):
                 combo: QComboBox = self.dataConfigTableWidget.cellWidget( i, 1 )
                 if combo.currentIndex() < 0:
-                    QMessageBox.warning( self, '', '所有列没有选择完整。', QMessageBox.Ok )
-                    return
-                columns_text.append( combo.currentText() )
+                    columns_text.append( None )
+                else:
+                    columns_text.append( combo.currentText() )
+            c_count = len( columns_text )
             self.__result = []
-            first_column_data = self.__excel_data[columns_text[0]]
-            cc = len( first_column_data )
+            ref_key = list(self.__excel_data.keys())[0]
+            ref_column_data = self.__excel_data[ref_key]
+            cc = len( ref_column_data )
             for i in range( 0, cc ):
                 temp_record = []
-                first_cell = first_column_data[i]
-                if not self.__check_if_in_row_control( first_cell[0] ):
+                ref_cell = ref_column_data[i]
+                if not self.__check_if_in_row_control( ref_cell[0] ):
                     continue
-                temp_record.append( first_cell[1] )
-                for column_header in columns_text[1:]:
-                    cell_data = self.__excel_data[column_header][i][1]
-                    temp_record.append( cell_data )
+                for j in range( 0, c_count ):
+                    column_header = columns_text[j]
+                    if column_header is None:
+                        temp_record.append( real_default_data[j] )
+                    else:
+                        cell_data = self.__excel_data[column_header][i][1]
+                        temp_record.append( cell_data )
                 self.__result.append( temp_record )
             self.__parent.fill_import_cache( self.__result )
         self.close()
@@ -177,22 +189,32 @@ class NImportSettingDialog( QDialog, Ui_Dialog ):
         QTableWidget.resizeColumnToContents( self.dataConfigTableWidget, 0 )
         QTableWidget.resizeRowsToContents( self.dataConfigTableWidget )
 
-    def set_excel_mode(self, rows, excel_file, general_use=False):
+    def set_excel_mode(self, rows, excel_file, general_use=False, default_data=None):
         self.__mode = 'EXCEL'
         self.__excel_file = excel_file
         self.__general_use = general_use
+        self.__default_data = default_data
         self.sheetComboBox.addItems( excel_file.get_sheets_name() )
-        self.dataConfigTableWidget.setColumnCount( 2 )
-        self.dataConfigTableWidget.setHorizontalHeaderLabels( ['类型', '数据'] )
+        self.dataConfigTableWidget.setColumnCount( 3 )
+        self.dataConfigTableWidget.setHorizontalHeaderLabels( ['类型', '数据', '默认值'] )
         self.dataConfigTableWidget.setRowCount( len( rows ) )
         index = 0
-        for r in rows:
+        ll = len( rows )
+        for i in range( 0, ll ):
+            r = rows[i]
             item = QTableWidgetItem( r )
             item.setTextAlignment( Qt.AlignRight )
             self.dataConfigTableWidget.setItem( index, 0, item )
             combo = QComboBox()
             combo.setStyleSheet( 'QComboBox{margin:3px}' )
             self.dataConfigTableWidget.setCellWidget( index, 1, combo )
+            if default_data is not None:
+                vv = default_data[i]
+            else:
+                vv = ''
+            default_value_item = QTableWidgetItem( vv )
+            item.setTextAlignment( Qt.AlignCenter )
+            self.dataConfigTableWidget.setItem( index, 2, default_value_item )
             index += 1
         QTableWidget.resizeColumnToContents( self.dataConfigTableWidget, 0 )
         QTableWidget.resizeRowsToContents( self.dataConfigTableWidget )

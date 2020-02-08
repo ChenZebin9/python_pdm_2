@@ -2,7 +2,7 @@
 from PyQt5.QtWidgets import (QDialog, QComboBox, QLineEdit,
                              QTextEdit, QCheckBox, QMessageBox)
 
-from ui.ProductInfoDialog import *
+from ui2.ProductInfoDialog import *
 
 
 class NProductInfoDialog( QDialog, Ui_Dialog ):
@@ -79,10 +79,10 @@ class NProductInfoDialog( QDialog, Ui_Dialog ):
             self.typeCombo.setCurrentIndex( self.__product_types_list.index( p[1] ) )
             self.costTypeCombo.setCurrentIndex( self.__cost_types_list.index( p[6] ) )
             self.initStatusCombo.setCurrentIndex( self.__status_list.index( p[2] ) )
-            if p[-1] is not None:
+            if p[-2] is not None:
                 self.isChildCheck.setChecked( True )
                 self.parentCombo.setEnabled( True )
-                self.parentCombo.setCurrentIndex( self.__products_list.index( p[-1] ) )
+                self.parentCombo.setCurrentIndex( self.__products_list.index( p[-2] ) )
             if self.__dialog_mode == 3:
                 self.productIdEdit.setText( '' )
             if self.__dialog_mode == 2:

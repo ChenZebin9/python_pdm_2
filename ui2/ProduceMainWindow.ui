@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>917</width>
+    <height>668</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>中德制造部机加工管理</string>
+  </property>
+  <widget class="QWidget" name="RequirementCentralWidget">
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>59</x>
+      <y>9</y>
+      <width>611</width>
+      <height>491</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="v_layout_1">
+     <item>
+      <layout class="QHBoxLayout" name="h_layout_1_1">
+       <item alignment="Qt::AlignLeft|Qt::AlignVCenter">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>生产合同</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="ContractComboBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>零件名</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="ParNameLineEdit"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>零件号</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="PartNrlineEdit"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="CleanTextButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>清空</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QTreeWidget" name="RequireTreeWidget">
+       <column>
+        <property name="text">
+         <string notr="true">1</string>
+        </property>
+       </column>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>917</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="RequirementMenu">
+    <property name="toolTip">
+     <string/>
+    </property>
+    <property name="statusTip">
+     <string>生产任务（需求）的管理维护。</string>
+    </property>
+    <property name="title">
+     <string>任务</string>
+    </property>
+    <property name="toolTipsVisible">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QMenu" name="ContractMenu">
+    <property name="toolTip">
+     <string/>
+    </property>
+    <property name="statusTip">
+     <string>生产合同的管理维护。</string>
+    </property>
+    <property name="title">
+     <string>合同</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="WorkgroupMenu">
+    <property name="toolTip">
+     <string>组织架构的管理维护。</string>
+    </property>
+    <property name="statusTip">
+     <string>组织架构的管理维护。</string>
+    </property>
+    <property name="title">
+     <string>组织</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="HelpMenu">
+    <property name="statusTip">
+     <string>软件帮助信息。</string>
+    </property>
+    <property name="title">
+     <string>帮助</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menu">
+    <property name="statusTip">
+     <string>软件工具管理。</string>
+    </property>
+    <property name="title">
+     <string>全局</string>
+    </property>
+   </widget>
+   <addaction name="menu"/>
+   <addaction name="RequirementMenu"/>
+   <addaction name="ContractMenu"/>
+   <addaction name="WorkgroupMenu"/>
+   <addaction name="HelpMenu"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QDockWidget" name="WorkgroupDockWidget">
+   <property name="windowTitle">
+    <string>组织架构</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="WkDockWidgetContents">
+    <widget class="QWidget" name="verticalLayoutWidget_3">
+     <property name="geometry">
+      <rect>
+       <x>40</x>
+       <y>20</y>
+       <width>160</width>
+       <height>229</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="v_layout_3">
+      <item alignment="Qt::AlignLeft|Qt::AlignTop">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>部门</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTreeView" name="DepartmentTreeView"/>
+      </item>
+      <item alignment="Qt::AlignLeft">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>成员</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QListView" name="MemberListView"/>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="ContractDockWidget">
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
+   <property name="windowTitle">
+    <string>生产合同</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="CtDockWidgetContents">
+    <widget class="QWidget" name="verticalLayoutWidget_2">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>30</y>
+       <width>160</width>
+       <height>89</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="v_layout_2">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetDefaultConstraint</enum>
+      </property>
+      <item>
+       <widget class="QTableWidget" name="CtTableWidget"/>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
