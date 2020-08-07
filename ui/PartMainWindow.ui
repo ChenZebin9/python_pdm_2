@@ -27,6 +27,7 @@
     <property name="title">
      <string>操作</string>
     </property>
+    <addaction name="actionCreatePart"/>
     <addaction name="separator"/>
     <addaction name="add2OutputListMenuItem"/>
     <addaction name="showOutputListMenuItem"/>
@@ -57,6 +58,8 @@
     <addaction name="statisticsInTimeAction"/>
     <addaction name="menu"/>
     <addaction name="showPriceAction"/>
+    <addaction name="separator"/>
+    <addaction name="showStorageMenuItem"/>
    </widget>
    <widget class="QMenu" name="windowsMenu">
     <property name="title">
@@ -69,6 +72,7 @@
      <string>设置</string>
     </property>
     <addaction name="columnViewMenuItem"/>
+    <addaction name="actionLocalPdfFirst"/>
    </widget>
    <widget class="QMenu" name="tagMenu">
     <property name="title">
@@ -84,7 +88,15 @@
     <property name="title">
      <string>配料</string>
     </property>
-    <addaction name="showStorageMenuItem"/>
+    <addaction name="startRequirementAction"/>
+    <addaction name="add2RequirementAction"/>
+    <addaction name="handleReqiurementAction"/>
+    <addaction name="separator"/>
+    <addaction name="pickMaterialsAction"/>
+    <addaction name="add2pickDialogAction"/>
+    <addaction name="actionGoBack2Storage"/>
+    <addaction name="separator"/>
+    <addaction name="actionViewSupply"/>
    </widget>
    <addaction name="operationMenu"/>
    <addaction name="dataMenu"/>
@@ -93,7 +105,11 @@
    <addaction name="windowsMenu"/>
    <addaction name="settingMenu"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="sizeGripEnabled">
+    <bool>true</bool>
+   </property>
+  </widget>
   <widget class="QDockWidget" name="tagDockWidget">
    <property name="windowTitle">
     <string>标签</string>
@@ -147,6 +163,15 @@
     <number>1</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_6"/>
+  </widget>
+  <widget class="QDockWidget" name="storingPositionDockWidget">
+   <property name="windowTitle">
+    <string>仓位</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_5"/>
   </widget>
   <action name="exitMenuItem">
    <property name="text">
@@ -291,11 +316,14 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>显示价格</string>
    </property>
    <property name="visible">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
   </action>
   <action name="showStorageMenuItem">
@@ -304,6 +332,66 @@
    </property>
    <property name="text">
     <string>显示仓储数据</string>
+   </property>
+  </action>
+  <action name="startRequirementAction">
+   <property name="text">
+    <string>启动需求</string>
+   </property>
+  </action>
+  <action name="handleReqiurementAction">
+   <property name="text">
+    <string>处理需求</string>
+   </property>
+  </action>
+  <action name="pickMaterialsAction">
+   <property name="text">
+    <string>领料对话框</string>
+   </property>
+  </action>
+  <action name="add2pickDialogAction">
+   <property name="text">
+    <string>添加至领料</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionLocalPdfFirst">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>本地图纸优先</string>
+   </property>
+  </action>
+  <action name="add2RequirementAction">
+   <property name="text">
+    <string>添加至需求</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionCreatePart">
+   <property name="text">
+    <string>创建单元</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="actionViewSupply">
+   <property name="text">
+    <string>查看配给情况</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionGoBack2Storage">
+   <property name="text">
+    <string>退料</string>
    </property>
   </action>
  </widget>

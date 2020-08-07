@@ -1,6 +1,7 @@
 """ 一些基础的数据类 """
 import os.path
 from decimal import Decimal
+import datetime
 
 from PyQt5.QtCore import (QThread, pyqtSignal)
 
@@ -19,6 +20,12 @@ class Part:
         self.description = description
         self.comment = comment
         self.tags = []
+
+        # 仓储的相关数据
+        self.position: str = ''
+        self.qty: float = 0.0
+        self.last_storing_date: datetime = None
+        self.unit_price: Decimal = Decimal.from_float( 0.0 )
 
     @staticmethod
     def get_parts(database, part_id=None, name=None, english_name=None, description=None):
@@ -116,6 +123,36 @@ class Part:
             else:
                 result[ss] = [f, ]
         return result
+
+    def get_storing_data(self, database):
+        """
+        获取零件的库存信息，并生成新的Part对象
+        :param database:
+        :return: 新生成的零件的、带有库存信息的新对象
+        """
+        r_s = database.get_storing( part_id=self.__part_id, position=None )
+        if r_s is None:
+            return None
+        storing_part = []
+        for r in r_s:
+            p = Part( self.__part_id, self.name, self.english_name, self.status, self.description, self.comment )
+            p.position = r[1]
+            p.qty = r[2]
+            p.last_storing_date = r[3]
+            p.unit_price = r[4]
+            storing_part.append( p )
+        return storing_part
+
+    def get_erp_info(self, database):
+        """
+        获取中德ERP中德物料描述信息
+        :param database: 数据库
+        :return: 物料编码，物料描述，单位；or None
+        """
+        erp_code = self.get_specified_tag( database, '巨轮中德ERP物料编码' )
+        if len( erp_code ) < 1:
+            return None
+        return database.get_erp_info( erp_code )
 
     def __eq__(self, other):
         return self.part_id == other.part_id
@@ -295,7 +332,8 @@ class DoStatistics( QThread ):
                 # 统计要装配的
                 if p_type == '图纸' or p_type == '文档':
                     continue
-                if pur_type == '自制' or pur_type == '采购' or pur_type == '装配':
+                # TODO: 改成询问的？
+                if pur_type == '自制' or pur_type == '采购':
                     self.__add_2_result( c[1].get_part_id(), qty * c[2] )
                     continue
                 self.__do_statistics( qty * c[2] )

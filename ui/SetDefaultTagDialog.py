@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'SetDefaultTagDialog.ui'
+# Form implementation generated from reading ListDisplayDialog.CreatePartDialog.ui file 'SetDefaultTagDialog.ListDisplayDialog.CreatePartDialog.ui'
 #
 # Created by: PyQt5 UI code generator 5.12.1
 #

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ProduceMainWindow.ui'
+# Form implementation generated from reading ListDisplayDialog.CreatePartDialog.ui file 'ProduceMainWindow.ListDisplayDialog.CreatePartDialog.ui'
 #
 # Created by: PyQt5 UI code generator 5.13.0
 #

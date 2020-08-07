@@ -42,6 +42,8 @@
     </property>
     <addaction name="addProductAction"/>
     <addaction name="addServiceRecordAction"/>
+    <addaction name="separator"/>
+    <addaction name="actionAdd2Contract"/>
    </widget>
    <widget class="QMenu" name="customerTopMenu">
     <property name="title">
@@ -58,9 +60,16 @@
     </property>
     <addaction name="exitAction"/>
    </widget>
+   <widget class="QMenu" name="toolsTopMenu">
+    <property name="title">
+     <string>工具</string>
+    </property>
+    <addaction name="getAvailableSerNrAction"/>
+   </widget>
    <addaction name="menu"/>
    <addaction name="productTopMenu"/>
    <addaction name="customerTopMenu"/>
+   <addaction name="toolsTopMenu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="exitAction">
@@ -99,6 +108,22 @@
   <action name="editSaleContractAction">
    <property name="text">
     <string>编辑销售合同</string>
+   </property>
+  </action>
+  <action name="getAvailableSerNrAction">
+   <property name="text">
+    <string>获取出厂编号</string>
+   </property>
+  </action>
+  <action name="actionAdd2Contract">
+   <property name="text">
+    <string>添加至合同</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
    </property>
   </action>
  </widget>

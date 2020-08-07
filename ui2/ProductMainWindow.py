@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ProductMainWindow.ui'
+# Form implementation generated from reading CreatePartDialog.ui file 'ProductMainWindow.CreatePartDialog.ui'
 #
 # Created by: PyQt5 UI code generator 5.13.0
 #
@@ -32,6 +32,8 @@ class Ui_MainWindow(object):
         self.customerTopMenu.setObjectName("customerTopMenu")
         self.menu = QtWidgets.QMenu(self.menubar)
         self.menu.setObjectName("menu")
+        self.toolsTopMenu = QtWidgets.QMenu(self.menubar)
+        self.toolsTopMenu.setObjectName("toolsTopMenu")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -50,16 +52,25 @@ class Ui_MainWindow(object):
         self.editCustomerAction.setObjectName("editCustomerAction")
         self.editSaleContractAction = QtWidgets.QAction(MainWindow)
         self.editSaleContractAction.setObjectName("editSaleContractAction")
+        self.getAvailableSerNrAction = QtWidgets.QAction(MainWindow)
+        self.getAvailableSerNrAction.setObjectName("getAvailableSerNrAction")
+        self.actionAdd2Contract = QtWidgets.QAction(MainWindow)
+        self.actionAdd2Contract.setVisible(False)
+        self.actionAdd2Contract.setObjectName("actionAdd2Contract")
         self.productTopMenu.addAction(self.addProductAction)
         self.productTopMenu.addAction(self.addServiceRecordAction)
+        self.productTopMenu.addSeparator()
+        self.productTopMenu.addAction(self.actionAdd2Contract)
         self.customerTopMenu.addAction(self.addCustomerAction)
         self.customerTopMenu.addAction(self.addSaleContractAction)
         self.customerTopMenu.addAction(self.editCustomerAction)
         self.customerTopMenu.addAction(self.editSaleContractAction)
         self.menu.addAction(self.exitAction)
+        self.toolsTopMenu.addAction(self.getAvailableSerNrAction)
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.productTopMenu.menuAction())
         self.menubar.addAction(self.customerTopMenu.menuAction())
+        self.menubar.addAction(self.toolsTopMenu.menuAction())
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -70,6 +81,7 @@ class Ui_MainWindow(object):
         self.productTopMenu.setTitle(_translate("MainWindow", "产品"))
         self.customerTopMenu.setTitle(_translate("MainWindow", "客户"))
         self.menu.setTitle(_translate("MainWindow", "全局"))
+        self.toolsTopMenu.setTitle(_translate("MainWindow", "工具"))
         self.exitAction.setText(_translate("MainWindow", "退出"))
         self.exitAction.setShortcut(_translate("MainWindow", "Ctrl+Q"))
         self.addProductAction.setText(_translate("MainWindow", "添加产品"))
@@ -78,3 +90,6 @@ class Ui_MainWindow(object):
         self.addSaleContractAction.setText(_translate("MainWindow", "新建销售合同"))
         self.editCustomerAction.setText(_translate("MainWindow", "编辑客户"))
         self.editSaleContractAction.setText(_translate("MainWindow", "编辑销售合同"))
+        self.getAvailableSerNrAction.setText(_translate("MainWindow", "获取出厂编号"))
+        self.actionAdd2Contract.setText(_translate("MainWindow", "添加至合同"))
+        self.actionAdd2Contract.setShortcut(_translate("MainWindow", "Ctrl+O"))

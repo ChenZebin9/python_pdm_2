@@ -271,7 +271,7 @@ class SqliteHandler:
         current_tag_index = rs[0][0]
         # 查看产品下面有没有此类标签
         sql = f'SELECT p.product_id, t.id FROM Product_Tag AS p INNER JOIN Tag AS t ON t.id=p.tag_id ' \
-            f'WHERE t.parent_id={parent_tag_id} AND p.product_id={product_id}'
+              f'WHERE t.parent_id={parent_tag_id} AND p.product_id={product_id}'
         self.__c.execute( sql )
         rs = self.__c.fetchall()
         t_l = []
@@ -336,7 +336,7 @@ class SqliteHandler:
 
 class MssqlHandler:
 
-    def __init__(self, server,  database, user, password):
+    def __init__(self, server, database, user, password):
         self.__conn = pymssql.connect( server=server, user=user,
                                        password=password, database=database, login_timeout=10 )
         self.__c = self.__conn.cursor()
@@ -530,59 +530,16 @@ class MssqlHandler:
             result.append( s )
         return result
 
-    # 完全没用了
-    def update_product_other_info(self, product_id, info_index, info_value):
-        pre_sql = 'UPDATE Product_Product SET '
-        post_sql = 'WHERE productId = \'{0}\''.format( product_id )
-        sql = None
-        if info_index == 1:
-            if info_value.isspace():
-                sql = 'oiDongle=NULL '
-            else:
-                self.__c.execute( 'SELECT dongleId FROM Product_OiDongle WHERE tagColor=\'{0}\''.format( info_value ) )
-                rs = self.__c.fetchall()
-                if len( rs ) != 1:
-                    raise Exception( '所输入的密码狗标签颜色有异常！' )
-                dongle_id = rs[0][0]
-                sql = 'oiDongle={0} '.format( dongle_id )
-        elif info_index == 2:
-            if info_value.isspace():
-                sql = 'andronDongle=NULL '
-            else:
-                sql = 'andronDongle=\'{0}\' '.format( info_value )
-        elif info_index == 3:
-            if info_value.isspace():
-                sql = 'cncSer=NULL '
-            else:
-                sql = 'cncSer=\'{0}\' '.format( info_value )
-        elif info_index == 4:
-            if info_value.isspace():
-                sql = 'cabinetSer=NULL '
-            else:
-                sql = 'cabinetSer=\'{0}\' '.format( info_value )
-        elif info_index == 5:
-            if info_value.isspace():
-                sql = 'cAxisSer=NULL '
-            else:
-                sql = 'cAxisSer=\'{0}\' '.format( info_value )
-        elif info_index == 6:
-            if info_value.isspace():
-                sql = 'optionCode=NULL '
-            else:
-                sql = 'optionCode=\'{0}\' '.format( info_value )
-        elif info_index == 7:
-            if info_value.isspace():
-                sql = 'DELETE FROM Product_ID4Customer WHERE assemblyId=\'{0}\''.format( product_id )
-            else:
-                self.__c.execute( 'SELECT * FROM Product_ID4Customer WHERE assemblyId=\'{0}\''.format( product_id ) )
-                rs = self.__c.fetchall()
-                if len( rs ) < 1:
-                    sql = 'INSERT INTO Product_ID4Customer VALUES (\'{0}\', \'{1}\')'.format( product_id, info_value )
-                else:
-                    sql = 'UPDATE Product_ID4Customer SET deliveryId=\'{1}\' WHERE assemblyId=\'{0}\''.format(
-                        product_id, info_value )
-        if info_index <= 6:
-            sql = pre_sql + sql + post_sql
+    def update_product_other_info(self, product_id, property_name, property_value):
+        """
+        更新产品的已有属性的数值
+        :param product_id: 产品编号
+        :param property_name: 属性名称
+        :param property_value: str, 新的属性数值
+        :return:
+        """
+        sql = f'UPDATE [JJProduce].[ProductProperty] SET [PropertyValue]=\'{property_value}\' ' \
+              f'WHERE [ProductId]=\'{product_id}\' AND [PropertyName]=\'{property_name}\''
         self.__c.execute( sql )
         self.__conn.commit()
 
@@ -596,7 +553,7 @@ class MssqlHandler:
             raise Exception( f'提供的\'{parent_tag_name}\'便签有异常。' )
         parent_tag_id = rs[0][0]
         sql = f'SELECT * FROM JJProduce.Tag ' \
-            f'WHERE CONVERT(VARCHAR, TagName)=\'{current_tag_name}\' AND ParentId={parent_tag_id}'
+              f'WHERE CONVERT(VARCHAR, TagName)=\'{current_tag_name}\' AND ParentId={parent_tag_id}'
         self.__c.execute( sql )
         rs = self.__c.fetchall()
         if len( rs ) < 1:
@@ -604,7 +561,7 @@ class MssqlHandler:
         current_tag_index = rs[0][0]
         # 查看产品下面有没有此类标签
         sql = f'SELECT p.ProductId, t.id FROM JJProduce.ProductTag AS p INNER JOIN JJProduce.Tag AS t ON t.Id=p.TagId ' \
-            f'WHERE t.ParentId={parent_tag_id} AND p.ProductId={product_id}'
+              f'WHERE t.ParentId={parent_tag_id} AND p.ProductId={product_id}'
         self.__c.execute( sql )
         rs = self.__c.fetchall()
         t_l = []
@@ -638,7 +595,7 @@ class MssqlHandler:
     def get_products_from_customer(self, short_name):
         """ 根据客户的短名称，获取产品 """
         sql = f'SELECT ProductId FROM JJSale.SoldOutDetail ' \
-            f'WHERE ContractCompany=\'{short_name}\' OR TerminalCompany=\'{short_name}\''
+              f'WHERE ContractCompany=\'{short_name}\' OR TerminalCompany=\'{short_name}\''
         self.__c.execute( sql )
         rs = self.__c.fetchall()
         r_rs = []
@@ -669,7 +626,7 @@ class MssqlHandler:
     # 添加售后服务记录
     def insert_service_record(self, record_id, product_id, the_date, operator, description):
         the_sql = f'INSERT INTO JJSale.ServiceRecord VALUES (\'{record_id}\', \'{product_id}\', ' \
-            f'\'{the_date}\', \'{operator}\', \'{description}\')'
+                  f'\'{the_date}\', \'{operator}\', \'{description}\')'
         self.__c.execute( the_sql )
         self.__conn.commit()
 
@@ -680,15 +637,67 @@ class MssqlHandler:
         rs = self.__c.fetchall()
         return rs
 
+    def insert_sale_contract(self, data_dict):
+        """
+        创建销售合同
+        :return:
+        """
+        code = data_dict['No']
+        when = data_dict['Date']
+        customer = data_dict['Customer']
+        t_customer = data_dict['Terminal Customer']
+        comment = data_dict['Comment']
+        status = 1
+        products = data_dict['Products']
+        code = f'\'{code}\''
+        when = f'\'{when}\''
+        find_customer_sql = f'SELECT [CompanyCode] FROM [JJSale].[Company] WHERE [Name]=\'{customer}\''
+        self.__c.execute( find_customer_sql )
+        r = self.__c.fetchone()
+        customer = f'\'{r[0]}\''
+        if len( t_customer ) < 1:
+            t_customer = 'NULL'
+        else:
+            find_customer_sql = f'SELECT [CompanyCode] FROM [JJSale].[Company] WHERE [Name]=\'{t_customer}\''
+            self.__c.execute(find_customer_sql)
+            r = self.__c.fetchone()
+            t_customer = f'\'{r[0]}\''
+        create_contract = f'INSERT INTO [JJSale].[Contract] VALUES ({code}, {when}, {customer}, {t_customer}, {status})'
+        self.__c.execute( create_contract )
+        if len( comment ) < 1:
+            comment = 'NULL'
+        else:
+            comment = f'\'{comment}\''
+        for p in products:
+            create_product_sold_sql = f'INSERT INTO [JJSale].[ProductSale] VALUES (\'{p}\', {code}, {comment})'
+            self.__c.execute( create_product_sold_sql )
+        self.__conn.commit()
+
     # 获取客户的清单
     # 返回：短名称、长名称
     def get_customers(self, the_filter=None):
         the_sql = 'SELECT * FROM JJSale.Company'
         if the_filter is not None:
             the_sql += f' WHERE Name LIKE \'%{the_filter}%\''
+        the_sql += ' ORDER BY Name'
         self.__c.execute( the_sql )
         rs = self.__c.fetchall()
         result = []
         for r in rs:
             result.append( (r[2], r[1]) )
+        return result
+
+    def get_available_ser_nr(self):
+        """
+        获取出厂编号的列表
+        :return:
+        """
+        the_sql = 'select [PropertyValue] from [JJProduce].[ProductProperty] ' \
+                  'where [PropertyName]=\'出厂编号\' and [PropertyValue] is not null ' \
+                  'order by convert(varchar(20),[PropertyValue])'
+        self.__c.execute( the_sql )
+        rs = self.__c.fetchall()
+        result = []
+        for r in rs:
+            result.append( r[0] )
         return result

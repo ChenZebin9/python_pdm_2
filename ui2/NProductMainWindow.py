@@ -13,6 +13,8 @@ from UiFrame import TagViewPanel
 from ui2.NProductInfoDialog import *
 from ui2.ProductMainWindow import *
 from ui2.ProductServiceRecordDialog import Ui_Dialog as ServiceRecordDialog
+from ui.NListDisplayDialog import *
+from ui2.NProductSoldDialog import *
 
 
 class NProductMainWindow( QMainWindow, Ui_MainWindow ):
@@ -21,6 +23,7 @@ class NProductMainWindow( QMainWindow, Ui_MainWindow ):
         super( NProductMainWindow, self ).__init__( parent )
         self.__database = database
         self.__productTab = ProductPanel( self, database=database )
+        self.__contract_dialog = None  # 处理销售合同的对话框
         self.setup_ui()
         self.__init_data()
 
@@ -36,6 +39,11 @@ class NProductMainWindow( QMainWindow, Ui_MainWindow ):
         self.editCustomerAction.triggered.connect( lambda: self.__handle_customer( mode=2 ) )
         self.addSaleContractAction.triggered.connect( lambda: self.__handle_sale_contract( mode=1 ) )
         self.editSaleContractAction.triggered.connect( lambda: self.__handle_sale_contract( mode=2 ) )
+        self.getAvailableSerNrAction.triggered.connect( self.__get_available_ser_nr )
+        self.addSaleContractAction.triggered.connect( lambda: self.__handle_sale_contract( mode=1 ) )
+        self.editSaleContractAction.triggered.connect( lambda: self.__handle_sale_contract( mode=2 ) )
+
+        self.actionAdd2Contract.triggered.connect( self.__add_product_2_contract )
 
     def __init_data(self):
         self.__productTab.init_data()
@@ -51,13 +59,45 @@ class NProductMainWindow( QMainWindow, Ui_MainWindow ):
         """
         pass
 
+    def __add_product_2_contract(self):
+        """
+        添加产品列表的产品到合同对话框中
+        :return:
+        """
+        selected_product: Product = self.__productTab.current_product
+        if selected_product is None:
+            return
+        if self.__contract_dialog is not None and self.__contract_dialog.isVisible:
+            self.__contract_dialog.add_2_product_list( selected_product.product_id )
+
+    def __get_available_ser_nr(self):
+        """
+        用于获取下一个可用的出厂编号的小工具
+        :return:
+        """
+        all_ser_nr = self.__database.get_available_ser_nr()
+        dialog = NListDisplayDialog( parent=self, data=all_ser_nr )
+        dialog.show()
+
     def __handle_sale_contract(self, mode=1):
         """
         新建或编辑销售合同的对话框
         :param mode: 对话框类型，1=新建，2=编辑
         :return:
         """
-        pass
+        if self.__contract_dialog is not None and self.__contract_dialog.isVisible():
+            return
+        if mode == 1:
+            self.__contract_dialog = NProductSoldDialog( parent=self, database=self.__database )
+            self.__contract_dialog.setWindowTitle( '新建销售合同' )
+            self.__contract_dialog.show()
+            self.show_add_product_action( True )
+        elif mode == 2:
+            # TODO: 选择现有的销售合同
+            pass
+
+    def show_add_product_action(self, is_shown):
+        self.actionAdd2Contract.setVisible( is_shown )
 
     def __add_product(self):
         dialog = NProductInfoDialog( self, database=self.__database )
@@ -222,7 +262,6 @@ class ProductPanel( QFrame ):
         splitter2.setStretchFactor( 0, 2 )
         splitter2.setStretchFactor( 1, 1 )
 
-        # splitter2.addWidget( self.__tagPanel )
         splitter2.addWidget( self.__leftTopTabLayout )
         self.__leftTopTabLayout.addTab( self.__tagPanel, '标签' )
         self.__leftTopTabLayout.addTab( self.__customerPanel, '客户' )
@@ -242,28 +281,32 @@ class ProductPanel( QFrame ):
         splitter2.addWidget( self.__topRightPanel )
         splitter1.addWidget( splitter2 )
 
-        bottom_layout = QHBoxLayout()
+        splitter3_1 = QSplitter( Qt.Horizontal, splitter1 )
+
+        b_1 = QFrame( splitter3_1 )
         bottom_layout_1 = QVBoxLayout()
         bottom_layout_1.addWidget( QLabel( '基本信息' ) )
-        self.productInfoTable.setFixedWidth( 300 )
         bottom_layout_1.addWidget( self.productInfoTable )
-        bottom_layout.addLayout( bottom_layout_1 )
+        b_1.setLayout( bottom_layout_1 )
+
+        b_2 = QFrame( splitter3_1 )
         bottom_layout_2 = QVBoxLayout()
         bottom_layout_2.addWidget( QLabel( '标签' ) )
-        self.tagInfoList.setFixedWidth( 200 )
         bottom_layout_2.addWidget( self.tagInfoList )
-        bottom_layout.addLayout( bottom_layout_2 )
+        b_2.setLayout( bottom_layout_2 )
+
+        b_3 = QFrame( splitter3_1 )
         bottom_layout_3 = QVBoxLayout()
         bottom_layout_3.addWidget( QLabel( '状态变化记录' ) )
-        self.statusInfoTable.setFixedWidth( 200 )
         bottom_layout_3.addWidget( self.statusInfoTable )
-        bottom_layout.addLayout( bottom_layout_3 )
+        b_3.setLayout( bottom_layout_3 )
+
+        b_4 = QFrame( splitter3_1 )
         bottom_layout_4 = QVBoxLayout()
         bottom_layout_4.addWidget( QLabel( '售后记录' ) )
         bottom_layout_4.addWidget( self.afterSaleInfoTable )
-        bottom_layout.addLayout( bottom_layout_4 )
-        self.__bottomPanel.setLayout( bottom_layout )
-        splitter1.addWidget( self.__bottomPanel )
+        b_4.setLayout( bottom_layout_4 )
+
         self.productView.setStyleSheet(
             '''
             QTreeWidget::item
@@ -336,10 +379,9 @@ class ProductPanel( QFrame ):
         the_key = r_item_1.data( Qt.DisplayRole )
         the_value = r_item_2.data( Qt.DisplayRole )
         text, ok_pressed = QInputDialog.getText( self, '新数值', the_key, QLineEdit.Normal, the_value )
-        i_s = the_key.split( '.' )[0]
         if ok_pressed:
             try:
-                self.__database.update_product_other_info( self.current_product.product_id, int( i_s ), text )
+                self.__database.update_product_other_info( self.current_product.product_id, the_key, text )
             except Exception as ex:
                 QMessageBox.warning( self, '', ex.__str__() )
 

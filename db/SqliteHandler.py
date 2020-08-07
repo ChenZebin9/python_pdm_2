@@ -4,6 +4,45 @@ import sqlite3
 
 class SqliteHandler( DatabaseHandler ):
 
+    def get_available_supply_operation_bill(self, prefix=None):
+        pass
+
+    def select_process_data(self, process_type=1):
+        pass
+
+    def create_supply_operation(self, data):
+        pass
+
+    def create_picking_record(self, data):
+        pass
+
+    def next_available_part_id(self):
+        pass
+
+    def set_part_id_2_prepared(self, part_id):
+        pass
+
+    def create_a_new_part(self, part_id, name, english_name, description, comment, tag_dict):
+        pass
+
+    def update_part_info(self, part_id, name, english_name, description, comment):
+        pass
+
+    def insert_requirements(self, bill_data, items_data):
+        pass
+
+    def get_require_bill(self, prefix=None, bill_num=None):
+        pass
+
+    def get_erp_info(self, erp_code):
+        pass
+
+    def get_products_by_id(self, product_id):
+        pass
+
+    def get_all_storing_position(self):
+        pass
+
     def get_storing(self, part_id=None, position=None):
         pass
 

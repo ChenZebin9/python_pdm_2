@@ -1,4 +1,5 @@
 # coding=gbk
+import os
 import sys
 
 import clr
@@ -14,6 +15,7 @@ from ui.NImportSettingDialog import (NImportSettingDialog)
 from db.MssqlHandler import MssqlHandler
 from db.DatabaseHandler import DatabaseHandler
 from Part import Part
+from db.jl_erp import JL_ERP_Database
 
 clr.FindAssembly( 'dlls/PdfLib.dll' )
 clr.AddReference( 'dlls/PdfLib' )
@@ -23,7 +25,8 @@ import PdfLib
 class NCreatePickBillDialog( QDialog, Ui_Dialog ):
     """ 通过导入Excel文件的数据，实现巨轮的领料单的打印输出。 """
 
-    Column_names = ('合同号', '零件号', '中德物料编码', '物料描述', '数量', '单位')
+    Column_names_1 = ('合同号', '零件号', '中德物料编码', '物料描述', '单位', '数量')
+    Column_names_2 = ('合同号', '零件号', '巨轮物料编码', '物料描述', '单位', '数量')
 
     def __init__(self, database, parent=None):
         self.__parent = parent
@@ -34,7 +37,13 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
         self.__operatorLineEdit = QLineEdit()
         self.__table_modal = QStandardItemModel()
         self.__one_import_data = []
+        # 默认的合同号
+        self.__default_product_id = ''
+        # 从哪个库房
+        self.__from_storage = 'D'
         self.setup_ui()
+        # 预先打开巨轮ERP的连接
+        self.__jl_erp_database = JL_ERP_Database()
 
     def setup_ui(self):
         super( NCreatePickBillDialog, self ).setupUi( self )
@@ -54,10 +63,43 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
         self.addButton.clicked.connect( self.__add_items )
         self.removeButton.clicked.connect( self.__remove_item )
 
-        self.__table_modal.setHorizontalHeaderLabels( NCreatePickBillDialog.Column_names )
+        self.theDialogButtonBox.clicked.connect( self.__buttonBox_clicked )
+
+    def set_config(self, config_dict: dict):
+        """
+        进行某些设置
+        :param config_dict: dict，一个设置的字典
+        :return:
+        """
+        if '操作者' in config_dict:
+            self.__operatorLineEdit.setText( config_dict['操作者'] )
+        if '合同号' in config_dict:
+            self.__default_product_id = config_dict['合同号']
+        if '仓库' in config_dict:
+            self.__from_storage = config_dict['仓库']
+        else:
+            self.__from_storage = 'D'
+        self.__billNrLineEdit.setText( config_dict['清单'] )
+        # 设置列表的表头
+        self.__table_modal.setHorizontalHeaderLabels(
+            NCreatePickBillDialog.Column_names_1 if self.__from_storage != 'F' else NCreatePickBillDialog.Column_names_2 )
         self.itemsTableView.setModel( self.__table_modal )
 
-        self.theDialogButtonBox.clicked.connect( self.__buttonBox_clicked )
+    def add_items(self, the_items):
+        """
+        支持从外部对话框添加项目
+        :param the_items: list，一个包括有项目信息的列表 ([零件号，物料编码，物料描述，单位])
+        :return:
+        """
+        for r in the_items:
+            one_row_in_table = [QStandardItem( self.__default_product_id ),
+                                QStandardItem( r[0] ),
+                                QStandardItem( r[1] ),
+                                QStandardItem( r[2] ),
+                                QStandardItem( r[3] ),
+                                QStandardItem( '0' )]
+            self.__table_modal.appendRow( one_row_in_table )
+        self.itemsTableView.resizeColumnsToContents()
 
     def __add_items(self):
         try:
@@ -88,17 +130,26 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
                         part_id = int( tt )
                         one_row_in_table.append( QStandardItem( '{:08d}'.format( part_id ) ) )
                         the_part: Part = Part.get_parts( database=self.__database, part_id=part_id )[0]
-                        erp_code = the_part.get_specified_tag( database=self.__database, tag_name='巨轮中德ERP物料编码' )
+                        if self.__from_storage != 'F':
+                            erp_code = the_part.get_specified_tag( database=self.__database, tag_name='巨轮中德ERP物料编码' )
+                        else:
+                            erp_code = the_part.get_specified_tag( database=self.__database, tag_name='巨轮智能ERP物料编码' )
                         if len( erp_code ) > 0:
                             one_row_in_table.append( QStandardItem( erp_code ) )
-                            erp_info = self.__database.get_erp_data( erp_code )
+                            if self.__from_storage != 'F':
+                                erp_info = self.__database.get_erp_data( erp_code )
+                            else:
+                                erp_info = self.__jl_erp_database.get_erp_data( erp_code )
                             one_row_in_table.append( QStandardItem( erp_info[1] ) )
                             one_row_in_table.append( QStandardItem( r[3] ) )
                             one_row_in_table.append( QStandardItem( erp_info[2] ) )
                     elif r[2] is not None and len( r[2] ) > 0:
                         one_row_in_table.append( QStandardItem( '' ) )
                         one_row_in_table.append( QStandardItem( r[2] ) )
-                        erp_info = self.__database.get_erp_data( r[2] )
+                        if self.__from_storage != 'F':
+                            erp_info = self.__database.get_erp_data( r[2] )
+                        else:
+                            erp_info = self.__jl_erp_database.get_erp_data( r[2] )
                         one_row_in_table.append( QStandardItem( erp_info[1] ) )
                         one_row_in_table.append( QStandardItem( r[3] ) )
                         one_row_in_table.append( QStandardItem( erp_info[2] ) )
@@ -133,21 +184,46 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
             r_n = self.__table_modal.rowCount()
             if r_n < 1:
                 raise Exception( '没有要输出的数据' )
-            datas = []
+            data_4_paper = []
+            items_4_database = []
             c_n = (0, 3, 4, 5, 2)
             for i in range( r_n ):
                 row_data = []
+                part_id_cell: QStandardItem = self.__table_modal.item( i, 1 )
+                part_id = int( part_id_cell.text().lstrip( '0' ) )
                 for j in c_n:
                     cell: QStandardItem = self.__table_modal.item( i, j )
-                    if cell is None:
-                        row_data.append('')
+                    if j == 5:
+                        may_error = False
+                        if cell is None:
+                            may_error = True
+                        else:
+                            qty_value = float( cell.text() )
+                            if qty_value <= 0:
+                                may_error = True
+                            else:
+                                row_data.append( '%.1f' % qty_value )
+                        if may_error:
+                            QMessageBox.warning( self, '数据有误', f'\"{row_data[1]}\"的数量有误或为零，请确认！' )
+                            return
                     else:
-                        row_data.append( cell.text() )
-                datas.append( row_data )
-            pdf_creator = PdfLib.CreatePickBill( datas, '中德OPS项目部', self.__operatorLineEdit.text(),
+                        if cell is None:
+                            row_data.append( '' )
+                        else:
+                            row_data.append( cell.text() )
+                record = [row_data[0], part_id, row_data[-1], qty_value]
+                data_4_paper.append( row_data )
+                items_4_database.append( record )
+            bill_name = self.__billNrLineEdit.text()
+            data_4_database = [bill_name, self.__operatorLineEdit.text(), self.__timeSelector.text(),
+                               '出库单', self.__from_storage, items_4_database]
+            self.__database.create_picking_record( data_4_database )
+            pdf_creator = PdfLib.CreatePickBill( data_4_paper, '中德OPS项目部' if self.__from_storage != 'F' else 'OPS项目部',
+                                                 self.__operatorLineEdit.text(),
                                                  self.__timeSelector.text(), self.__billNrLineEdit.text() )
             # 选择要保存到的文件
-            dlg = win32ui.CreateFileDialog( 0, None, None, win32con.OFN_OVERWRITEPROMPT, 'Pdf Files (*.pdf)|*.pdf||' )
+            dlg = win32ui.CreateFileDialog( 0, None, f'{bill_name}.pdf', win32con.OFN_OVERWRITEPROMPT,
+                                            'Pdf Files (*.pdf)|*.pdf||' )
             to_save_file = None
             if dlg.DoModal() == win32con.IDOK:
                 to_save_file = dlg.GetPathName()
@@ -159,14 +235,28 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
             pdf_creator.DoPrint( to_save_file )
             QMessageBox.information( self, '完成', '输出至 {0} 文件。'.format( to_save_file ), QMessageBox.Ok )
             self.close()
+            resp = QMessageBox.question( self, '询问', f'是否打开{to_save_file}文件？', QMessageBox.Yes | QMessageBox.No,
+                                         QMessageBox.Yes )
+            if resp == QMessageBox.Yes:
+                os.startfile( to_save_file )
         except Exception as ex:
             QMessageBox.warning( self, '', str( ex ), QMessageBox.Ok )
+        finally:
+            self.__jl_erp_database.close()
 
     def __do_close(self):
+        self.__jl_erp_database.close()
         self.close()
 
     def fill_import_cache(self, data):
         self.__one_import_data = data.copy()
+
+    def is_zd_erp(self):
+        """
+        是否进行中德ERP的操作？
+        :return: TRUE or FALSE
+        """
+        return self.__from_storage != 'F'
 
 
 def run_function(the_database_setting):

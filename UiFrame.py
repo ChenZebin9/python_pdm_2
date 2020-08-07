@@ -1,5 +1,6 @@
 import os
 import time
+import _thread
 from decimal import Decimal
 
 from PyQt5.QtCore import (QThread, pyqtSignal)
@@ -8,18 +9,23 @@ from PyQt5.QtWidgets import (QFrame, QLabel, QTextEdit,
                              QListWidget, QHBoxLayout, QFormLayout, QVBoxLayout,
                              QPushButton, QComboBox, QTableWidget,
                              QTableWidgetItem, QListWidgetItem, QTableView,
-                             QMenu)
+                             QMenu, QInputDialog, QSplitter)
 
 from Part import Part, DoStatistics
 from db.DatabaseHandler import DatabaseHandler
-from db.SqliteHandler import SqliteHandler
 from ui.MyTreeWidget import *
 
 
 class PartInfoPanel( QFrame ):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, mode=0):
+        """
+        单元的信息Widget
+        :param parent:
+        :param mode: 0=在主窗口中，1=在新建单元的对话框中
+        """
         super().__init__( parent )
+        self.__mode = mode
         self.part_id = None
         self.idLineEdit = QLineEdit( self )
         self.nameLineEdit = QLineEdit( self )
@@ -27,20 +33,57 @@ class PartInfoPanel( QFrame ):
         self.descriptionLineEdit = QLineEdit( self )
         self.commentTextEdit = QTextEdit( self )
         self.tagListWidget = QListWidget( self )
+        # 在新建模式下，显示
+        self.tagTableWidget = QTableWidget( self )
         self.__init_ui()
+
+    def init_data(self, part_id, tag_data):
+        """
+        数据的初始化，仅在新建单元时被调用
+        :param tag_data: {}, Tag 表格的数据
+        :param part_id: int, 可用的 Part Id
+        :return:
+        """
+        # TODO 新建单元的模式下，要进行项目的初始化，主要是填好Tag的可选项
+        self.part_id = part_id
+        self.idLineEdit.setText( '{:08d}'.format( part_id ) )
+        self.idLineEdit.setEnabled( False )
+        self.tagTableWidget.setRowCount( len( tag_data ) )
+        self.tagTableWidget.setColumnCount( 2 )
+        self.tagTableWidget.setHorizontalHeaderLabels( ['标签名', '值'] )
+        i = 0
+        for k in tag_data:
+            item = QTableWidgetItem( k )
+            self.tagTableWidget.setItem( i, 0, item )
+            value_items = tag_data[k]
+            if value_items is not None:
+                a_combo_box = QComboBox()
+                for v in value_items:
+                    a_combo_box.addItem( v )
+                a_combo_box.setEditable( True )
+                a_combo_box.setCurrentIndex( -1 )
+                self.tagTableWidget.setCellWidget( i, 1, a_combo_box )
+            else:
+                a_edit_line = QLineEdit()
+                self.tagTableWidget.setCellWidget( i, 1, a_edit_line )
+            i += 1
+        self.tagTableWidget.horizontalHeader().setStretchLastSection( True )
+        self.tagTableWidget.resizeColumnsToContents()
 
     def __init_ui(self):
         self.commentTextEdit.setTabChangesFocus( True )
 
-        hbox = QHBoxLayout( self )
+        h_box = QHBoxLayout( self )
 
-        formlayout = QFormLayout( self )
-        formlayout.setLabelAlignment( Qt.AlignRight )
-        formlayout.addRow( '序号', self.idLineEdit )
-        formlayout.addRow( '名称', self.nameLineEdit )
-        formlayout.addRow( '英文名称', self.englishNameLineEdit )
-        formlayout.addRow( '描述', self.descriptionLineEdit )
-        formlayout.addRow( '备注', self.commentTextEdit )
+        form_layout = QFormLayout( self )
+        form_layout.setLabelAlignment( Qt.AlignRight )
+        form_layout.addRow( '序号', self.idLineEdit )
+        form_layout.addRow( '名称', self.nameLineEdit )
+        form_layout.addRow( '英文名称', self.englishNameLineEdit )
+        form_layout.addRow( '描述', self.descriptionLineEdit )
+        form_layout.addRow( '备注', self.commentTextEdit )
+
+        self.idLineEdit.setAlignment( Qt.AlignHCenter )
 
         self.nameLineEdit.setContextMenuPolicy( Qt.NoContextMenu )
         self.englishNameLineEdit.setContextMenuPolicy( Qt.NoContextMenu )
@@ -51,13 +94,19 @@ class PartInfoPanel( QFrame ):
         tagLabel = QLabel( '标签' )
         tagLabel.setAlignment( Qt.AlignCenter )
         tagLayout.addWidget( tagLabel )
-        tagLayout.addWidget( self.tagListWidget )
+        if self.__mode == 0:
+            tagLayout.addWidget( self.tagListWidget )
+            self.tagTableWidget.hide()
+        else:
+            tagLayout.addWidget( self.tagTableWidget )
+            self.tagListWidget.hide()
 
-        hbox.addLayout( formlayout )
-        hbox.addLayout( tagLayout )
+        h_box.addLayout( form_layout )
+        h_box.addLayout( tagLayout )
 
-        self.setLayout( hbox )
-        self.setFixedSize( 600, 200 )
+        self.setLayout( h_box )
+        if self.__mode == 0:
+            self.setFixedHeight( 200 )
 
     def set_part_info(self, part):
         self.part_id = part.get_part_id()
@@ -73,49 +122,149 @@ class PartInfoPanel( QFrame ):
             one_item.setData( Qt.UserRole, t )
             self.tagListWidget.addItem( one_item )
 
+    def get_part_info(self):
+        """
+        获取单元的信息
+        :return: 零件号，名称，英文名称，描述，备注，标签{标签名、标签值}
+        """
+        tag_dict = {}
+        row_count = self.tagTableWidget.rowCount()
+        for i in range( row_count ):
+            value_cell = self.tagTableWidget.cellWidget( i, 1 )
+            if type( value_cell ) is QLineEdit:
+                value_text = value_cell.text().strip()
+            else:
+                value_text = value_cell.currentText().strip()
+            if len( value_text ) < 1:
+                continue
+            key_item = self.tagTableWidget.item( i, 0 )
+            the_key = key_item.text()
+            tag_dict[the_key] = value_text
+        return self.part_id, self.nameLineEdit.text().strip(), self.englishNameLineEdit.text().strip(), \
+               self.descriptionLineEdit.text().strip(), self.commentTextEdit.toPlainText().strip(), tag_dict
+
 
 class PartInfoPanelInMainWindow( QFrame ):
 
     def __init__(self, parent=None, work_folder=None, database=None):
+        # 当前被选定的 part
+        self.__current_part: Part = None
         self.__work_folder = work_folder
         self.__parent = parent
-        self.__database = database
+        self.__database: DatabaseHandler = database
         self.__vault = None
         self.__current_select_tag = None
+        # 本地文件的存放路径，当为 None 时，表示不访问本地图纸。
+        self.__local_path = None
         super().__init__( parent )
         self.partInfo = PartInfoPanel( parent )
         self.imageLabel = QLabel( self )
         self.relationFilesList = QListWidget( self )
 
+        """ 操作单元信息的按钮 """
+        self.__save_to_part_button = QPushButton( '保存' )
+        self.__copy_part_button = QPushButton( '复制' )
+
         """ 标签清单的右键菜单 """
         self.__menu_4_tag_list = QMenu( parent=self.partInfo.tagListWidget )
         self.__del_tag_from_list = self.__menu_4_tag_list.addAction( '删除' )
+        self.__modify_tag_name_in_list = self.__menu_4_tag_list.addAction( '修改' )
         self.__copy_tag_name_from_list = self.__menu_4_tag_list.addAction( '复制标签文本' )
         self.__del_tag_from_list.triggered.connect( self.__remove_tag_from_part )
+        self.__modify_tag_name_in_list.triggered.connect( self.__modify_tag_in_part )
         self.__copy_tag_name_from_list.triggered.connect( self.__copy_tag_name )
-        # self.__menu_4_relation_file_list = QMenu( parent=self.relationFilesList )
-        # self.__do_single_file_output_menu = self.__menu_4_relation_file_list.addAction( '输出' )
-        # self.__do_single_file_output_menu.triggered.connect( self.__do_single_file_output )
+
+        """ 一些按钮的响应语句 """
+        self.__save_to_part_button.clicked.connect( self.__save_to_part_handler )
+        self.__copy_part_button.clicked.connect( self.__copy_part_handler )
+
+        """ 一些文本框的响应语句 """
+        self.partInfo.nameLineEdit.textEdited.connect( lambda: self.__save_to_part_button.setEnabled( True ) )
+        self.partInfo.englishNameLineEdit.textEdited.connect( lambda: self.__save_to_part_button.setEnabled( True ) )
+        self.partInfo.descriptionLineEdit.textEdited.connect( lambda: self.__save_to_part_button.setEnabled( True ) )
+        self.partInfo.commentTextEdit.textChanged.connect( lambda: self.__save_to_part_button.setEnabled( True ) )
+
         self.__setup_ui()
 
         """ 额外的参数传递变量 """
         self.__output_filename = ''
 
     def __setup_ui(self):
-        hbox = QHBoxLayout( self )
-        hbox.addWidget( self.partInfo )
+        h_box = QHBoxLayout( self )
+        splitter = QSplitter( Qt.Horizontal, self )
+        splitter.addWidget( self.partInfo )
+
+        v_splitter = QSplitter( Qt.Vertical, self )
+        self.__save_to_part_button.setFixedSize( 80, 30 )
+        self.__copy_part_button.setFixedSize( 80, 30 )
+        self.__save_to_part_button.setEnabled( False )
+        self.__copy_part_button.setEnabled( False )
+        v_splitter.addWidget( self.__save_to_part_button )
+        v_splitter.addWidget( self.__copy_part_button )
+        splitter.addWidget( v_splitter )
+
         self.imageLabel.setFixedSize( 200, 200 )
         self.imageLabel.setAlignment( Qt.AlignCenter )
-        hbox.addWidget( self.imageLabel, 0, Qt.AlignRight )
-        hbox.addWidget( self.relationFilesList )
+        splitter.addWidget( self.imageLabel )
+        splitter.addWidget( self.relationFilesList )
         self.relationFilesList.itemDoubleClicked.connect( self.__open_file )
         self.relationFilesList.itemSelectionChanged.connect( self.__linked_file_changed )
-        self.setLayout( hbox )
+        h_box.addWidget( splitter )
+        self.setLayout( h_box )
 
         self.partInfo.tagListWidget.setContextMenuPolicy( Qt.CustomContextMenu )
         self.partInfo.tagListWidget.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
-        # self.relationFilesList.setContextMenuPolicy( Qt.CustomContextMenu )
-        # self.relationFilesList.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
+
+    def __save_to_part_handler(self):
+        """ 点击保存时的响应语句 """
+        the_name = self.partInfo.nameLineEdit.text().strip()
+        the_english_name = self.partInfo.englishNameLineEdit.text().strip()
+        the_description = self.partInfo.descriptionLineEdit.text().strip()
+        the_comment = self.partInfo.commentTextEdit.toPlainText().strip()
+        if the_name == self.__current_part.name and the_english_name == self.__current_part.english_name \
+                and the_description == self.__current_part.description and the_comment == self.__current_part.comment:
+            self.__save_to_part_button.setEnabled( False )
+            return
+        # 进行实质上的修改
+        self.__database.update_part_info( self.__current_part.get_part_id(), the_name, the_english_name,
+                                          the_description, the_comment )
+        if self.__vault is not None:
+            # 更新PDM的数据
+            try:
+                ifs = self.__database.get_part_info_quick( self.__current_part.get_part_id() )
+                if ifs is None:
+                    raise Exception( '居然没找到响应的Part！' )
+                ifs.insert( 3, the_english_name )
+                linked_file = self.__current_part.get_related_files( self.__database )
+                if len( linked_file ) > 0:
+                    file_s = []
+                    for k in linked_file.keys():
+                        file_s.extend( linked_file[k] )
+                    _thread.start_new_thread( self.__vault.UpdateFileInPdm, (file_s, ifs) )
+            except Exception as ex:
+                QMessageBox.critical( self.__parent, '更新PDM数据时失败', str( ex ), QMessageBox.Yes )
+        self.__save_to_part_button.setEnabled( False )
+
+    def __copy_part_handler(self):
+        """ 点击复制时的响应语句 """
+        pass
+
+    def set_part_operate_button_status(self, which_button, status):
+        """
+        从外部设置PART信息操作按钮的状态
+        :param which_button: 哪一个按钮？save - 1; copy - 2。
+        :param status: enable的状态。
+        :return:
+        """
+        if which_button == 1:
+            button = self.__save_to_part_button
+        elif which_button == 2:
+            button = self.__copy_part_button
+        else:
+            button = None
+
+        if button is not None:
+            button.setEnabled( status )
 
     def __on_custom_context_menu_requested(self, pos):
         if self.sender() == self.partInfo.tagListWidget:
@@ -135,6 +284,14 @@ class PartInfoPanelInMainWindow( QFrame ):
             else:
                 self.__output_filename = ''
 
+    def set_use_local_pdf_first(self, local_path=None):
+        """
+        设置双击图纸时，是否优先使用本地的PDF文件
+        :param local_path: 本地图纸的存放路径
+        :return:
+        """
+        self.__local_path = local_path
+
     def __copy_tag_name(self):
         the_tag: Tag = self.__current_select_tag.data( Qt.UserRole )
         clipboard = QApplication.clipboard()
@@ -151,10 +308,12 @@ class PartInfoPanelInMainWindow( QFrame ):
         tag_id = the_tag.tag_id
         self.__database.del_tag_from_part( tag_id, self.partInfo.part_id )
 
-    # def __do_single_file_output(self):
-    #     print( '输出：' + self.__output_filename )
+    def __modify_tag_in_part(self):
+        # TODO 修改Part里面某个标签名
+        pass
 
     def set_part_info(self, part, database):
+        self.__current_part = part
         self.partInfo.set_part_info( part )
         files_list = database.get_files_2_part( part.get_part_id() )
         self.relationFilesList.setCurrentItem( None )
@@ -171,12 +330,31 @@ class PartInfoPanelInMainWindow( QFrame ):
         self.__current_select_tag = None
 
     def __open_file(self, item: QListWidgetItem):
-        file_name = item.text()
-        full_path = '{0}\\{1}'.format( self.__work_folder, file_name )
-        if os.path.exists( full_path ):
-            os.startfile( full_path )
-        else:
-            QMessageBox.information( self.__parent, '无法打开', '{0}文件不存在'.format( full_path ), QMessageBox.Ok )
+        try:
+            file_name = item.text()
+            suffix = os.path.splitext( file_name )[1]
+            if suffix.upper() == '.SLDDRW':
+                if self.__local_path is not None and os.path.exists( self.__local_path ):
+                    # 进行本地PDF文件的查找
+                    part_num = self.__current_part.part_id
+                    the_file = []
+                    dirs = os.listdir( self.__local_path )
+                    for f in dirs:
+                        if f.startswith( part_num ) and os.path.splitext( f )[1].upper() == '.PDF':
+                            the_file.append( f )
+                    if len( the_file ) > 0:
+                        the_file.sort( reverse=True )
+                        item, ok = QInputDialog.getItem( self, '选择图纸', '文件名：', the_file, 0, False )
+                        if ok and item:
+                            os.startfile( f'{self.__local_path}\\{item}' )
+                        return
+            full_path = '{0}\\{1}'.format( self.__work_folder, file_name )
+            if os.path.exists( full_path ):
+                os.startfile( full_path )
+            else:
+                QMessageBox.information( self.__parent, '无法打开', '{0}文件不存在'.format( full_path ), QMessageBox.Ok )
+        except Exception as e:
+            QMessageBox.critical( self.__parent, '打开时出错', str( e ), QMessageBox.Ok )
 
     def set_vault(self, vault):
         self.__vault = vault
@@ -510,10 +688,11 @@ class PartTablePanel( QFrame ):
 
     def __init__(self, parent=None, database=None):
         super().__init__( parent )
-        self.__database = database
+        self.__database: DatabaseHandler = database
         self.__parent = parent
         self.__columns = None
         self.__display_range = []
+        self.__show_storage = False  # 显示仓储信息
         self.idLineEdit = QLineEdit( self )
         self.nameComboBox = QComboBox( self )
         self.nameLineEdit = QLineEdit( self )
@@ -588,6 +767,9 @@ class PartTablePanel( QFrame ):
     def set_display_columns(self, columns):
         self.__columns = columns
 
+    def set_storage_shown_flags(self, is_shown):
+        self.__show_storage = is_shown
+
     def get_current_selected_parts(self):
         """ 获取所有选择了的part的ID """
         items = self.partList.selectedItems()
@@ -652,9 +834,11 @@ class PartTablePanel( QFrame ):
                 else:
                     parts.extend( tt )
         else:
-            parts = Part.get_parts( self.__database, part_id=part_id,
-                                    name=name, english_name=english_name, description=description )
-        self.set_list_data( parts )
+            # parts = Part.get_parts( self.__database, part_id=part_id,
+            #                         name=name, english_name=english_name, description=description )
+            parts = self.__database.get_parts_2( part_id=part_id, name=name, english_name=english_name,
+                                                 description=description, column_config=self.__columns[0] )
+        self.set_list_data_2( parts )
 
     def set_list_header_4_statistics(self, show_price=False):
         # 为统计进行一些准备
@@ -727,13 +911,113 @@ class PartTablePanel( QFrame ):
             del unit_price_item
             del sum_price_item
 
+    def set_list_data_2(self, part_table_data):
+        """
+        使用 get_parts_2 函数的新一代 list_data
+        :param part_table_data:  相对于 set_list_data 包含更多的数据，是一个纯粹的二维数组
+        :return:
+        """
+        a_parts = []  # 接下来要计算的新Parts List
+        addition_storage_data = []  # 用于存储额外的仓储数据，与 a_part 对应
+        if self.__show_storage:
+            has_calculated = []
+            for p in part_table_data:
+                if p[0] in has_calculated:
+                    continue
+                n_p = self.__database.get_storing( part_id=p[0] )
+                if n_p is not None:
+                    for pp in n_p:
+                        if pp[2] > 0:
+                            has_calculated.append( p[0] )
+                            a_parts.append( p )
+                            addition_storage_data.append( pp[1:] )
+        else:
+            a_parts.extend( part_table_data )
+        self.partList.setCurrentItem( None )
+        columns_name = self.__columns[1]
+        column_index = len( columns_name )
+        if self.__show_storage:
+            columns_name_with_storage_info = columns_name[:]
+            columns_name_with_storage_info.extend( ['仓位', '数量', '最近修改日期', '单价'] )
+            self.partList.setColumnCount( len( columns_name_with_storage_info ) )
+            self.partList.setHorizontalHeaderLabels( list( columns_name_with_storage_info ) )
+        else:
+            self.partList.setColumnCount( len( columns_name ) )
+            self.partList.setHorizontalHeaderLabels( list( columns_name ) )
+        r_number = len( a_parts ) if a_parts is not None else 0
+        self.partList.setRowCount( r_number )
+        self.__sort_flags.clear()
+        if r_number < 1:
+            return
+
+        index = 0
+        for p in a_parts:
+            id_item = QTableWidgetItem( '{:08d}'.format( p[0] ) )
+            id_item.setData( Qt.UserRole, p[0] )
+            self.partList.setItem( index, 0, id_item )
+            del id_item
+
+            for i in range( 1, column_index ):
+                item = QTableWidgetItem( p[i] )
+                self.partList.setItem( index, i, item )
+                del item
+            # 显示仓储的数据
+            if self.__show_storage:
+                position = addition_storage_data[index][0]
+                if position is not None and len( position ) > 0:
+                    position_item = QTableWidgetItem( position )
+                    self.partList.setItem( index, column_index, position_item )
+                    del position_item
+                    qty_item = QTableWidgetItem()
+                    qty_item.setData( Qt.DisplayRole, addition_storage_data[index][1] )
+                    self.partList.setItem( index, column_index + 1, qty_item )
+                    del qty_item
+                    record_date_item = QTableWidgetItem()
+                    record_date_item.setData( Qt.DisplayRole, addition_storage_data[index][2].strftime( "%Y/%m/%d" ) )
+                    self.partList.setItem( index, column_index + 2, record_date_item )
+                    del record_date_item
+                    unit_price_item = QTableWidgetItem()
+                    the_price = None
+                    unit_price = addition_storage_data[index][3]
+                    if unit_price is not None:
+                        the_price = float( unit_price )
+                    unit_price_item.setData( Qt.DisplayRole, the_price )
+                    self.partList.setItem( index, column_index + 3, unit_price_item )
+                    del unit_price_item
+            index += 1
+        QTableWidget.resizeColumnsToContents( self.partList )
+        QTableWidget.resizeRowsToContents( self.partList )
+        self.partList.clearSelection()
+        self.partList.horizontalHeader().setSectionsClickable( True )
+        self.partList.horizontalHeader().setSortIndicatorShown( True )
+
     def set_list_data(self, parts):
+        a_parts = []  # 接下来要计算的新Parts List
+        if self.__show_storage:
+            has_calculated = []
+            for p in parts:
+                if p.part_id in has_calculated:
+                    continue
+                n_p = p.get_storing_data( self.__database )
+                if n_p is not None:
+                    for pp in n_p:
+                        if pp.qty > 0:
+                            has_calculated.append( pp.part_id )
+                            a_parts.append( pp )
+        else:
+            a_parts.extend( parts )
         self.partList.setCurrentItem( None )
         columns_flags = self.__columns[0]
         columns_name = self.__columns[1]
-        self.partList.setColumnCount( len( columns_name ) )
-        self.partList.setHorizontalHeaderLabels( list( columns_name ) )
-        r_number = len( parts ) if parts is not None else 0
+        if self.__show_storage:
+            columns_name_with_storage_info = columns_name[:]
+            columns_name_with_storage_info.extend( ['仓位', '数量', '最近修改日期', '单价'] )
+            self.partList.setColumnCount( len( columns_name_with_storage_info ) )
+            self.partList.setHorizontalHeaderLabels( list( columns_name_with_storage_info ) )
+        else:
+            self.partList.setColumnCount( len( columns_name ) )
+            self.partList.setHorizontalHeaderLabels( list( columns_name ) )
+        r_number = len( a_parts ) if a_parts is not None else 0
         self.partList.setRowCount( r_number )
         self.__sort_flags.clear()
         if r_number < 1:
@@ -741,7 +1025,7 @@ class PartTablePanel( QFrame ):
         index = 0
         the_begin_column_index = 0
         other_column_count = len( columns_flags[5:-1] )
-        for p in parts:
+        for p in a_parts:
             column_index = 0
             if columns_flags[0] == 1:
                 id_item = QTableWidgetItem( p.part_id )
@@ -778,6 +1062,30 @@ class PartTablePanel( QFrame ):
                 comment_item = QTableWidgetItem( p.comment )
                 self.partList.setItem( index, column_index, comment_item )
                 del comment_item
+                column_index += 1
+
+            # 显示仓储的数据
+            if self.__show_storage:
+                if p.position is not None and len( p.position ) > 0:
+                    position_item = QTableWidgetItem( p.position )
+                    self.partList.setItem( index, column_index, position_item )
+                    del position_item
+                    qty_item = QTableWidgetItem()
+                    qty_item.setData( Qt.DisplayRole, p.qty )
+                    self.partList.setItem( index, column_index + 1, qty_item )
+                    del qty_item
+                    record_date_item = QTableWidgetItem()
+                    record_date_item.setData( Qt.DisplayRole, p.last_storing_date.strftime( "%Y/%m/%d" ) )
+                    self.partList.setItem( index, column_index + 2, record_date_item )
+                    del record_date_item
+                    unit_price_item = QTableWidgetItem()
+                    the_price = None
+                    if p.unit_price is not None:
+                        the_price = float( p.unit_price )
+                    unit_price_item.setData( Qt.DisplayRole, the_price )
+                    self.partList.setItem( index, column_index + 3, unit_price_item )
+                    del unit_price_item
+                    column_index += 4
             index += 1
         QTableWidget.resizeColumnsToContents( self.partList )
         QTableWidget.resizeRowsToContents( self.partList )
@@ -792,7 +1100,7 @@ class PartTablePanel( QFrame ):
             for i in columns_flags[5:-1]:
                 r = self.__database.get_tags( tag_id=i )
                 col_names.append( r[0][1] )
-            self.fill_part_info_thread.set_data( col_names, the_begin_column_index, parts )
+            self.fill_part_info_thread.set_data( col_names, the_begin_column_index, a_parts )
             self.fill_part_info_thread.start()
         self.partList.horizontalHeader().setSectionsClickable( False )
         self.partList.horizontalHeader().setSortIndicatorShown( False )
@@ -853,9 +1161,18 @@ class FillPartInfo( QThread ):
         int - 行号
         int - 列号
         str - 数值
+    fill_one_storing_signal 填写一行的仓储信息
+        int - 行号
+        int - 起始列号（接下来要填充四列）
+        str - 仓位
+        float - 数量
+        datetime - 最近修改日期
+        Decimal - 单价
     """
     all_cells_done_signal = pyqtSignal( bool )
     one_cell_2_fill_signal = pyqtSignal( int, int, str )
+
+    # fill_one_storing_signal = pyqtSignal( int, int, str, float, datetime, Decimal )
 
     def __init__(self, database):
         super().__init__()
@@ -866,12 +1183,14 @@ class FillPartInfo( QThread ):
         self.__stop_flag = False
         self.__db_type = database[0]
         self.__database = database[1]
+        self.__do_get_storing = None
 
-    def set_data(self, columns_name, column_index, parts, ):
+    def set_data(self, columns_name, column_index, parts, get_storing=False):
         self.__c_n = columns_name
         self.__c_i = column_index
         self.__parts = parts
         self.__stop_flag = False
+        self.__do_get_storing = get_storing
 
     def stop(self):
         self.__stop_flag = True
@@ -888,6 +1207,9 @@ class FillPartInfo( QThread ):
                     ss = p.get_specified_tag( self.__database, j )
                     self.one_cell_2_fill_signal.emit( index, cc, ss )
                     cc += 1
+                if self.__do_get_storing:
+                    # 获取仓储信息并填写
+                    pass
                 index += 1
         except Exception as e:
             print( 'FillPartInfo Error: ' + str( e ) )

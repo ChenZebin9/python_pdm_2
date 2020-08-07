@@ -74,6 +74,7 @@ if __name__ == '__main__':
         try:
             init_config = InitConfig()
             mode = config.getint( 'Config', 'mode' )
+            local_folder = config.get( 'Offline', 'local_folder' )
             work_folder = None
             user_name = None
             vault = None
@@ -95,7 +96,7 @@ if __name__ == '__main__':
                     work_folder = vault.GetRootFolder()
                     database_handler = MssqlHandler( *database_setting[1:] )
                 except:
-                    print( '无法进入在线登陆模式。' )
+                    QMessageBox.warning(None, '', '无法在线登录！将使用离线方式。')
                     vault = None
                     mode = 1
             if mode == 1:
@@ -111,7 +112,8 @@ if __name__ == '__main__':
                     database_setting = Get_mssql_config( config, lock_mode=1 )
                     database_handler = MssqlHandler( *database_setting[1:] )
             myWin = NPartMainWindow( database=database_handler, username=user_name,
-                                     work_folder=work_folder, pdm_vault=vault, mode=mode )
+                                     work_folder=work_folder, pdm_vault=vault, mode=mode,
+                                     local_folder=local_folder)
             myWin.add_config_and_init( solidWorks_app, init_config.db_name )
             myWin.show()
             sys.exit( app.exec_() )
@@ -133,7 +135,7 @@ if __name__ == '__main__':
             QMessageBox.warning( None, '启动时出错', str( ex ) )
             sys.exit( -1 )
     elif func_index == 3:
-        """ 配料管理 """
+        """ 采购管理 """
         pass
     elif func_index == 4:
         from ui3 import NCreatePickBillDialog

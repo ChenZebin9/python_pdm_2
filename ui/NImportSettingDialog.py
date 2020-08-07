@@ -100,6 +100,8 @@ class NImportSettingDialog( QDialog, Ui_Dialog ):
                             nnn = nn[1].lstrip( '0' )
                             if len( nnn ) < 1:
                                 continue
+                        else:
+                            nnn = f'{nn[1]}'
                     else:
                         nnn = nn.lstrip( '0' )
                     p_id = int( nnn.split( '.' )[0] )

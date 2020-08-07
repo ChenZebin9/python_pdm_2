@@ -42,13 +42,13 @@ class ExcelHandler3( ExcelHandler ):
         data_s = {}
         for col in sh.columns:
             first_cell = col[0]
-            if first_cell.protection.hidden:
+            if sh.column_dimensions[first_cell.column_letter].hidden:
                 continue
             col_name = first_cell.value
             columns.append( col_name )
             column_data = []
             for c in col[1:]:
-                if c.protection.hidden:
+                if sh.row_dimensions[c.row].hidden:
                     continue
                 vv = c.value
                 if vv is None:

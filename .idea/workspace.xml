@@ -1,39 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="截至2019年12月2日的一系列改进，主要有：&#10;1. 完善产品管理，能查看销售、售后记录；&#10;2. 完善产品的管理功能；&#10;3. 增加创建售后记录的功能。">
+    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="截至2020年2月8日的更改，接下来要增加配料管理功能，进行备份。">
+      <change afterPath="$PROJECT_DIR$/Com.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/Analysis-00.toc" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/COLLECT-00.toc" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/EXE-00.toc" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/Entry.exe.manifest" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/PDM_2.exe" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/PKG-00.pkg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/PKG-00.toc" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/PYZ-00.pyz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/PYZ-00.toc" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/base_library.zip" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/run.exe.sdzbjgrz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/warn-Entry.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/Entry/xref-Entry.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/db/jl_erp.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pyinstaller_setup.bat" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/CreatePartDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/CreatePartDialog.ui" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/ListDisplayDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/ListDisplayDialog.ui" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/NCreatePartDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/NListDisplayDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui2/NProductSoldDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui2/ProductSoldDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui2/ProductSoldDialog.ui" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/CreateRequirementDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/CreateRequirementDialog.ui" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/HandleEntranceDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/HandleEntranceDialog.ui" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/HandlePickMaterialDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/HandlePickMaterialDialog.ui" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/HandleRequirementDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/HandleRequirementDialog.ui" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/NCreateRequirementDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/NHandleEntranceDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/NHandlePickMaterialDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui3/NHandleRequirementDialog.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/utils/temp_import_storage_data.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dictionaries/chen.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/chen.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DataImporter.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataImporter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Entry.pyw" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.pyw" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NCreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NEntranceDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NEntranceDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NPartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NPartMainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/NProductMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Entry.pyw" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Entry.spec" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.spec" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Part.py" beforeDir="false" afterPath="$PROJECT_DIR$/Part.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UiFrame.py" beforeDir="false" afterPath="$PROJECT_DIR$/UiFrame.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/DatabaseHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/DatabaseHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/MssqlHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/MssqlHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/ProductDatasHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/ProductDatasHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/SqliteHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/SqliteHandler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/product_datas.db" beforeDir="false" afterPath="$PROJECT_DIR$/db/product_datas.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/sqlite_2_mssql.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/produce_data_exchange.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/fill_zderp_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/fill_zderp_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dlls/EpdmLib.dll" beforeDir="false" afterPath="$PROJECT_DIR$/dlls/EpdmLib.dll" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/excel/ExcelHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/excel/ExcelHandler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/file_version_info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/file_version_info.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pdm_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/pdm_config.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rt_config.db" beforeDir="false" afterPath="$PROJECT_DIR$/rt_config.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/CreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/CreatePickBillDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/EntranceDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/EntranceDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/EntranceDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/EntranceDialog.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/ImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/ImportSettingDialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui/NImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NImportSettingDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/NProductInfoDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/NProductInfoDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/NPartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NPartMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/PartColumnSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartColumnSettingDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductInfoDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductInfoDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductInfoDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductInfoDialog.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductMainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductMainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductServiceRecordDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ProductServiceRecordDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/SetDefaultTagDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/SetDefaultTagDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui2/NProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/NProductMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui2/ProduceMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProduceMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui2/ProductInfoDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductInfoDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui2/ProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui2/ProductMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductMainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -56,8 +97,26 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="ROOT_SYNC" value="DONT_SYNC" />
+    <favorite-branches>
+      <branch-storage>
+        <map>
+          <entry type="LOCAL">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="StorageManagement" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </favorite-branches>
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
   <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
@@ -73,7 +132,7 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/ui2" />
-    <property name="settings.editor.selected.configurable" value="reference.settingsdialog.IDE.editor.colors" />
+    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
   </component>
   <component name="PyDebuggerOptionsProvider">
     <option name="myPyQtBackend" value="PyQt5" />
@@ -116,7 +175,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Entry.pyw" />
+      <option name="SCRIPT_NAME" value="D:\weiyun\OneDrive\Program\Python\python_pdm_2\Entry.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -125,7 +184,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="NProduceMainWindow" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="NCreateRequirementDialog" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="python_pdm_2" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -133,11 +192,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/ui2" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/ui3" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/ui2/NProduceMainWindow.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/ui3/NCreateRequirementDialog.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -146,12 +205,65 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="fill_zderp_data" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="python_pdm_2" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/db" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/db/fill_zderp_data.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="setup" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="python_pdm_2" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/setup.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.Entry" />
+      <item itemvalue="Python.NCreateRequirementDialog" />
+      <item itemvalue="Python.setup" />
+      <item itemvalue="Python.fill_zderp_data" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.Entry" />
-        <item itemvalue="Python.NProduceMainWindow" />
+        <item itemvalue="Python.fill_zderp_data" />
+        <item itemvalue="Python.setup" />
+        <item itemvalue="Python.NCreateRequirementDialog" />
       </list>
     </recent_temporary>
+  </component>
+  <component name="StructureViewFactory">
+    <option name="ACTIVE_ACTIONS" value=",ALPHA_COMPARATOR,SHOW_INHERITED" />
   </component>
   <component name="SvnConfiguration">
     <configuration />
@@ -304,17 +416,15 @@
       <option name="project" value="LOCAL" />
       <updated>1575354214306</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="截至2020年2月8日的更改，接下来要增加配料管理功能，进行备份。">
+      <created>1581170910566</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1581170910566</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
-  </component>
-  <component name="TodoView" selected-index="1">
-    <todo-panel id="selected-file">
-      <is-autoscroll-to-source value="true" />
-    </todo-panel>
-    <todo-panel id="all">
-      <are-packages-shown value="true" />
-      <is-autoscroll-to-source value="true" />
-    </todo-panel>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="1" />
@@ -388,16 +498,8 @@
     <MESSAGE value="截至2019年11月2日的一系列改进，主要有：&#10;1.主要数据库将转向原有的MSSQL；&#10;2.增加了中德ERP物料的信息。" />
     <MESSAGE value="截至2019年12月2日的一系列改进，主要有：&#10;1. 完善产品管理，能查看销售、售后记录；&#10;2. 完善产品的管理功能；&#10;3. 增加创建售后记录的功能。" />
     <MESSAGE value="采用openpyxl作为处理Excel的模块。" />
-    <option name="LAST_COMMIT_MESSAGE" value="采用openpyxl作为处理Excel的模块。" />
-  </component>
-  <component name="debuggerHistoryManager">
-    <expressions id="watch">
-      <expression>
-        <expression-string>self.__multi_select</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-    </expressions>
+    <MESSAGE value="截至2020年2月8日的更改，接下来要增加配料管理功能，进行备份。" />
+    <option name="LAST_COMMIT_MESSAGE" value="截至2020年2月8日的更改，接下来要增加配料管理功能，进行备份。" />
   </component>
   <component name="masterDetails">
     <states>

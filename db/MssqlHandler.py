@@ -1,8 +1,605 @@
 from db.DatabaseHandler import *
 import pymssql
+from decimal import Decimal
+import Com
 
 
 class MssqlHandler( DatabaseHandler ):
+
+    def cancel_supply_operation(self, record_id, cancel_qty):
+        """
+        将需求处理操作（JJStorage.SupplyOperationRecord）删除，并更新相关的物料需求（JJStorage.KbnSupplyItem）
+        :param record_id: 需求处理操作编号
+        :param cancel_qty: 要作废的数量
+        :return:
+        """
+        sql = f'SELECT [Done], [Qty], [DoneQty], [LinkItem] FROM [JJStorage].[SupplyOperationRecord] WHERE [Id]={record_id}'
+        self.__c.execute( sql )
+        r = self.__c.fetchone()
+        qty = float( r[1] )
+        done_qty = float( r[2] )
+        done_qty += cancel_qty
+        done = 1 if done_qty >= qty else 0
+        item_id = r[3]
+        sql = f'UPDATE [JJStorage].[SupplyOperationRecord] SET [Done]={done}, [DoneQty]={done_qty} WHERE [Id]={record_id}'
+        self.__c.execute( sql )
+        self.cancel_material_requirement( item_id, cancel_qty, change_doing=True )
+
+    def cancel_material_requirement(self, item_id, cancel_qty, change_doing=False):
+        """
+        将物料需求（JJStorage.KbnSupplyItem）作废
+        :param change_doing: 是否改变doing字段的值
+        :param cancel_qty: float 要作废的数量
+        :param item_id: 需求编号
+        :return:
+        """
+        sql = f'SELECT [DoneQty], [DoingQty] FROM [JJStorage].[KbnSupplyItem] WHERE [ItemId]={item_id}'
+        self.__c.execute( sql )
+        r = self.__c.fetchone()
+        doing_qty = float( r[1] )
+        update_doing_qty_str = ''
+        if change_doing:
+            update_doing_qty_str = f', [DoingQty]={doing_qty - cancel_qty} '
+        all_done_qty = float( r[0] ) + cancel_qty
+        sql = f'UPDATE [JJStorage].[KbnSupplyItem] SET [DoneQty]={all_done_qty}{update_doing_qty_str} ' \
+              f'WHERE [ItemId]={item_id}'
+        self.__c.execute( sql )
+        self.__conn.commit()
+
+    def create_put_back_material_record(self, bill_name, operator, when, data):
+        """
+        创建退料的操作数据
+        :param when: 日期
+        :param bill_name: 单号
+        :param operator: 操作者
+        :param data: 数据 [退料所倚靠的单号]
+        :return:
+        """
+        # 创建退料单
+        sql = f'INSERT INTO [JJStorage].[OperationBill] VALUES (\'{bill_name}\', \'{operator}\', \'{when}\', ' \
+              f'\'退料单\', 0)'
+        self.__c.execute( sql )
+        # 创建退料单的项目
+        sql = 'SELECT MAX([Id]) FROM [JJStorage].[SupplyOperationRecord]'
+        self.__c.execute( sql )
+        r = self.__c.fetchone()
+        next_record_id = r[0] + 1
+        for d in data:
+            sql = f'SELECT [LinkItem], [DoneQty], [Comment] FROM [JJStorage].[SupplyOperationRecord] WHERE [Id]={d}'
+            self.__c.execute( sql )
+            r = self.__c.fetchone()
+            other_data_dict = Com.str_2_dict( r[2] )
+            other_data_dict['RollBack'] = 'Y'
+            # 更新原有的纪录
+            new_comment = Com.dict_2_str( other_data_dict )
+            sql = f'UPDATE [JJStorage].[SupplyOperationRecord] SET [Comment]=\'{new_comment}\' WHERE [Id]={d}'
+            self.__c.execute( sql )
+            # 创建新的数据
+            other_data_dict.pop( 'RollBack' )
+            other_data_dict['OriginalRecord'] = f'{d}'
+            price = 0.0
+            price_need_update = False
+            if 'Price' in other_data_dict:
+                price_need_update = True
+                price = float( other_data_dict['Price'] )
+                price = -price
+                other_data_dict['Price'] = '%.2f' % price
+            new_comment = Com.dict_2_str( other_data_dict )
+            qty = float( -r[1] )
+            sql = f'INSERT INTO [JJStorage].[SupplyOperationRecord] VALUES ({next_record_id}, 1, \'{when}\', ' \
+                  f'\'{operator}\', 14, {r[0]}, {qty}, \'{bill_name}\', {qty}, \'{new_comment}\')'
+            self.__c.execute( sql )
+            # 更新仓储信息
+            sql = f'SELECT [PartId] FROM [JJStorage].[KbnSupplyItem] WHERE [ItemId]={r[0]}'
+            self.__c.execute( sql )
+            r = self.__c.fetchone()
+            p_id = r[0]
+            position = other_data_dict['FromStorage']
+            # 获取库存信息
+            get_storing = f'SELECT [Qty], [UnitPrice] FROM [JJStorage].[Storing] ' \
+                          f'WHERE [PartId]={p_id} AND [Position]=\'{position}\''
+            self.__c.execute( get_storing )
+            r = self.__c.fetchone()
+            qty_info = float( r[0] )
+            unit_price = float( r[1] )
+            if price_need_update:
+                updated_price = (qty_info * unit_price + price) / (qty_info + qty)
+            else:
+                updated_price = unit_price
+            # 更新仓库库存
+            update_storing = f'UPDATE [JJStorage].[Storing] ' \
+                             f'SET [Qty]={qty_info - qty}, [LastRecordDate]=\'{when}\', [UnitPrice]={updated_price} ' \
+                             f'WHERE [PartId]={p_id} AND [Position]=\'{position}\''
+            self.__c.execute( update_storing )
+            next_record_id += 1
+        self.__conn.commit()
+
+    def get_pick_material_record(self, begin_date, end_date):
+        """
+        获取领料记录
+        :param begin_date: 起始日期
+        :param end_date: 结束日期
+        :return: [BillName, ItemId, PartId, ErpId, DoingDate, DoneQty, Comment, RecordId]
+        """
+        sql = 'SELECT r.[BillName], i.[ItemId], i.[PartId], i.[ErpId], r.[DoingDate], ' \
+              'r.[DoneQty], r.[Comment], r.[Id] AS [RecordId] FROM [JJStorage].[SupplyOperationRecord] AS r ' \
+              'INNER JOIN [JJStorage].[KbnSupplyItem] AS i ON r.[LinkItem]=i.[ItemId] ' \
+              'WHERE r.[Process]=14'
+        sql += f' AND r.[DoingDate]>=\'{begin_date}\' AND r.[DoingDate]<=\'{end_date}\''
+        self.__c.execute( sql )
+        rs = self.__c.fetchall()
+        if len( rs ) < 1:
+            return None
+        return rs
+
+    def get_part_info_quick(self, part_id):
+        """
+        利用 PartDetail2 视图，快速获取PART的信息
+        :param part_id:
+        :return:[name, description, brand&standard, foreign_code, erp_code, comment, type]
+        """
+        sql = f'SELECT [name], [description], [brand], [standard], [foreign_code], [erp_code], [Comment], [type]' \
+              f' FROM [JJPart].[PartDetail2] WHERE [id]={part_id}'
+        self.__c.execute( sql )
+        one_row = self.__c.fetchone()
+        if one_row is not None:
+            temp = self.__null_2_empty_in_list( one_row )
+            if len( temp[3] ) < 1:
+                description3 = f'{temp[2]} {temp[3]}'.strip()
+            else:
+                description3 = temp[2]
+            result = temp[:2]
+            result.append( description3 )
+            result.extend( temp[4:] )
+            return result
+        else:
+            return None
+
+    @staticmethod
+    def __null_2_empty_in_list(the_original_list):
+        """ 将列表中的 None 全部转换为 str.empty """
+        the_result = []
+        for s in the_original_list:
+            if s is None:
+                the_result.append( '' )
+            else:
+                the_result.append( s )
+        return the_result
+
+    def update_part_info(self, part_id, name, english_name, description, comment):
+        if len( description ) < 1:
+            real_description = 'null'
+        else:
+            real_description = f'\'{description}\''
+        if len( comment ) < 1:
+            real_comment = 'null'
+        else:
+            real_comment = f'\'{comment}\''
+        # 更新单元
+        create_sql = f'UPDATE [JJPart].[Part] SET [Description1]=\'{name}\', [Description2]={real_description},' \
+                     f' [Description4]=\'{english_name}\', [Comment]={real_comment} WHERE [PartID]={part_id}'
+        self.__c.execute( create_sql )
+        self.__conn.commit()
+
+    def create_a_new_part(self, part_id, name, english_name, description, comment, tag_dict):
+        if len( description ) < 1:
+            real_description = 'null'
+        else:
+            real_description = f'\'{description}\''
+        if len( comment ) < 1:
+            real_comment = 'null'
+        else:
+            real_comment = f'\'{comment}\''
+        # 创建单元
+        create_sql = f'UPDATE [JJPart].[Part] SET [StatusType]=100, [Description1]=\'{name}\', ' \
+                     f'[Description2]={real_description}, [Description4]=\'{english_name}\', ' \
+                     f'[Comment]={real_comment} WHERE [PartID]={part_id}'
+        self.__c.execute( create_sql )
+        self.__conn.commit()
+        # 创建标签
+        for k in tag_dict:
+            tag_list = self.get_tags( name=k )
+            if len( tag_list ) > 0:
+                parent_tag_id = tag_list[0][0]
+            else:
+                raise Exception( '没有所填写的父标签值。' )
+            tag_list = self.get_tags( name=tag_dict[k], parent_id=parent_tag_id )
+            if len( tag_list ) < 1:
+                tag_id = self.create_one_tag( tag_dict[k], parent_tag_id )
+            else:
+                tag_id = tag_list[0][0]
+            self.set_tag_2_part( tag_id, part_id )
+            if k == '类别':
+                get_type_sql = f'SELECT [ID], [GroupNr] FROM [JJPart].[PartType] WHERE [TypeName]=\'{tag_dict[k]}\''
+                self.__c.execute( get_type_sql )
+                r = self.__c.fetchone()
+                group_c = f'{r[1]:02d}0'
+                update_part_type = f'UPDATE [JJPart].[Part] SET [PartType]={r[0]}, [PartGroup]=\'{group_c}\' ' \
+                                   f'WHERE [PartID]={part_id}'
+                self.__c.execute( update_part_type )
+                self.__conn.commit()
+            elif k == '品牌' or k == '标准':
+                get_description3 = f'SELECT [Description3] FROM [JJPart].[Part] WHERE [PartID]={part_id}'
+                self.__c.execute( get_description3 )
+                des3 = self.__c.fetchone()[0]
+                if des3 is None:
+                    current_des3 = tag_dict[k]
+                else:
+                    tt = des3.strip()
+                    if len( tt ) < 1:
+                        current_des3 = tag_dict[k]
+                    else:
+                        current_des3 = f'{tt} {tag_dict[k]}'
+                update_part_description3 = f'UPDATE [JJPart].[Part] SET [Description3]=\'{current_des3}\' ' \
+                                           f'WHERE [PartID]={part_id}'
+                self.__c.execute( update_part_description3 )
+                self.__conn.commit()
+
+    def set_part_id_2_prepared(self, part_id):
+        sql = f'UPDATE [JJPart].[Part] SET [StatusType]=10 WHERE [PartID]={part_id}'
+        self.__c.execute( sql )
+        self.__conn.commit()
+
+    def next_available_part_id(self):
+        sql = 'SELECT [PartID] FROM [JJPart].[Part] WHERE [StatusType]=10'
+        self.__c.execute( sql )
+        r = self.__c.fetchone()
+        if r is not None:
+            sql = f'UPDATE [JJPart].[Part] SET [StatusType]=20 WHERE [PartID]={r[0]}'
+            self.__c.execute( sql )
+            return r[0]
+        temp_create_part = f'INSERT INTO [JJPart].[Part] VALUES (20, null, \'dummy\', ' \
+                           f'null, null, \'dummy\', null, null, null, null)'
+        self.__c.execute( temp_create_part )
+        get_max_id = f'SELECT MAX([PartID]) FROM [JJPart].[Part]'
+        self.__c.execute( get_max_id )
+        r = self.__c.fetchone()
+        next_id = r[0]
+        self.__conn.commit()
+        return next_id
+
+    def get_available_supply_operation_bill(self, prefix=None):
+        sql = f'SELECT COUNT(*) FROM [JJStorage].[OperationBill] WHERE [BillName] LIKE \'{prefix}%\''
+        self.__c.execute( sql )
+        c = self.__c.fetchone()[0]
+        return f'{prefix}-{c + 1}'
+
+    def create_picking_record(self, data):
+        """
+        创建出库记录
+        :param data:{}，里面包括：BillName - str, Operator - str, DoingDate - str, BillType - str, FromStorage - str,
+        Items - [Contract - str, PartId - int, ErpId - str, Qty - float]
+        :return:
+        """
+        bill_name = data[0]
+        operator = data[1]
+        the_date = data[2]
+        bill_type = data[3]
+        from_storage = data[4]
+        current_process = 14
+        try:
+            insert_require_bill_sql = f'INSERT INTO [JJStorage].[KbnSupplyBill] VALUES (\'{bill_name}\', \'{the_date}\', ' \
+                                      f'\'{operator}\')'
+            self.__c.execute( insert_require_bill_sql )
+            insert_operation_bill_sql = f'INSERT INTO [JJStorage].[OperationBill] VALUES (\'{bill_name}\', \'{operator}\', ' \
+                                        f'\'{the_date}\', \'{bill_type}\', 0)'
+            self.__c.execute( insert_operation_bill_sql )
+
+            self.__c.execute( 'SELECT MAX([Id]) FROM [JJStorage].[SupplyOperationRecord]' )
+            temp_r = self.__c.fetchone()[0]
+            if temp_r is None:
+                next_operation_id = 1
+            else:
+                next_operation_id = temp_r + 1
+            self.__c.execute( 'SELECT MAX([ItemId]) FROM [JJStorage].[KbnSupplyItem]' )
+            temp_r = self.__c.fetchone()[0]
+            if temp_r is None:
+                next_require_id = 1
+            else:
+                next_require_id = temp_r + 1
+            for item in data[5]:
+                # 获取库存信息
+                get_storing = f'SELECT [Qty], [UnitPrice] FROM [JJStorage].[Storing] ' \
+                              f'WHERE [PartId]={item[1]} AND [Position]=\'{from_storage}\''
+                self.__c.execute( get_storing )
+                r = self.__c.fetchone()
+                qty_info = r[0]
+                unit_price = r[1]
+                # 更新仓库库存
+                if qty_info is None:
+                    raise Exception( '没有相应的库存！' )
+                if qty_info < item[3]:
+                    raise Exception( '原有库存不足以提供需求！' )
+                update_storing = f'UPDATE [JJStorage].[Storing] ' \
+                                 f'SET [Qty]={qty_info - item[3]}, [LastRecordDate]=\'{the_date}\' ' \
+                                 f'WHERE [PartId]={item[1]} AND [Position]=\'{from_storage}\''
+                self.__c.execute( update_storing )
+                # 创建需求记录
+                comment_dict = {'FromStorage': from_storage, 'Contract': item[0]}
+                if unit_price is not None:
+                    comment_dict['Price'] = '%.2f' % (item[3] * float( unit_price ))
+                insert_require_item = f'INSERT INTO [JJStorage].[KbnSupplyItem] VALUES ({next_require_id}, ' \
+                                      f'\'{bill_name}\', {item[1]}, {item[3]}, 0.0, {item[3]}, \'{item[2]}\', ' \
+                                      f'null, null)'
+                self.__c.execute( insert_require_item )
+                # 创建操作记录
+                comment_str = Com.dict_2_str( comment_dict )
+                insert_operation_item = f'INSERT INTO [JJStorage].[SupplyOperationRecord] VALUES ({next_operation_id}, ' \
+                                        f'1, \'{the_date}\', \'{operator}\', {current_process}, {next_require_id}, ' \
+                                        f'{item[3]}, \'{bill_name}\', {item[3]}, \'{comment_str}\')'
+                self.__c.execute( insert_operation_item )
+                next_require_id += 1
+                next_operation_id += 1
+            self.__conn.commit()
+        except Exception as e:
+            self.__conn.rollback()
+            raise e
+
+    def create_supply_operation(self, data):
+        """
+        创建物料操作的数据库记录
+        :param data:{}, 里面包括：部分BillName - str, Operator - str, DoingDate - str, BillType - str, NextProcess - int,
+        Items - [LinkItem - int, Qty - float, Comment - str]
+        当 NextProcess = 13 时，Items多了三项（原来有三项，总共六项）[LastOperationId - int, StorageId - str, UnitPrice - float]
+        :return: 最终确定的 BillName
+        """
+        bill_name = data['BillName']
+        bill_type = data['BillType']
+        next_process = data['NextProcess']
+        pre_fix = 'B'
+        if bill_type == '投料单':
+            pre_fix = 'B'
+        elif bill_type == '派工单':
+            pre_fix = 'M'
+        elif bill_type == '入库单':
+            pre_fix = 'S'
+        try:
+            bill_name = '{0}{1}'.format( pre_fix, bill_name )
+            sql = f'SELECT COUNT(*) FROM [JJStorage].[OperationBill] WHERE [BillName] LIKE \'{bill_name}%\''
+            self.__c.execute( sql )
+            c = self.__c.fetchone()[0]
+            bill_name += f'-{c + 1}'
+            operator = data['Operator']
+            doing_date = data['DoingDate']
+            insert_bill_sql = f'INSERT INTO [JJStorage].[OperationBill] VALUES (\'{bill_name}\', \'{operator}\', ' \
+                              f'\'{doing_date}\', \'{bill_type}\', 0)'
+            self.__c.execute( insert_bill_sql )
+            self.__c.execute( 'SELECT MAX([Id]) FROM [JJStorage].[SupplyOperationRecord]' )
+            temp_r = self.__c.fetchone()[0]
+            if temp_r is None:
+                next_id = 1
+            else:
+                next_id = temp_r + 1
+            items = data['Items']
+            for item in items:
+                if item[2] is None or len( item[2] ) < 1:
+                    comment = 'null'
+                else:
+                    comment = {'Comment': item[2]}
+                if bill_type == '入库单':
+                    # 建立入库单时，在comment，补充仓位和单价的信息
+                    if type( comment ) == str:
+                        comment = {}
+                    comment['Position'] = item[4]
+                    if item[5] is not None:
+                        comment['UnitPrice'] = '%.3f' % item[5]
+                if type( comment ) == dict:
+                    comment = '\'{0}\''.format( Com.dict_2_str( comment ) )
+                insert_item_sql = f'INSERT INTO [JJStorage].[SupplyOperationRecord] VALUES ({next_id}, 0, ' \
+                                  f'\'{doing_date}\', \'{operator}\', {next_process}, {item[0]}, {item[1]}, ' \
+                                  f'\'{bill_name}\', 0.0, {comment})'
+                self.__c.execute( insert_item_sql )
+                # 建立 supply operation 的链接
+                if bill_type == '入库单':
+                    insert_item_sql = f'INSERT INTO [JJStorage].[SupplyRecordLink] VALUES ({next_id}, {item[3]})'
+                    self.__c.execute( insert_item_sql )
+                get_link_item_info = f'SELECT [Qty], [DoingQty], [DoneQty], [PartId] FROM [JJStorage].[KbnSupplyItem] ' \
+                                     f'WHERE [ItemId]={item[0]}'
+                self.__c.execute( get_link_item_info )
+                qty_info = self.__c.fetchone()
+                part_id = qty_info[3]
+                if bill_type == '投料单' or bill_type == '派工单':
+                    update_link_item = f'UPDATE [JJStorage].[KbnSupplyItem] ' \
+                                       f'SET [DoingQty]={float( qty_info[1] ) + item[1]} ' \
+                                       f'WHERE [ItemId]={item[0]}'
+                    self.__c.execute( update_link_item )
+                else:
+                    # 更新需求数据
+                    required_doing_qty = float( qty_info[1] ) - item[1]
+                    required_done_qty = float( qty_info[2] ) + item[1]
+                    update_link_item = f'UPDATE [JJStorage].[KbnSupplyItem] SET [DoingQty]={required_doing_qty}, ' \
+                                       f'[DoneQty]={required_done_qty} WHERE [ItemId]={item[0]}'
+                    self.__c.execute( update_link_item )
+                    # TODO 更新上一个操作的数据
+                    get_operation_info_sql = f'SELECT [Qty], [DoneQty] FROM [JJStorage].[SupplyOperationRecord] ' \
+                                             f'WHERE [Id]={item[3]}'
+                    self.__c.execute( get_operation_info_sql )
+                    last_operation_info = self.__c.fetchone()
+                    operation_done_qty = float( last_operation_info[1] ) + item[1]
+                    additional_update = ''
+                    if operation_done_qty >= last_operation_info[0]:
+                        additional_update = ', [Done]=1 '
+                    update_last_operation = f'UPDATE [JJStorage].[SupplyOperationRecord] ' \
+                                            f'SET [DoneQty]={operation_done_qty}{additional_update} ' \
+                                            f'WHERE [Id]={item[3]}'
+                    self.__c.execute( update_last_operation )
+                    # TODO 更新仓储数据
+                    get_storing_info_sql = f'SELECT * FROM [JJStorage].[Storing] ' \
+                                           f'WHERE [PartId]={part_id} AND [Position]=\'{item[4]}\''
+                    self.__c.execute( get_storing_info_sql )
+                    r_s = self.__c.fetchall()
+                    if len( r_s ) < 1:
+                        if item[5] is None:
+                            unit_price = 'null'
+                        else:
+                            unit_price = '{0}'.format( item[5] )
+                        insert_new_storing = f'INSERT INTO [JJStorage].[Storing] ' \
+                                             f'VALUES ({part_id}, \'{item[4]}\', {item[1]}, ' \
+                                             f'\'{doing_date}\', {unit_price})'
+                        self.__c.execute( insert_new_storing )
+                    else:
+                        # 不同仓位的价格可能不同
+                        qty_sum = 0.0
+                        for r in r_s:
+                            qty_sum += r[2]
+                        current_price = r_s[0][4]
+                        neu_unit_price = None
+                        if current_price is None:
+                            if item[5] is not None:
+                                neu_unit_price = '{0}'.format( item[5] )
+                        else:
+                            original_price_sum = qty_sum * float( current_price )
+                            if item[5] is None:
+                                neu_unit_price = current_price
+                            else:
+                                neu_price_sum = item[5] * item[1] + original_price_sum
+                                neu_unit_price = neu_price_sum / (qty_sum + item[1])
+                        unit_price_str = 'null'
+                        if neu_unit_price is not None:
+                            unit_price_str = '{0}'.format( neu_unit_price )
+                        update_new_storing = f'UPDATE [JJStorage].[Storing] SET ' \
+                                             f'[Qty]={qty_sum + item[1]}, [LastRecordDate]=\'{doing_date}\', ' \
+                                             f'[UnitPrice]={unit_price_str} ' \
+                                             f'WHERE [PartId]={part_id} AND [Position]=\'{item[4]}\''
+                        self.__c.execute( update_new_storing )
+                next_id += 1
+            self.__conn.commit()
+            return bill_name
+        except Exception as e:
+            self.__conn.rollback()
+            raise e
+
+    def select_process_data(self, process_type=1):
+        """
+        查询处于某些阶段（根据process_type的数值）的过程数据
+        :param process_type: 1=可投料，2=可派工，3=可入库，4=可领料
+        :return: 数量, None（或者数据）[BillName, ItemId, PartId, ErpId, 上次处理日期, Qty, DoingQty, DoneQty, Comment]
+                 注：此处的comment = KbnSupplyItem的Comment + SupplyOperationRecord的Comment
+        """
+        if process_type == 1 or process_type == 2:
+            sql = 'SELECT b.[BillName], i.[ItemId], i.[PartId], i.[ErpId], b.[BuildDate], i.[Qty], ' \
+                  'i.[DoingQty], i.[DoneQty], i.[Comment] ' \
+                  'FROM [JJStorage].[KbnSupplyItem] AS i INNER JOIN [JJStorage].[KbnSupplyBill] AS b ' \
+                  'ON i.[BillName]=b.[BillName] WHERE i.[DoneQty]<i.[Qty] AND i.[DoingQty]<i.[Qty] AND ' \
+                  'b.[BuildDate]>\'2020/1/1\''
+            self.__c.execute( sql )
+            r_s = self.__c.fetchall()
+            count = len( r_s )
+            if process_type == 1:
+                return count, r_s
+            else:
+                # TODO 进行数据的进一步筛选，筛选出来源是“自制”的零件
+                result = []
+                for i in r_s:
+                    sql = f'SELECT * FROM [JJCom].[PartTag] WHERE [part_id]={i[2]} AND [tag_id]=17'
+                    self.__c.execute( sql )
+                    t_s = self.__c.fetchall()
+                    if len( t_s ) > 0:
+                        result.append( i )
+                return len( result ), result
+        elif process_type == 3 or process_type == 4:
+            process_id_str = '(r.[Process]=11 OR r.[Process]=12)'
+            if process_type == 4:
+                process_id_str = 'r.[Process]=13'
+            sql = 'SELECT r.[BillName], i.[ItemId], i.[PartId], i.[ErpId], r.[DoingDate], r.[Qty], ' \
+                  'r.[DoneQty], r.[Comment], i.[Comment], r.[Id] ' \
+                  'FROM [JJStorage].[SupplyOperationRecord] AS r INNER JOIN [JJStorage].[KbnSupplyItem] AS i ' \
+                  'ON r.[LinkItem]=i.[ItemId] WHERE r.[Done]<>1 AND r.[Qty]>r.[DoneQty] AND '
+            sql += process_id_str
+            self.__c.execute( sql )
+            r_s = self.__c.fetchall()
+            count = len( r_s )
+            result = []
+            for r in r_s:
+                new_row = list( r[:7] )
+                comment = r[7]
+                comment_dict = {}
+                if comment is None:
+                    comment = ''
+                else:
+                    comment_dict = Com.str_2_dict( comment )
+                    if 'Comment' in comment_dict:
+                        comment = comment_dict['Comment']
+                    else:
+                        comment = ''
+                if r[8] is not None and len( r[8] ) > 0:
+                    comment += f' {r[8]}'
+                if len( comment ) < 1:
+                    comment = None
+                new_row.extend( [r[6], comment, r[9]] )
+                # 获取入库记录时，要仓位和单价的信息
+                if process_type == 4:
+                    pos = '' if not ('Position' in comment_dict) else comment_dict['Position']
+                    u_price = '' if not ('UnitPrice' in comment_dict) else comment_dict['UnitPrice']
+                    new_row.extend( [pos, u_price] )
+                result.append( new_row )
+            return count, result
+
+    def insert_requirements(self, bill_data, items_data):
+        sql = f'INSERT INTO [JJStorage].[KbnSupplyBill] ' \
+              f'VALUES (\'{bill_data[0]}\', \'{bill_data[1]}\', \'{bill_data[2]}\')'
+        self.__c.execute( sql )
+        get_index_sql = 'SELECT MAX([ItemId]) FROM [JJStorage].[KbnSupplyItem]'
+        self.__c.execute( get_index_sql )
+        t = self.__c.fetchone()[0]
+        if t is None:
+            next_index = 1
+        else:
+            next_index = t + 1
+        for item in items_data:
+            if item[3] is None or len( item[3] ) < 1:
+                the_comment = 'NULL'
+            else:
+                the_comment = f'\'{item[3]}\''
+            if item[1] is None:
+                the_erp_id = 'NULL'
+            else:
+                the_erp_id = f'\'{item[1]}\''
+            the_qty = '%.2f' % item[2]
+            sql = f'INSERT INTO [JJStorage].[KbnSupplyItem] ' \
+                  f'VALUES ({next_index}, \'{bill_data[0]}\', {item[0]}, {the_qty}, 0.0, 0.0, {the_erp_id}, NULL, ' \
+                  f'{the_comment})'
+            next_index += 1
+            self.__c.execute( sql )
+        self.__conn.commit()
+
+    def get_require_bill(self, prefix=None, bill_num=None):
+        sql = f'SELECT [BillName], [BuildDate], [Operator] FROM [JJStorage].[KbnSupplyBill]'
+        if prefix is None and bill_num is None:
+            pass
+        elif prefix is not None:
+            sql += f' WHERE [BillName] LIKE \'{prefix}%\''
+        elif bill_num is not None:
+            sql += f' WHERE [BillName]==\'{bill_num}\''
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        if len( r_s ) < 1:
+            return None
+        else:
+            return r_s
+
+    def get_erp_info(self, erp_code):
+        # TODO 使用巨轮智能的仓库时的情况？
+        sql = f'SELECT * FROM JJPart.ZdErp WHERE ErpId=\'{erp_code}\''
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        if len( r_s ) < 1:
+            return None
+        return r_s[0][0], r_s[0][1], r_s[0][2]
+
+    def get_products_by_id(self, product_id):
+        self.__c.execute( 'SELECT * FROM JJProduce.Product WHERE ProductId=\'{0}\''.format( product_id ) )
+        return self.__c.fetchall()
+
+    def get_all_storing_position(self):
+        sql = 'SELECT DISTINCT(Position) FROM JJStorage.Storing'
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        result = []
+        for r in r_s:
+            result.append( r[0] )
+        result.sort()
+        return result
 
     def get_storing(self, part_id=None, position=None):
         sql = 'SELECT * FROM JJStorage.Storing'
@@ -125,6 +722,94 @@ class MssqlHandler( DatabaseHandler ):
                 search_filter += 't.Description2 LIKE \'%{0}%\''.format( description )
             sql = '{1} {2} WHERE {3} AND {0} ORDER BY t.PartID'.format( search_filter, select_cmd,
                                                                         from_database, default_where )
+        self.__c.execute( sql )
+        return self.__c.fetchall()
+
+    def get_parts_2(self, part_id=None, name=None, english_name=None, description=None, column_config=None):
+        if column_config[0] == 0:
+            raise Exception('必须显示项目号或零件号！')
+
+        select_cmd = 'SELECT '
+        default_segments = (
+            'p.[PartID] AS id',
+            'p.[Description1] AS name',
+            'p.[Description4] AS english_name',
+            'p.[Description2] AS description',
+            's.[StatusDescrption] AS status',
+            'p.[Comment] AS comment'
+        )
+        option_segments = {
+            0: ('', 'LEFT OUTER JOIN [JJPart].[PartStatus] AS s ON s.[StatusType]=p.[StatusID]'),
+            1: ('t1.[tag_name] AS type',
+                '[JJCom].[Tag] AS t1 INNER JOIN [JJCom].[PartTag] AS pt1 ON '
+                't1.[id]=pt1.[tag_id] AND t1.[parent_id]=1 ON p.[PartID]=pt1.[part_id]'),
+            15: ('t2.[tag_name] AS standard',
+                 '[JJCom].[Tag] AS t2 INNER JOIN [JJCom].[PartTag] AS pt2 ON '
+                 't2.[id]=pt2.[tag_id] AND t2.[parent_id]=15 ON p.[PartID]=pt2.[part_id]'),
+            16: ('t3.[tag_name] AS brand',
+                 '[JJCom].[Tag] AS t3 INNER JOIN [JJCom].[PartTag] AS pt3 ON '
+                 't3.[id]=pt3.[tag_id] AND t3.[parent_id]=16 ON p.[PartID]=pt3.[part_id]'),
+            266: ('t4.[tag_name] AS jl_erp_code',
+                  '[JJCom].[Tag] AS t4 INNER JOIN [JJCom].[PartTag] AS pt4 ON '
+                  't4.[id]=pt4.[tag_id] AND t4.[parent_id]=266 ON p.[PartID]=pt4.[part_id]'),
+            1288: ('t5.[tag_name] AS foreign_code',
+                   '[JJCom].[Tag] AS t5 INNER JOIN [JJCom].[PartTag] AS pt5 ON '
+                   't5.[id]=pt5.[tag_id] AND t5.[parent_id]=1288 ON p.[PartID]=pt5.[part_id]'),
+            2064: ('t6.[tag_name] AS zd_erp_code',
+                   '[JJCom].[Tag] AS t6 INNER JOIN [JJCom].[PartTag] AS pt6 ON '
+                   't6.[id]=pt6.[tag_id] AND t6.[parent_id]=2064 ON p.[PartID]=pt6.[part_id]'),
+            2111: ('t7.[tag_name] AS source',
+                   '[JJCom].[Tag] AS t7 INNER JOIN [JJCom].[PartTag] AS pt7 ON '
+                   't7.[id]=pt7.[tag_id] AND t7.[parent_id]=2111 ON p.[PartID]=pt7.[part_id]'),
+            2112: ('t8.[tag_name] AS unit',
+                   '[JJCom].[Tag] AS t8 INNER JOIN [JJCom].[PartTag] AS pt8 ON '
+                   't8.[id]=pt8.[tag_id] AND t8.[parent_id]=2112 ON p.[PartID]=pt8.[part_id]'),
+            2406: ('t9.[tag_name] AS product',
+                   '[JJCom].[Tag] AS t9 INNER JOIN [JJCom].[PartTag] AS pt9 ON '
+                   't9.[id]=pt9.[tag_id] AND t9.[parent_id]=2406 ON p.[PartID]=pt9.[part_id]')
+        }
+        the_display_columns = []
+        from_tag_tables = []
+        i = 0
+        for c in column_config[0:5]:
+            if c == 1:
+                the_display_columns.append( default_segments[i] )
+            i += 1
+        for c in column_config[5:-1]:
+            the_display_columns.append( option_segments[c][0] )
+            from_tag_tables.append( option_segments[c][1] )
+        if column_config[-1] == 1:
+            the_display_columns.append( default_segments[-1] )
+        if len(the_display_columns) < 1:
+            raise Exception('没有选择要显示的字段！')
+        select_cmd += ', '.join( the_display_columns )
+
+        select_cmd += ' FROM [JJPart].[Part] AS p '
+        if column_config[4] == 1:
+            select_cmd += option_segments[0][1]
+        if len(from_tag_tables) > 0:
+            select_cmd += 'LEFT OUTER JOIN '
+            from_tag_tables_str = ' LEFT OUTER JOIN '.join( from_tag_tables )
+            select_cmd += from_tag_tables_str
+
+        default_where = '(p.[StatusType]=90 OR p.[StatusType]=100)'
+        if part_id is None and name is None and english_name is None and description is None:
+            sql = '{0} WHERE {1} ORDER BY p.[PartID]'.format( select_cmd, default_where )
+        elif part_id is not None:
+            sql = '{0} WHERE {2} AND p.[PartID]={1}'.format( select_cmd, part_id, default_where )
+        else:
+            search_filter = ''
+            if name is not None:
+                search_filter += 'p.[Description1] LIKE \'%{0}%\''.format( name )
+            if english_name is not None:
+                if len( search_filter ) > 0:
+                    search_filter += ' AND '
+                search_filter += 'p.[Description4] LIKE \'%{0}%\''.format( english_name )
+            if description is not None:
+                if len( search_filter ) > 0:
+                    search_filter += ' AND '
+                search_filter += 'p.[Description2] LIKE \'%{0}%\''.format( description )
+            sql = '{0} WHERE {1} AND {2} ORDER BY p.[PartID]'.format( select_cmd, search_filter, default_where )
         self.__c.execute( sql )
         return self.__c.fetchall()
 
@@ -257,7 +942,24 @@ class MssqlHandler( DatabaseHandler ):
         sql_top = ''
         if top > 0:
             sql_top = 'TOP({0}) '.format( top )
-        sql = 'SELECT {1}i.ListID, i.PriceWithTax, i.OtherCost, CONVERT(DECIMAL, l.TaxRate), ' \
+        # 首先，从仓储数据进行检查
+        sql = f'SELECT {sql_top}[UnitPrice], CONVERT(DECIMAL, [Qty]), [LastRecordDate] FROM [JJStorage].[Storing] ' \
+              f'WHERE [PartId]={part_id}'
+        self.__c.execute( sql )
+        rs = self.__c.fetchall()
+        if len( rs ) > 0:
+            result = []
+            for r in rs:
+                if r[0] is not None and r[0] > 0.0:
+                    fade_qty = r[1]
+                    if fade_qty <= 0.001:
+                        fade_qty = Decimal( 1.0 )
+                    one_r = [0, r[0] * fade_qty, Decimal.from_float( 0.0 ), Decimal.from_float( 0.0 ),
+                             fade_qty, r[2], '库存']
+                    result.append( one_r )
+            if len( result ) > 0:
+                return result
+        sql = 'SELECT {1}i.ListID, i.PriceWithTax, i.OtherCost, CONVERT(DECIMAL(5,2), l.TaxRate), ' \
               'CONVERT(DECIMAL, i.Amount), l.QuotedDate, s.Name FROM ' \
               'JJCost.QuotationItem AS i INNER JOIN JJCost.Quotation AS l ON i.ListID=l.QuotationID ' \
               'INNER JOIN JJCost.Supplier AS s ON l.SupplierID=s.SupplierID ' \
