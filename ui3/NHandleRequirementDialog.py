@@ -2,7 +2,7 @@
 
 from PyQt5.QtCore import (Qt, QItemSelectionModel, QDate, QModelIndex)
 from PyQt5.QtGui import (QStandardItemModel, QStandardItem)
-from PyQt5.QtWidgets import (QDialog, QMessageBox, QAbstractItemView, QItemDelegate, QDialogButtonBox, QSplitter,
+from PyQt5.QtWidgets import (QDialog, QMessageBox, QAbstractItemView, QItemDelegate, QSplitter,
                              QFrame, QVBoxLayout, QInputDialog)
 
 from Part import Part
@@ -31,6 +31,10 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
         self.__sort_flags = {}
         # 用于上下两个表格的对应关系
         self.__row_map = {}
+        # 有进行检索的标记
+        self.__after_search = False
+        # 源表格的列数
+        self.__source_table_column_count = 8
         super( NHandleRequirementDialog, self ).__init__( parent )
         self.setModal( True )
         self.setup_ui()
@@ -50,12 +54,14 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
         splitter.addWidget( mid_frame )
         splitter.addWidget( self.destRequirementTableView )
         mid_frame.setFixedHeight( 30 )
+        bottom_frame = QFrame()
+        bottom_frame.setLayout( self.button_h_layout )
 
         main_layout.addWidget( top_frame )
         main_layout.addWidget( splitter )
-        main_layout.addWidget( self.buttonBox )
+        main_layout.addWidget( bottom_frame )
 
-        self.searchItemComboBox.addItems( ['名称', '描述', '备注'] )
+        self.searchItemComboBox.addItems( ['描述', '备注'] )
         self.searchItemComboBox.setCurrentIndex( 0 )
 
         self.sourceRequirementTableView.setModel( self.__source_data )
@@ -66,10 +72,13 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
         self.destRequirementTableView.horizontalHeader().setStretchLastSection( True )
         self.destRequirementTableView.setSelectionBehavior( QAbstractItemView.SelectRows )
         self.destRequirementTableView.setSelectionMode( QAbstractItemView.ExtendedSelection )
-        self.__source_data.setHorizontalHeaderLabels(
-            ['单号', '零件号', '描述', '中德物料编码', '数量', '已下传数', '日期', '备注'] )
+        source_headers = ['单号', '零件号', '描述', '中德物料编码', '数量', '已下传数', '日期', '备注']
+        if self.__current_process == 4:
+            source_headers.extend( ['仓位', '去税单价'] )
+        self.__source_data.setHorizontalHeaderLabels( source_headers )
+        self.__source_table_column_count = len( source_headers )
         dest_headers = ['零件号', '描述', '中德物料编码', '数量', '备注']
-        if self.__current_process == 3:
+        if self.__current_process == 3 or self.__current_process == 4:
             dest_headers.extend( ['仓位', '去税单价'] )
         self.__dest_data.setHorizontalHeaderLabels( dest_headers )
         readonly_delegate = ReadOnlyDelegate()
@@ -83,6 +92,11 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
         self.cancelRequirementButton.clicked.connect( lambda: self.__how_to_handle_the_source( 3 ) )
         self.destRequirementTableView.selectionModel().selectionChanged.connect( self.__dest_selected_changed )
         self.removeButton.clicked.connect( lambda: self.__how_to_handle_the_dest( 1 ) )
+        self.doSearchButton.clicked.connect( self.do_search )
+        self.cleanSearchButton.clicked.connect( self.clean_search )
+        self.filterlineEdit.returnPressed.connect( self.do_search )
+        self.okButton.clicked.connect( self.do_ok )
+        self.closeButton.clicked.connect( self.do_close )
 
         # 一些初始化的显示数据
         current_title = self.windowTitle()
@@ -105,9 +119,51 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
             self.rollBackButton.setEnabled( False )
             self.cancelRequirementButton.setEnabled( False )
 
-    def accept(self):
+    def do_search(self):
+        """
+        进行检索
+        :return:
+        """
+        t = self.filterlineEdit.text()
+        filter_text = t.strip()
+        if len( filter_text ) < 1:
+            return
+        row_count = self.__source_data.rowCount()
+        search_type = self.searchItemComboBox.currentText()
+        hide_row_count = 0
+        for i in range( row_count ):
+            col = 2 if search_type == '描述' else 7
+            item_text = self.__source_data.item( i, col ).text()
+            u = filter_text.upper()
+            if len( item_text ) > 0 and item_text.upper().find( u ) > 0:
+                self.sourceRequirementTableView.showRow( i )
+            else:
+                self.sourceRequirementTableView.hideRow( i )
+                hide_row_count += 1
+        if hide_row_count > 0:
+            self.__after_search = True
+
+    def clean_search(self):
+        """
+        清除检索
+        :return:
+        """
+        self.filterlineEdit.setText( '' )
+        if not self.__after_search:
+            return
+        row_count = self.__source_data.rowCount()
+        for i in range( row_count ):
+            self.sourceRequirementTableView.showRow( i )
+
+    def do_close(self):
+        resp = QMessageBox.question( self, '', '确定要关闭？', defaultButton=QMessageBox.No )
+        if resp == QMessageBox.Yes:
+            self.close()
+
+    def do_ok(self):
         when_do = QDate.currentDate().toString( 'yyMMdd' )
         try:
+            # 增加已退库（15）的状态，以免再次被检测到
             next_process = 13
             bill_type = '入库单'
             operation_data = []
@@ -122,7 +178,6 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                 record_count = self.__dest_data.rowCount()
                 for i in range( record_count ):
                     # TODO 要添加数量的验证
-                    # TODO 入库单要有仓位，否则发出警告
                     first_item_in_row: QStandardItem = self.__dest_data.item( i, 0 )
                     link_item_nr = first_item_in_row.data( Qt.UserRole + 2 )
                     qty_item: QStandardItem = self.__dest_data.item( i, 3 )
@@ -141,6 +196,9 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                     comment_item: QStandardItem = self.__dest_data.item( i, 4 )
                     the_comment = comment_item.text()
                     storage_id = self.__dest_data.item( i, 5 ).text()
+                    # 入库单要有仓位，否则发出警告
+                    if storage_id is None or len( storage_id ) < 1 or storage_id.isspace():
+                        raise Exception( '入库的时候没有设置仓位。' )
                     the_unit_price_temp = self.__dest_data.item( i, 6 ).data( Qt.EditRole )
                     the_unit_price = None
                     if the_unit_price_temp is not None:
@@ -151,6 +209,41 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                                 the_unit_price = None
                     operation_data.append(
                         [link_item_nr, the_qty, the_comment, last_process_link, storage_id, the_unit_price] )
+            elif self.__current_process == 4:
+                next_process = 15  # 增加已退库的标记
+                operation_data = []
+                record_count = self.__dest_data.rowCount()
+                # 预先修改数量
+                for i in range( record_count ):
+                    qty_item: QStandardItem = self.__dest_data.item( i, 3 )
+                    the_qty = qty_item.data( Qt.EditRole )
+                    if the_qty > 0:
+                        qty_item.setData( -the_qty, Qt.EditRole )
+                resp = QMessageBox.question( self, '确认', '真的确定要退库吗？', defaultButton=QMessageBox.No )
+                if resp == QMessageBox.No:
+                    return
+                for i in range( record_count ):
+                    first_item_in_row: QStandardItem = self.__dest_data.item( i, 0 )
+                    link_item_nr = first_item_in_row.data( Qt.UserRole + 2 )
+                    last_process_link = first_item_in_row.data( Qt.UserRole + 3 )
+                    qty_item: QStandardItem = self.__dest_data.item( i, 3 )
+                    storage_item: QStandardItem = self.__dest_data.item( i, 5 )
+                    storage_id = storage_item.text()
+                    the_unit_price_item: QStandardItem = self.__dest_data.item( i, 6 )
+                    the_unit_price = the_unit_price_item.text()
+                    if len( the_unit_price ) < 1:
+                        the_unit_price = None
+                    else:
+                        the_unit_price = float( the_unit_price )
+                    the_qty = qty_item.data( Qt.EditRole )
+                    # 价格按之前入库的价格
+                    comment_item: QStandardItem = self.__dest_data.item( i, 4 )
+                    the_comment = comment_item.text()
+                    operation_data.append(
+                        [link_item_nr, the_qty, the_comment, last_process_link, storage_id, the_unit_price] )
+            if len( operation_data ) < 1:
+                QMessageBox.warning( self, '警告', '没有需要操作的数据！' )
+                return
             data = {'BillName': when_do, 'Operator': self.__operator,
                     'DoingDate': QDate.currentDate().toString( 'yyyy-MM-dd' ), 'BillType': bill_type,
                     'NextProcess': next_process, 'Items': operation_data}
@@ -159,8 +252,10 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                 message = f'生成了新的投料单号：{neu_bill_name}'
             elif self.__current_process == 2:
                 message = f'生成了新的派工单号：{neu_bill_name}'
-            else:
+            elif self.__current_process == 3:
                 message = f'生成了新的入库单号：{neu_bill_name}'
+            else:
+                message = f'生成了退库单号：{neu_bill_name}'
             QMessageBox.information( self, '完成', message, QMessageBox.Ok, QMessageBox.Ok )
             self.close()
         except Exception as ex:
@@ -197,15 +292,14 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                 if ok:
                     self.__default_storage = text
 
-            cc = int( len( indexes ) / 8 )
+            cc = int( len( indexes ) / self.__source_table_column_count )
             for i in range( cc ):
                 # 获取原来的数据
-                first_item: QStandardItem = self.__source_data.itemFromIndex( indexes[i * 8] )
+                first_item: QStandardItem = self.__source_data.itemFromIndex(
+                    indexes[i * self.__source_table_column_count] )
                 row_index = first_item.data( Qt.UserRole + 1 )
                 require_item = first_item.data( Qt.UserRole + 2 )
-                process_id = -1
-                if self.__current_process == 3:
-                    process_id = first_item.data( Qt.UserRole + 3 )
+                process_id = first_item.data( Qt.UserRole + 3 )
                 the_row = self.__row_map[row_index]
                 part_id = the_row[1].text()
                 description = the_row[2].text()
@@ -218,7 +312,7 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                 first_dest_item = QStandardItem( part_id )
                 first_dest_item.setData( row_index, Qt.UserRole + 1 )
                 first_dest_item.setData( require_item, Qt.UserRole + 2 )
-                if self.__current_process == 3:
+                if self.__current_process == 3 or self.__current_process == 4:
                     first_dest_item.setData( process_id, Qt.UserRole + 3 )
                 new_dest_row = [first_dest_item, QStandardItem( description ), QStandardItem( zd_erp )]
                 qty_item = QStandardItem()
@@ -232,6 +326,12 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                     if self.__default_storage is not None:
                         storage_item.setText( self.__default_storage )
                     unit_price_item = QStandardItem()
+                    unit_price_item.setTextAlignment( Qt.AlignCenter )
+                    new_dest_row.extend( [storage_item, unit_price_item] )
+                elif self.__current_process == 4:
+                    storage_item = QStandardItem( the_row[8] )
+                    storage_item.setTextAlignment( Qt.AlignCenter )
+                    unit_price_item = QStandardItem( the_row[9] )
                     unit_price_item.setTextAlignment( Qt.AlignCenter )
                     new_dest_row.extend( [storage_item, unit_price_item] )
                 self.__dest_data.appendRow( new_dest_row )
@@ -253,7 +353,8 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
                 default_qty = qty - done_qty
                 if mode == 2:
                     # TODO 进行“回退”处理
-                    pass
+                    QMessageBox.warning( self, '', '回退的功能还未完成。敬请期待。' )
+                    return
                 else:
                     if self.__current_process == 1 or self.__current_process == 2:
                         self.__database.cancel_material_requirement( require_item, default_qty )
@@ -327,8 +428,8 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
             # 给每行的首个单元，打上记号
             first_item.setData( i, Qt.UserRole + 1 )
             first_item.setData( d[1], Qt.UserRole + 2 )
-            if self.__current_process == 3:
-                # 承接之前的 Supply Operation 的 Id
+            # 承接之前的 Supply Operation 的 Id
+            if self.__current_process == 3 or self.__current_process == 4:
                 first_item.setData( d[9], Qt.UserRole + 3 )
             one_row = [first_item]
             one_row.extend( [QStandardItem( part_id ), QStandardItem( description ), QStandardItem( d[3] )] )
@@ -342,8 +443,16 @@ class NHandleRequirementDialog( QDialog, Ui_Dialog ):
             u_qty_item.setData( float( u_doing_qty ), Qt.DisplayRole )
             u_qty_item.setTextAlignment( Qt.AlignCenter )
             one_row.append( u_qty_item )
-            one_row.append( QStandardItem( d[4].strftime( '%Y/%m/%d' ) ) )
+            date_str = d[4][:10] if type( d[4] ) == str else d[4].strftime( '%Y-%m-%d' )
+            one_row.append( QStandardItem( date_str ) )
             one_row.append( QStandardItem( d[8] ) )
+            if self.__current_process == 4:
+                p_item = QStandardItem( d[10] )
+                p_item.setTextAlignment( Qt.AlignCenter )
+                one_row.append( p_item )
+                u_item = QStandardItem( d[11] )
+                u_item.setTextAlignment( Qt.AlignCenter )
+                one_row.append( u_item )
             self.__row_map[i] = one_row
             self.__source_data.appendRow( one_row )
             i += 1

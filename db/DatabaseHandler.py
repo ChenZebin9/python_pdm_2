@@ -8,7 +8,7 @@ class DatabaseHandler( metaclass=ABCMeta ):
         pass
 
     @abstractmethod
-    def get_parts_2(self, part_id=None, name=None, english_name=None, description=None, column_config=None):
+    def get_parts_by_config(self, part_id=None, name=None, english_name=None, description=None, column_config=None):
         """
         根据column_config数组，使用更加复杂的算法，获取零件信息。
         :param part_id:
@@ -152,9 +152,10 @@ class DatabaseHandler( metaclass=ABCMeta ):
         pass
 
     @abstractmethod
-    def get_erp_info(self, erp_code):
+    def get_erp_info(self, erp_code, jl_erp=False):
         """
         通过物料编码，获取物料信息
+        :param jl_erp: 是不是巨轮智能的ERP编号
         :param erp_code: 物料编码，一个“00.00.00.0000”格式的字符串
         :return: [物料编码，物料描述，单位] or None
         """
@@ -209,11 +210,12 @@ class DatabaseHandler( metaclass=ABCMeta ):
         pass
 
     @abstractmethod
-    def create_picking_record(self, data):
+    def create_picking_record(self, data, mark):
         """
         创建出库记录
+        :param mark: {}，里面包括：record - int
         :param data:{}，里面包括：BillName - str, Operator - str, DoingDate - str, BillType - str, FromStorage - str,
-        Items - [Contract - str, PartId - str, ErpId - str, Qty - float]
+        Items - [Contract - str, PartId - int, ErpId - str, Qty - float, RecordIndex - int]
         :return:
         """
         pass
@@ -309,6 +311,77 @@ class DatabaseHandler( metaclass=ABCMeta ):
         将需求处理操作（JJStorage.SupplyOperationRecord）删除，并更新相关的物料需求（JJStorage.KbnSupplyItem）
         :param record_id: 需求处理操作编号
         :param cancel_qty: 要作废的数量
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def set_part_thumbnail(self, part_id, image_data):
+        """
+        设置零件的缩略图
+        :param part_id: 零件号
+        :param image_data: 图像数据
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def clean_part_thumbnail(self, part_id):
+        """
+        清楚零件的缩略图
+        :param part_id:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def get_last_supply_record_link(self, this_id):
+        """
+        获取上个一连接的Id
+        :param this_id:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def update_part_relation(self, relation_id, index_id, parent_id, child_id, sum_qty, actual_qty, relation_comment):
+        """
+        更新或新近一个新的零件关联
+        :param relation_id: 关联ID，可能为None
+        :param index_id: 关联的index，代表在子项目中的排序
+        :param parent_id: 父ID
+        :param child_id: 子ID
+        :param sum_qty: 统计数量
+        :param actual_qty: 实际数量
+        :param relation_comment: 关联备注
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def remove_part_relation(self, relation_id):
+        """
+        移除原先的关联
+        :param relation_id: 关联ID
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def get_part_hyper_link(self, part_id):
+        """
+        获取项目的采购链接
+        :param part_id: 项目编号
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def set_part_hyper_link(self, part_id, the_link):
+        """
+        设置项目的采购链接
+        :param part_id:
+        :param the_link:
         :return:
         """
         pass

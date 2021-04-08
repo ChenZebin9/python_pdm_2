@@ -1,6 +1,7 @@
-import os
-import time
 import _thread
+import os
+import subprocess
+import time
 from decimal import Decimal
 
 from PyQt5.QtCore import (QThread, pyqtSignal)
@@ -9,11 +10,12 @@ from PyQt5.QtWidgets import (QFrame, QLabel, QTextEdit,
                              QListWidget, QHBoxLayout, QFormLayout, QVBoxLayout,
                              QPushButton, QComboBox, QTableWidget,
                              QTableWidgetItem, QListWidgetItem, QTableView,
-                             QMenu, QInputDialog, QSplitter)
+                             QMenu, QSplitter, QFileDialog, QCheckBox)
 
 from Part import Part, DoStatistics
 from db.DatabaseHandler import DatabaseHandler
 from ui.MyTreeWidget import *
+from utils.CaptureImage import WScreenShot, ConfirmImage
 
 
 class PartInfoPanel( QFrame ):
@@ -44,7 +46,6 @@ class PartInfoPanel( QFrame ):
         :param part_id: int, 可用的 Part Id
         :return:
         """
-        # TODO 新建单元的模式下，要进行项目的初始化，主要是填好Tag的可选项
         self.part_id = part_id
         self.idLineEdit.setText( '{:08d}'.format( part_id ) )
         self.idLineEdit.setEnabled( False )
@@ -109,18 +110,24 @@ class PartInfoPanel( QFrame ):
             self.setFixedHeight( 200 )
 
     def set_part_info(self, part):
-        self.part_id = part.get_part_id()
-        self.idLineEdit.setText( part.part_id )
-        self.idLineEdit.setEnabled( False )
-        self.nameLineEdit.setText( part.name )
-        self.englishNameLineEdit.setText( part.english_name )
-        self.descriptionLineEdit.setText( part.description )
-        self.commentTextEdit.setText( part.comment )
+        self.idLineEdit.setText( '' )
+        self.nameLineEdit.setText( '' )
+        self.englishNameLineEdit.setText( '' )
+        self.descriptionLineEdit.setText( '' )
+        self.commentTextEdit.setText( '' )
         self.tagListWidget.clear()
-        for t in part.tags:
-            one_item = QListWidgetItem( t.get_whole_name(), parent=self.tagListWidget )
-            one_item.setData( Qt.UserRole, t )
-            self.tagListWidget.addItem( one_item )
+        if part is not None:
+            self.part_id = part.get_part_id()
+            self.idLineEdit.setText( part.part_id )
+            self.idLineEdit.setEnabled( False )
+            self.nameLineEdit.setText( part.name )
+            self.englishNameLineEdit.setText( part.english_name )
+            self.descriptionLineEdit.setText( part.description )
+            self.commentTextEdit.setText( part.comment )
+            for t in part.tags:
+                one_item = QListWidgetItem( t.get_whole_name(), parent=self.tagListWidget )
+                one_item.setData( Qt.UserRole, t )
+                self.tagListWidget.addItem( one_item )
 
     def get_part_info(self):
         """
@@ -146,24 +153,28 @@ class PartInfoPanel( QFrame ):
 
 class PartInfoPanelInMainWindow( QFrame ):
 
-    def __init__(self, parent=None, work_folder=None, database=None):
+    def __init__(self, parent=None, work_folder=None, database=None, is_offline=False):
         # 当前被选定的 part
         self.__current_part: Part = None
         self.__work_folder = work_folder
         self.__parent = parent
         self.__database: DatabaseHandler = database
         self.__vault = None
+        self.__is_offline = is_offline
         self.__current_select_tag = None
         # 本地文件的存放路径，当为 None 时，表示不访问本地图纸。
         self.__local_path = None
         super().__init__( parent )
         self.partInfo = PartInfoPanel( parent )
         self.imageLabel = QLabel( self )
+        self.__part_image_set = False  # 相应的图片被设置好了
         self.relationFilesList = QListWidget( self )
 
         """ 操作单元信息的按钮 """
         self.__save_to_part_button = QPushButton( '保存' )
         self.__copy_part_button = QPushButton( '复制' )
+        self.__hyper_link_button = QPushButton( '采购链接' )
+        self.__the_hyper_link_label = QLabel()
 
         """ 标签清单的右键菜单 """
         self.__menu_4_tag_list = QMenu( parent=self.partInfo.tagListWidget )
@@ -177,6 +188,7 @@ class PartInfoPanelInMainWindow( QFrame ):
         """ 一些按钮的响应语句 """
         self.__save_to_part_button.clicked.connect( self.__save_to_part_handler )
         self.__copy_part_button.clicked.connect( self.__copy_part_handler )
+        self.__hyper_link_button.clicked.connect( self.__hyper_link_handler )
 
         """ 一些文本框的响应语句 """
         self.partInfo.nameLineEdit.textEdited.connect( lambda: self.__save_to_part_button.setEnabled( True ) )
@@ -184,10 +196,33 @@ class PartInfoPanelInMainWindow( QFrame ):
         self.partInfo.descriptionLineEdit.textEdited.connect( lambda: self.__save_to_part_button.setEnabled( True ) )
         self.partInfo.commentTextEdit.textChanged.connect( lambda: self.__save_to_part_button.setEnabled( True ) )
 
+        """ 图形显示的右键菜单 """
+        self.__menu_4_image_label = QMenu( parent=self.imageLabel )
+        self.__capture_image = self.__menu_4_image_label.addAction( '截图' )
+        self.__clean_image = self.__menu_4_image_label.addAction( '清除' )
+        self.__export_image = self.__menu_4_image_label.addAction( '导出' )
+        self.imageLabel.setContextMenuPolicy( Qt.CustomContextMenu )
+        self.imageLabel.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
+        self.__capture_image.triggered.connect( self.__do_image_capture )
+        self.__clean_image.triggered.connect( self.__do_image_clean )
+        self.__export_image.triggered.connect( self.__do_image_export )
+
+        """ 链接文件的右键菜单 """
+        self.__current_file_item = None
+        self.__menu_4_files_list = QMenu( parent=self.relationFilesList )
+        self.__open_file_menu = self.__menu_4_files_list.addAction( '打开文件' )
+        self.__open_file_location = self.__menu_4_files_list.addAction( '进入文件所在目录' )
+        self.relationFilesList.setContextMenuPolicy( Qt.CustomContextMenu )
+        self.relationFilesList.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
+        self.__open_file_menu.triggered.connect( self.__open_file_by_menu )
+        self.__open_file_location.triggered.connect( self.__do_open_file_location )
+
         self.__setup_ui()
 
         """ 额外的参数传递变量 """
         self.__output_filename = ''
+        # 当前所选中的链接文件的版本
+        self.__current_file_version = {}
 
     def __setup_ui(self):
         h_box = QHBoxLayout( self )
@@ -197,10 +232,14 @@ class PartInfoPanelInMainWindow( QFrame ):
         v_splitter = QSplitter( Qt.Vertical, self )
         self.__save_to_part_button.setFixedSize( 80, 30 )
         self.__copy_part_button.setFixedSize( 80, 30 )
+        self.__hyper_link_button.setFixedSize( 80, 30 )
+        self.__the_hyper_link_label.setFixedHeight( 30 )
         self.__save_to_part_button.setEnabled( False )
         self.__copy_part_button.setEnabled( False )
         v_splitter.addWidget( self.__save_to_part_button )
         v_splitter.addWidget( self.__copy_part_button )
+        v_splitter.addWidget( self.__hyper_link_button )
+        v_splitter.addWidget( self.__the_hyper_link_label )
         splitter.addWidget( v_splitter )
 
         self.imageLabel.setFixedSize( 200, 200 )
@@ -214,6 +253,55 @@ class PartInfoPanelInMainWindow( QFrame ):
 
         self.partInfo.tagListWidget.setContextMenuPolicy( Qt.CustomContextMenu )
         self.partInfo.tagListWidget.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
+
+    def __do_image_capture(self):
+        """ 进行屏幕的框选截图 """
+        # 将主窗口最小化
+        self.__parent.hide()
+        time.sleep( 0.5 )
+        img_data = None
+        try:
+            win = WScreenShot()
+            win.exec_()
+            if win.image_file is not None:
+                confirm_dialog = ConfirmImage( win.image_file )
+                confirm_dialog.exec_()
+                # 更新数据
+                img_data = confirm_dialog.get_img_data()
+                if img_data is not None:
+                    self.__database.set_part_thumbnail( self.__current_part.get_part_id(), img_data )
+                os.unlink( win.image_file )
+                img_data = self.__database.get_thumbnail_2_part( self.__current_part.get_part_id() )
+                if img_data is not None:
+                    img = QPixmap()
+                    img.loadFromData( img_data )
+                    n_img = img.scaled( 200, 200, aspectRatioMode=Qt.KeepAspectRatio )
+                    self.imageLabel.setPixmap( n_img )
+                    self.__part_image_set = True
+        finally:
+            self.__parent.show()
+
+    def __do_image_clean(self):
+        resp = QMessageBox.question( self.__parent, '警告', '确定要清除缩略图？', QMessageBox.Yes | QMessageBox.No,
+                                     QMessageBox.No )
+        if resp == QMessageBox.No:
+            return
+        self.__database.clean_part_thumbnail( self.__current_part.get_part_id() )
+        self.imageLabel.clear()
+
+    def __do_image_export(self):
+        if not self.__part_image_set:
+            QMessageBox.warning( self.__parent, '', '没有图片可以导出。', QMessageBox.Yes )
+            return
+        the_image = self.imageLabel.pixmap()
+        image_2_export = the_image.scaled( 300, 300, Qt.KeepAspectRatio, Qt.FastTransformation )
+        t = QFileDialog.getSaveFileName( self.__parent, '保存图片', '', 'BMP(*.bmp)' )
+        filename = t[0]
+        if filename is not None and len( filename ) > 0:
+            image_2_export.save( filename, format='BMP' )
+            QMessageBox.information( self.__parent, '', '导出完毕。' )
+            return
+        QMessageBox.warning( self.__parent, '', '取消导出。' )
 
     def __save_to_part_handler(self):
         """ 点击保存时的响应语句 """
@@ -244,6 +332,25 @@ class PartInfoPanelInMainWindow( QFrame ):
             except Exception as ex:
                 QMessageBox.critical( self.__parent, '更新PDM数据时失败', str( ex ), QMessageBox.Yes )
         self.__save_to_part_button.setEnabled( False )
+
+    def __hyper_link_handler(self):
+        """
+        处理项目的采购链接
+        :return:
+        """
+        if self.__current_part is None:
+            self.__parent.set_status_bar_text( '没有选择项目！' )
+            return
+        part_id = self.__current_part.get_part_id()
+        the_link = self.__database.get_part_hyper_link( part_id )
+        original_text = ''
+        if the_link is not None:
+            original_text = the_link
+        text, ok = QInputDialog.getText( self.__parent, '输入或更改', '采购链接', echo=QLineEdit.Normal,
+                                         text=original_text )
+        if ok:
+            self.__database.set_part_hyper_link( part_id, text )
+            self.__database.save_change()
 
     def __copy_part_handler(self):
         """ 点击复制时的响应语句 """
@@ -277,12 +384,12 @@ class PartInfoPanelInMainWindow( QFrame ):
         elif self.sender() == self.relationFilesList:
             if self.relationFilesList.count() < 1:
                 return
-            item = self.relationFilesList.itemAt( pos )
-            if item is not None and self.__vault is not None:
-                self.__output_filename = '{0}{1}'.format( self.__work_folder, item.text() )
-                self.__menu_4_relation_file_list.exec( QCursor.pos() )
-            else:
-                self.__output_filename = ''
+            self.__current_file_item = self.relationFilesList.itemAt( pos )
+            if self.__current_file_item is not None:
+                self.__menu_4_files_list.exec( QCursor.pos() )
+        elif self.sender() == self.imageLabel:
+            if self.__current_part is not None:
+                self.__menu_4_image_label.exec( QCursor.pos() )
 
     def set_use_local_pdf_first(self, local_path=None):
         """
@@ -313,11 +420,19 @@ class PartInfoPanelInMainWindow( QFrame ):
         pass
 
     def set_part_info(self, part, database):
-        self.__current_part = part
-        self.partInfo.set_part_info( part )
-        files_list = database.get_files_2_part( part.get_part_id() )
         self.relationFilesList.setCurrentItem( None )
         self.relationFilesList.clear()
+        self.imageLabel.clear()
+        self.__part_image_set = False
+        self.__the_hyper_link_label.setText( '' )
+        self.__the_hyper_link_label.setOpenExternalLinks( False )
+        self.__current_part = part
+        self.partInfo.set_part_info( part )
+
+        if self.__current_part is None:
+            return
+
+        files_list = database.get_files_2_part( part.get_part_id() )
         self.relationFilesList.addItems( files_list )
         img_data = database.get_thumbnail_2_part( part.get_part_id() )
         if img_data is not None:
@@ -325,13 +440,36 @@ class PartInfoPanelInMainWindow( QFrame ):
             img.loadFromData( img_data )
             n_img = img.scaled( 200, 200, aspectRatioMode=Qt.KeepAspectRatio )
             self.imageLabel.setPixmap( n_img )
-        else:
-            self.imageLabel.clear()
+            self.__part_image_set = True
+
+        # 显示项目的采购链接
+        hyper_link = self.__database.get_part_hyper_link( part.get_part_id() )
+        if hyper_link is not None:
+            self.__the_hyper_link_label.setText( f'<a href=\"{hyper_link}\">采购链接' )
+            self.__the_hyper_link_label.setOpenExternalLinks( True )
+
         self.__current_select_tag = None
+        self.__current_file_item = None
+
+    def __do_open_file_location(self):
+        if self.__current_file_item is not None:
+            file_name = self.__current_file_item.text()
+            # 为隐藏执行命令时的cmd窗口，载自网络
+            DETACHED_PROCESS = 0x00000008
+            subprocess.call( f'explorer.exe /e,/select,{self.__work_folder}\\{file_name}',
+                             creationflags=DETACHED_PROCESS )
+
+    def __open_file_by_menu(self):
+        if self.__current_file_item is not None:
+            self.__open_file( self.__current_file_item )
 
     def __open_file(self, item: QListWidgetItem):
         try:
             file_name = item.text()
+            file_version = None
+            if file_name in self.__current_file_version:
+                file_version = f"{self.__current_part.part_id}.{self.__current_file_version[file_name]}" \
+                               f"-{self.__current_part.name}"
             suffix = os.path.splitext( file_name )[1]
             if suffix.upper() == '.SLDDRW':
                 if self.__local_path is not None and os.path.exists( self.__local_path ):
@@ -339,15 +477,28 @@ class PartInfoPanelInMainWindow( QFrame ):
                     part_num = self.__current_part.part_id
                     the_file = []
                     dirs = os.listdir( self.__local_path )
+                    version_alarm = file_version is None
                     for f in dirs:
                         if f.startswith( part_num ) and os.path.splitext( f )[1].upper() == '.PDF':
                             the_file.append( f )
-                    if len( the_file ) > 0:
-                        the_file.sort( reverse=True )
-                        item, ok = QInputDialog.getItem( self, '选择图纸', '文件名：', the_file, 0, False )
-                        if ok and item:
-                            os.startfile( f'{self.__local_path}\\{item}' )
-                        return
+                            one_file_name = os.path.splitext( f )[0]
+                            if file_version is not None:
+                                if one_file_name > file_version:
+                                    version_alarm = False
+                    open_pdf = True
+                    check_last_version = version_alarm and len( the_file ) > 0
+                    if (not self.__is_offline) and check_last_version:
+                        resp = QMessageBox.question( self.__parent, '', '本地PDF的图纸版本是旧版的，是否要打开原有文件？',
+                                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No )
+                        if resp == QMessageBox.No:
+                            open_pdf = False
+                    if open_pdf or not check_last_version:
+                        if len( the_file ) > 0:
+                            the_file.sort( reverse=True )
+                            item, ok = QInputDialog.getItem( self, '选择图纸', '文件名：', the_file, 0, False )
+                            if ok and item:
+                                os.startfile( f'{self.__local_path}\\{item}' )
+                            return
             full_path = '{0}\\{1}'.format( self.__work_folder, file_name )
             if os.path.exists( full_path ):
                 os.startfile( full_path )
@@ -362,14 +513,26 @@ class PartInfoPanelInMainWindow( QFrame ):
     def __linked_file_changed(self):
         try:
             item = self.relationFilesList.currentItem()
+            self.__current_file_item = item
             if self.__vault is None or item is None:
                 return
             file_name = item.text()
             datas_ = self.__vault.GetFileStatus( file_name )
             datas = list( datas_ )
+            self.__current_file_version[file_name] = PartInfoPanelInMainWindow.create_version( datas )
             self.__parent.set_status_bar_text( file_name + ' ' + datas[0] )
         except Exception as e:
             self.__parent.set_status_bar_text( 'Error: {0}'.format( e ) )
+
+    @staticmethod
+    def create_version(the_str):
+        status_flag = 'P'
+        if the_str[1] == '已审批' or the_str[1] == '已批准':
+            status_flag = ''
+        lock_status = 'E'
+        if the_str[2] == '否':
+            lock_status = ''
+        return '{0}{1}{2}'.format( the_str[3], status_flag, lock_status )
 
 
 class ChildrenTablePanel( QFrame ):
@@ -378,35 +541,66 @@ class ChildrenTablePanel( QFrame ):
     mode = 1: 父清单
     """
 
+    Columns_header = ['序号', '零件号', '名称', '描述', '统计数量', '实际数量', '状态', '备注']
+
     def __init__(self, parent=None, database=None, mode=0):
         super().__init__( parent )
         self.__parent = parent
         self.__database = database
         self.__mode = mode
+        # 当前所编辑的父项目, Part
+        self.__part_list_belong_2: Part = None
+        # 当前所选择的父项目, Part
+        self.__parent_part: Part = None
+        # 当前所选择的子项目的零件号, int
         self.__select_part_id = None
+        # 当前所选择的子项目的序号
+        self.__select_part_index = -1
+        # 当前所选择的子项目所在的行号
+        self.__select_row = -1
+        # 所有当前被选择的Id
+        self.__all_selected_id = None
+        # 当数据进行后台更新时
+        self.__update_data_silence = False
         self.childrenTableWidget = QTableWidget( self )
         self.addItemButton = QPushButton( self )
         self.deleteItemButton = QPushButton( self )
+        self.sortItemButton = QPushButton( self )
         self.saveAllItemsButton = QPushButton( self )
         self.go2ItemButton = QPushButton( self )
+        self.editModeCheckBox = QCheckBox( self )
         self.__init_ui()
+        # 编辑模式下添加及删除的行
+        self.__2_add_row = []
+        self.__2_remove_row = []
+        self.__counter = 0
 
     def __init_ui(self):
         self.addItemButton.setText( '添加' )
         self.deleteItemButton.setText( '删除' )
+        self.sortItemButton.setText( '排序' )
         self.saveAllItemsButton.setText( '保存' )
+        self.addItemButton.setEnabled( False )
+        self.deleteItemButton.setEnabled( False )
+        self.sortItemButton.setEnabled( False )
+        self.saveAllItemsButton.setEnabled( False )
         self.go2ItemButton.setText( '跳转...' )
+        self.editModeCheckBox.setText( '编辑模式' )
         h_box = QHBoxLayout( self )
         v_box = QVBoxLayout( self )
         v_box.setAlignment( Qt.AlignTop )
-        if self.__mode == 0:
+        if self.__mode == 0:  # 表示是子项目清单
             v_box.addWidget( self.addItemButton )
             v_box.addWidget( self.deleteItemButton )
+            v_box.addWidget( self.sortItemButton )
             v_box.addWidget( self.saveAllItemsButton )
+            v_box.addWidget( self.editModeCheckBox )
         else:
             self.addItemButton.setVisible( False )
             self.deleteItemButton.setVisible( False )
+            self.sortItemButton.setVisible( False )
             self.saveAllItemsButton.setVisible( False )
+            self.editModeCheckBox.setVisible( False )
         v_box.addWidget( self.go2ItemButton )
         h_box.addLayout( v_box )
         h_box.addWidget( self.childrenTableWidget )
@@ -415,49 +609,227 @@ class ChildrenTablePanel( QFrame ):
         self.childrenTableWidget.itemSelectionChanged.connect( self.__table_select_changed )
         # 按键的动作响应
         self.go2ItemButton.clicked.connect( self.__go_2_part )
+        self.addItemButton.clicked.connect( self.__add_2_part_list )
+        self.deleteItemButton.clicked.connect( self.__remove_from_part_list )
+        self.sortItemButton.clicked.connect( self.__sort_part_list )
+        self.saveAllItemsButton.clicked.connect( self.__save_part_list )
+        self.editModeCheckBox.toggled.connect( lambda: self.__set_list_edit_mode( self.editModeCheckBox.isChecked() ) )
+        # 编辑某个单元格的响应函数
+        self.childrenTableWidget.cellChanged.connect( self.__item_change )
+
+    def __item_change(self, r, c):
+        if self.__update_data_silence:
+            return
+        # itemChanged 的响应函数
+        if c == 4:
+            item = self.childrenTableWidget.item( r, c )
+            data = item.data( Qt.DisplayRole )
+            other_item = self.childrenTableWidget.item( r, c + 1 )
+            other_item.setData( Qt.DisplayRole, data )
+
+    def __add_2_part_list(self):
+        self.__update_data_silence = True
+        # 将项目添加到清单中
+        if self.__parent_part is None:
+            self.__parent.set_status_bar_text( '没有选择可添加的项目。' )
+            return
+        if self.__parent_part == self.__part_list_belong_2:
+            self.__parent.set_status_bar_text( '无法将自身添加为子项目。' )
+            return
+        if self.__select_row < 0:
+            target_row = self.childrenTableWidget.rowCount()
+            if target_row > 0:
+                jj: QTableWidgetItem = self.childrenTableWidget.item( target_row - 1, 0 )
+                jj_text = jj.text()
+                next_index = int( jj_text ) + 1
+            else:
+                next_index = 10
+        else:
+            target_row = self.__select_row + 1
+            next_index = self.__select_part_index + 1
+        if self.__all_selected_id is not None and len( self.__all_selected_id ) > 0:
+            for the_id in self.__all_selected_id:
+                p = Part.get_parts( self.__database, part_id=the_id )[0]
+                p.get_tags( self.__database )
+                self.childrenTableWidget.insertRow( target_row )
+                # 填入一行的数据
+                index_item = QTableWidgetItem()
+                index_item.setData( Qt.DisplayRole, next_index )
+                id_item = QTableWidgetItem( p.part_id )
+                id_item.setFlags( id_item.flags() & ~Qt.ItemIsEditable )
+                name_item = QTableWidgetItem( p.name )
+                name_item.setFlags( name_item.flags() & ~Qt.ItemIsEditable )
+                status_item = QTableWidgetItem( p.status )
+                status_item.setFlags( status_item.flags() & ~Qt.ItemIsEditable )
+                description_item = QTableWidgetItem( p.description )
+                description_item.setFlags( description_item.flags() & ~Qt.ItemIsEditable )
+                comment_item = QTableWidgetItem()
+                qty_1_item = QTableWidgetItem()
+                qty_1_item.setData( Qt.DisplayRole, 1.0 )
+                qty_1_item.setTextAlignment( Qt.AlignHCenter )
+                qty_2_item = QTableWidgetItem()
+                qty_2_item.setData( Qt.DisplayRole, 1.0 )
+                qty_2_item.setTextAlignment( Qt.AlignHCenter )
+                self.childrenTableWidget.setItem( target_row, 0, index_item )
+                self.childrenTableWidget.setItem( target_row, 1, id_item )
+                self.childrenTableWidget.setItem( target_row, 2, name_item )
+                self.childrenTableWidget.setItem( target_row, 3, description_item )
+                self.childrenTableWidget.setItem( target_row, 4, qty_1_item )
+                self.childrenTableWidget.setItem( target_row, 5, qty_2_item )
+                self.childrenTableWidget.setItem( target_row, 6, status_item )
+                self.childrenTableWidget.setItem( target_row, 7, comment_item )
+                target_row += 1
+                next_index += 1
+        QTableWidget.resizeColumnsToContents( self.childrenTableWidget )
+        QTableWidget.resizeRowsToContents( self.childrenTableWidget )
+        self.__parent.set_status_bar_text( f'添加了{next_index}子项目。' )
+        self.__update_data_silence = False
+
+    def __remove_from_part_list(self):
+        self.__update_data_silence = True
+        # 从清单中移除
+        if self.__select_row >= 0:
+            part_id_item: QTableWidgetItem = self.childrenTableWidget.item( self.__select_row, 1 )
+            data = part_id_item.data( Qt.UserRole )
+            if data is not None:
+                self.__2_remove_row.append( data )
+            self.childrenTableWidget.removeRow( self.__select_row )
+        else:
+            self.__parent.set_status_bar_text( '没有选择要移除的子项目。' )
+        self.__update_data_silence = False
+
+    def __sort_part_list(self):
+        self.__update_data_silence = True
+        # 根据index对清单进行排序
+        r_c = self.childrenTableWidget.rowCount()
+        if r_c < 2:
+            return
+        c_c = 8
+        temp_dict = {}
+        for i in range( r_c ):
+            f_cell = self.childrenTableWidget.takeItem( i, 0 )
+            k = f_cell.data( Qt.DisplayRole )
+            one_row = [f_cell]
+            for j in range( 1, c_c ):
+                one_row.append( self.childrenTableWidget.takeItem( i, j ) )
+            temp_dict[k] = one_row
+        sorted_list = list( temp_dict.keys() )
+        sorted_list.sort()
+        j = 0
+        for k in sorted_list:
+            one_row = temp_dict[k]
+            index_item = QTableWidgetItem()
+            index_item.setData( Qt.DisplayRole, 10 * (j + 1) )
+            self.childrenTableWidget.setItem( j, 0, index_item )
+            for c in range( 1, c_c ):
+                self.childrenTableWidget.setItem( j, c, one_row[c] )
+            j += 1
+        QTableWidget.resizeColumnsToContents( self.childrenTableWidget )
+        QTableWidget.resizeRowsToContents( self.childrenTableWidget )
+        self.__parent.set_status_bar_text( '排序完成。' )
+        self.__update_data_silence = False
+
+    def __save_part_list(self):
+        # 保存清单数据
+        row_cc = self.childrenTableWidget.rowCount()
+        for i in range( row_cc ):
+            index = (self.childrenTableWidget.item( i, 0 )).data( Qt.DisplayRole )
+            part_id_item = self.childrenTableWidget.item( i, 1 )
+            part_id = int( part_id_item.text().lstrip( '0' ) )
+            relation_id = part_id_item.data( Qt.UserRole )
+            sum_qty = (self.childrenTableWidget.item( i, 4 )).data( Qt.DisplayRole )
+            actual_qty = (self.childrenTableWidget.item( i, 5 )).data( Qt.DisplayRole )
+            relation_comment = (self.childrenTableWidget.item( i, 7 )).text()
+            self.__database.update_part_relation( relation_id, index, self.__part_list_belong_2.get_part_id(),
+                                                  part_id, sum_qty, actual_qty, relation_comment )
+        for r in self.__2_remove_row:
+            self.__database.remove_part_relation( r )
+        self.__database.save_change()
+        self.__2_remove_row.clear()
+        self.set_part_children( self.__part_list_belong_2, self.__database )
+        self.__parent.set_status_bar_text( '完成子清单的更新。' )
+
+    def __set_list_edit_mode(self, is_edit_mode):
+        self.__update_data_silence = True
+        # 编辑模式的相应函数
+        self.__parent.set_children_list_edit_mode( is_edit_mode )
+        self.addItemButton.setEnabled( is_edit_mode )
+        self.deleteItemButton.setEnabled( is_edit_mode )
+        self.sortItemButton.setEnabled( is_edit_mode )
+        self.saveAllItemsButton.setEnabled( is_edit_mode )
+        if is_edit_mode:
+            self.__part_list_belong_2 = self.__parent_part
+        else:
+            self.__part_list_belong_2 = None
+            self.__2_add_row.clear()
+            self.__2_remove_row.clear()
+        r_c = self.childrenTableWidget.rowCount()
+        c = (0, 4, 5, 7)
+        for i in range( r_c ):
+            for j in c:
+                item = self.childrenTableWidget.item( i, j )
+                if is_edit_mode:
+                    item.setFlags( item.flags() | Qt.ItemIsEditable )
+                else:
+                    item.setFlags( item.flags() & (~Qt.ItemIsEditable) )
+        self.__update_data_silence = False
 
     def __table_select_changed(self):
-        item = self.childrenTableWidget.currentItem()
-        if item is None:
+        cc = len( self.childrenTableWidget.selectedItems() )
+        if cc < 1:
             self.__select_part_id = None
+            self.__select_row = -1
+            self.__select_part_index = -1
             return
-        row_index = item.row()
-        ii: QTableWidgetItem = self.childrenTableWidget.item( row_index, 1 )
+        item = self.childrenTableWidget.currentItem()
+        self.__select_row = item.row()
+        ii: QTableWidgetItem = self.childrenTableWidget.item( self.__select_row, 1 )
         if ii is not None:
             ii_text = ii.text().lstrip( '0' )
             self.__select_part_id = int( ii_text )
         else:
             self.__select_part_id = None
+        jj: QTableWidgetItem = self.childrenTableWidget.item( self.__select_row, 0 )
+        if jj is not None:
+            jj_text = jj.text()
+            self.__select_part_index = int( jj_text )
+        else:
+            self.__select_part_index = -1
 
     def __go_2_part(self):
         self.__parent.do_when_part_list_select( self.__select_part_id )
 
-    def set_part_children(self, part: Part, database):
+    def set_part_children(self, part: Part, database, all_selected_id=None):
+        self.__update_data_silence = True
+        self.__parent_part = part
+        self.__all_selected_id = all_selected_id
         self.__select_part_id = None
-        if self.__mode == 0:
-            result = part.get_children( database )
-        else:
-            result = part.get_children( database, mode=1 )
+        if self.editModeCheckBox.isChecked():
+            return
         self.childrenTableWidget.setColumnCount( 8 )
-        self.childrenTableWidget.setHorizontalHeaderLabels(
-            ['序号', '零件号', '名称', '描述', '统计数量', '实际数量', '状态', '备注'] )
-        r_number = len( result ) if result is not None else 0
+        self.childrenTableWidget.setHorizontalHeaderLabels( ChildrenTablePanel.Columns_header )
+        if part is None:
+            r_number = 0
+        else:
+            if self.__mode == 0:
+                result = part.get_children( database )
+            else:
+                result = part.get_children( database, mode=1 )
+            r_number = len( result ) if result is not None else 0
         self.childrenTableWidget.setRowCount( r_number )
         if r_number < 1:
             return
         index = 0
         for r in result:
-            index_item = QTableWidgetItem( str( r[0] ) )
+            index_item = QTableWidgetItem()
+            index_item.setData( Qt.DisplayRole, r[0] )
             p = r[1]
             id_item = QTableWidgetItem( p.part_id )
+            # 保存 PartRelationID
             id_item.setData( Qt.UserRole, r[4] )
-            id_item.setFlags( id_item.flags() & ~Qt.ItemIsEditable )
             name_item = QTableWidgetItem( p.name )
-            name_item.setFlags( name_item.flags() & ~Qt.ItemIsEditable )
             status_item = QTableWidgetItem( p.status )
-            status_item.setFlags( status_item.flags() & ~Qt.ItemIsEditable )
             description_item = QTableWidgetItem( p.description )
-            description_item.setFlags( description_item.flags() & ~Qt.ItemIsEditable )
             comment_item = QTableWidgetItem( p.comment )
             qty_1_item = QTableWidgetItem()
             qty_1_item.setData( Qt.DisplayRole, r[2] )
@@ -477,6 +849,11 @@ class ChildrenTablePanel( QFrame ):
             index += 1
         QTableWidget.resizeColumnsToContents( self.childrenTableWidget )
         QTableWidget.resizeRowsToContents( self.childrenTableWidget )
+        for i in range( r_number ):
+            for j in range( 8 ):
+                item = self.childrenTableWidget.item( i, j )
+                item.setFlags( item.flags() & (~Qt.ItemIsEditable) )
+        self.__update_data_silence = False
 
 
 class TagViewPanel( QFrame ):
@@ -698,6 +1075,7 @@ class PartTablePanel( QFrame ):
         self.nameLineEdit = QLineEdit( self )
         self.desLineEdit = QLineEdit( self )
         self.cleanPushButton = QPushButton( self )
+        self.all_part_id_selected = []  # 当前所选择的所有Part的ID
 
         self.partList = QTableWidget( self )
         self.partList.setEditTriggers( QAbstractItemView.NoEditTriggers )
@@ -755,14 +1133,27 @@ class PartTablePanel( QFrame ):
         self.__sort_flags = {}
 
     def __selected_part(self):
-        selected_row = self.partList.currentRow()
-        item = self.partList.item( selected_row, 0 )
+        ii = self.partList.selectedItems()
+        cc = len( ii )
         self.__current_selected_part = 0
-        if item is not None:
-            t = item.text()
-            part_num = int( t.lstrip( '0' ) )
-            self.__current_selected_part = part_num
-            self.__parent.do_when_part_list_select( part_num )
+        self.all_part_id_selected.clear()
+        if cc > 0:
+            for i in range( cc ):
+                if i % self.partList.columnCount() == 0:
+                    item = ii[i]
+                    t = item.text()
+                    part_num = int( t.lstrip( '0' ) )
+                    self.all_part_id_selected.append( part_num )
+            # 确定第一个选择的ID
+            selected_row = self.partList.currentRow()
+            item = self.partList.item( selected_row, 0 )
+            if item is not None:
+                t = item.text()
+                part_num = int( t.lstrip( '0' ) )
+                self.__current_selected_part = part_num
+                self.__parent.do_when_part_list_select( part_num, self.all_part_id_selected )
+        else:
+            self.__parent.do_when_part_list_select( 0 )
 
     def set_display_columns(self, columns):
         self.__columns = columns
@@ -834,11 +1225,9 @@ class PartTablePanel( QFrame ):
                 else:
                     parts.extend( tt )
         else:
-            # parts = Part.get_parts( self.__database, part_id=part_id,
-            #                         name=name, english_name=english_name, description=description )
-            parts = self.__database.get_parts_2( part_id=part_id, name=name, english_name=english_name,
-                                                 description=description, column_config=self.__columns[0] )
-        self.set_list_data_2( parts )
+            parts = Part.get_parts( self.__database, part_id=part_id,
+                                    name=name, english_name=english_name, description=description )
+        self.set_list_data( parts )
 
     def set_list_header_4_statistics(self, show_price=False):
         # 为统计进行一些准备
@@ -1075,7 +1464,9 @@ class PartTablePanel( QFrame ):
                     self.partList.setItem( index, column_index + 1, qty_item )
                     del qty_item
                     record_date_item = QTableWidgetItem()
-                    record_date_item.setData( Qt.DisplayRole, p.last_storing_date.strftime( "%Y/%m/%d" ) )
+                    date_info = p.last_storing_date[:10] if type(
+                        p.last_storing_date ) == str else p.last_storing_date.strftime( "%Y/%m/%d" )
+                    record_date_item.setData( Qt.DisplayRole, date_info )
                     self.partList.setItem( index, column_index + 2, record_date_item )
                     del record_date_item
                     unit_price_item = QTableWidgetItem()
@@ -1096,11 +1487,7 @@ class PartTablePanel( QFrame ):
             while self.fill_part_info_thread.isRunning():
                 time.sleep( 0.1 )
             self.__parent.set_status_bar_text( '开始填充。' )
-            col_names = []
-            for i in columns_flags[5:-1]:
-                r = self.__database.get_tags( tag_id=i )
-                col_names.append( r[0][1] )
-            self.fill_part_info_thread.set_data( col_names, the_begin_column_index, a_parts )
+            self.fill_part_info_thread.set_data( columns_flags, the_begin_column_index, a_parts )
             self.fill_part_info_thread.start()
         self.partList.horizontalHeader().setSectionsClickable( False )
         self.partList.horizontalHeader().setSortIndicatorShown( False )
@@ -1118,10 +1505,14 @@ class PartTablePanel( QFrame ):
             sort_flags = True
         self.__sort_flags[column_index] = sort_flags
 
-    def __fill_one_cell(self, row_index, column_index, text):
-        item = QTableWidgetItem( text )
-        self.partList.setItem( row_index, column_index, item )
-        del item
+    def __fill_one_cell(self, row_index, column_index, data):
+        # TODO 改成list的模式
+        cc = column_index
+        for d in data:
+            item = QTableWidgetItem( d )
+            self.partList.setItem( row_index, cc, item )
+            del item
+            cc += 1
 
     def __all_cells_filled(self, is_paused):
         if is_paused:
@@ -1170,9 +1561,9 @@ class FillPartInfo( QThread ):
         Decimal - 单价
     """
     all_cells_done_signal = pyqtSignal( bool )
-    one_cell_2_fill_signal = pyqtSignal( int, int, str )
+    one_cell_2_fill_signal = pyqtSignal( int, int, list )
 
-    # fill_one_storing_signal = pyqtSignal( int, int, str, float, datetime, Decimal )
+    Prop_dict = {1: 6, 15: 7, 16: 8, 266: 9, 1288: 10, 2064: 11, 2111: 12, 2112: 13, 2406: 14}
 
     def __init__(self, database):
         super().__init__()
@@ -1185,8 +1576,8 @@ class FillPartInfo( QThread ):
         self.__database = database[1]
         self.__do_get_storing = None
 
-    def set_data(self, columns_name, column_index, parts, get_storing=False):
-        self.__c_n = columns_name
+    def set_data(self, columns_id, column_index, parts, get_storing=False):
+        self.__c_n = columns_id
         self.__c_i = column_index
         self.__parts = parts
         self.__stop_flag = False
@@ -1203,13 +1594,11 @@ class FillPartInfo( QThread ):
                 if self.__stop_flag:
                     break
                 cc = self.__c_i
-                for j in self.__c_n:
-                    ss = p.get_specified_tag( self.__database, j )
-                    self.one_cell_2_fill_signal.emit( index, cc, ss )
-                    cc += 1
-                if self.__do_get_storing:
-                    # 获取仓储信息并填写
-                    pass
+                part_id = p.get_part_id()
+                t_data = self.__database.get_parts_by_config( part_id=part_id, column_config=self.__c_n )
+                data = t_data[part_id]
+                ss = data[sum( self.__c_n[:5] ):]
+                self.one_cell_2_fill_signal.emit( index, cc, ss )
                 index += 1
         except Exception as e:
             print( 'FillPartInfo Error: ' + str( e ) )
@@ -1284,6 +1673,7 @@ class PartStructurePanel( QFrame ):
                 node.setText( 1, '{0}'.format( qty ) )
                 node.setData( 0, Qt.UserRole, p )
                 nodes.append( node )
+            cc.takeChildren()
             cc.addChildren( nodes )
         self.__structureTree.resizeColumnToContents( 0 )
 
@@ -1331,6 +1721,8 @@ class CostInfoPanel( QFrame ):
     def set_part_cost_info(self, the_part: Part):
         self.__table_modal.clear()
         self.__table_modal.setHorizontalHeaderLabels( CostInfoPanel.Column_name )
+        if the_part is None:
+            return
         # 获取 ERP 领料信息的数据
         erp_id = the_part.get_specified_tag( self.__database, '巨轮智能ERP物料编码' )
         if erp_id is not '':
@@ -1343,19 +1735,31 @@ class CostInfoPanel( QFrame ):
                     price_item.setData( Qt.DisplayRole, unit_price )
                     one_row_in_table.append( price_item )
                     one_row_in_table.append( QStandardItem( '最近领料' ) )
-                    date_item = QStandardItem( one_record[3].strftime( "%Y-%m-%d" ) )
+                    if type( one_record[3] ) != str:
+                        date_item = QStandardItem( one_record[3].strftime( "%Y-%m-%d" ) )
+                    else:
+                        t = one_record[3]
+                        date_item = QStandardItem( t[:10] )
                     one_row_in_table.append( date_item )
                     self.__table_modal.appendRow( one_row_in_table )
         pdm_records = self.__database.get_price_from_self_record( the_part.get_part_id() )
         if pdm_records is not None:
             for one_record in pdm_records:
-                unit_price = (one_record[1] + one_record[2]) / (Decimal.from_float( 1.0 ) + one_record[3]) / \
-                             (one_record[4])
+                tt = one_record[:]
+                t1 = Decimal.from_float( one_record[1] ) if type( one_record[1] ) == float else one_record[1]
+                t2 = Decimal.from_float( one_record[2] ) if type( one_record[2] ) == float else one_record[2]
+                t3 = Decimal.from_float( one_record[3] ) if type( one_record[3] ) == float else one_record[3]
+                t4 = Decimal.from_float( one_record[4] ) if type( one_record[4] ) == float else one_record[4]
+                unit_price = (t1 + t2) / (Decimal.from_float( 1.0 ) + t3) / t4
                 bill_nr = '{:06d}'.format( one_record[0] )
                 one_row_in_table = [QStandardItem( bill_nr )]
                 price_item = QStandardItem( '{:.2f}'.format( unit_price ) )
                 supplier_item = QStandardItem( one_record[6] )
-                date_item = QStandardItem( one_record[5].strftime( "%Y-%m-%d" ) )
+                if type( one_record[5] ) == str:
+                    t = one_record[5]
+                    date_item = QStandardItem( t[:10] )
+                else:
+                    date_item = QStandardItem( one_record[5].strftime( "%Y-%m-%d" ) )
                 one_row_in_table.extend( [price_item, supplier_item, date_item] )
                 self.__table_modal.appendRow( one_row_in_table )
         if self.__table_modal.rowCount() > 0:

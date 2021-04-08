@@ -27,6 +27,7 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.__work_folder = work_folder
         self.__pdm_vault = pdm_vault
         self.__mode = mode
+        self.__is_offline = mode == 1
         self.__local_folder = local_folder
         # Solidworks 程序
         self.__sw_app = None
@@ -38,8 +39,11 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.__current_selected_part = -1
         # 一些Panel组件
         self.tagTreePanel = TagViewPanel( self, database=database )
-        self.partInfoPanel = PartInfoPanelInMainWindow( self, work_folder=self.__work_folder, database=self.__database )
+        self.partInfoPanel = PartInfoPanelInMainWindow( self, work_folder=self.__work_folder,
+                                                        database=self.__database, is_offline=self.__is_offline )
         self.partInfoPanel.set_vault( pdm_vault )
+        # 能否进行列表编辑的标记
+        self.edit_child_mode = False
         # 仓位列表
         self.__storing_pos_list_widget = QListWidget()
         self.__storing_pos_checkbox = []
@@ -238,7 +242,7 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         将所选的零件添加至领料对话框
         :return:
         """
-        jl_erp_database = JL_ERP_Database()
+        jl_erp_database = None
         self.__show_pick_material_dialog()
         try:
             all_parts = []
@@ -256,6 +260,8 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
                         if erp_code is None:
                             erp_info = None
                         else:
+                            if jl_erp_database is None:
+                                jl_erp_database = JL_ERP_Database()
                             erp_info = jl_erp_database.get_erp_data( erp_code )
                     if erp_info is None:
                         QMessageBox.warning( self, '忽略', f'{p.name}({p.part_id})没有ERP的信息，被忽略。' )
@@ -266,7 +272,8 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
             if len( all_parts ) >= 1:
                 self.__pick_material_dialog.add_items( all_parts )
         finally:
-            jl_erp_database.close()
+            if jl_erp_database is not None:
+                jl_erp_database.close()
 
     def __create_pick_material_dialog_and_config(self):
         """
@@ -367,6 +374,9 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         dialog = NSetDefaultDialog( self, self.__database, self.__config_file )
         dialog.show()
 
+    def set_children_list_edit_mode(self, is_edit_mode):
+        self.edit_child_mode = is_edit_mode
+
     def get_statistics_setting(self):
         """ 获取统计的设置 """
         return (self.statisticsInTimeAction.isChecked(), self.allStatisticsAction.isChecked(),
@@ -392,15 +402,18 @@ class NPartMainWindow( QMainWindow, Ui_MainWindow ):
         self.doTaggedMenuItem.setVisible( check_status )
         self.tagTreePanel.set_mode( check_status )
 
-    def do_when_part_list_select(self, part_id):
-        parts = Part.get_parts( self.__database, part_id=part_id )
-        p = parts[0]
+    def do_when_part_list_select(self, part_id, all_id=None):
+        if (part_id is not None) and part_id > 0:
+            parts = Part.get_parts( self.__database, part_id=part_id )
+            p = parts[0]
+            p.get_tags( self.__database )
+        else:
+            p = None
         self.__current_selected_part = p
-        p.get_tags( self.__database )
         self.partInfoPanel.set_part_info( p, self.__database )
         self.partInfoPanel.set_part_operate_button_status( 2, True )
         self.partInfoPanel.set_part_operate_button_status( 1, False )
-        self.childrenTablePanel.set_part_children( p, self.__database )
+        self.childrenTablePanel.set_part_children( p, self.__database, all_id )
         self.parentsTablePanel.set_part_children( p, self.__database )
         self.partCostPanel.set_part_cost_info( p )
 

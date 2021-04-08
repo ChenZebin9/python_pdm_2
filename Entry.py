@@ -33,9 +33,9 @@ class InitConfig:
 def Get_mssql_config(config: configparser, lock_mode=None):
     """ 获取在线或者离线模式，MSSQL的设置。 """
     mode = config.getint( 'Config', 'mode' )
-    server = 'localhost'
-    user = 'zebin'
-    password = '8893945'
+    server = '191.1.6.103'
+    user = '_user'
+    password = '123456'
     database_name = 'Greatoo_JJ_Database'
     if lock_mode is not None:
         mode = lock_mode
@@ -55,14 +55,25 @@ def Get_mssql_config(config: configparser, lock_mode=None):
 if __name__ == '__main__':
     """ app = QApplication(sys.argv) 要放置在最前面，否则会出现许多可怪的问题。 """
     app = QApplication( sys.argv )
-    entrance_dialog = NEntranceDialog( parent=None )
-    func_index = entrance_dialog.exec()
 
     config = configparser.ConfigParser()
     if not config.read( 'pdm_config.ini', encoding='GBK' ):
         raise Exception( 'INI file not found.' )
     database_setting = Get_mssql_config( config )
     mode = database_setting[0]
+    if mode == 2:
+        resp = QMessageBox.question( None, '询问', '是否在线登录？', QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                                     QMessageBox.Yes )
+        if resp == QMessageBox.Cancel:
+            sys.exit( 0 )
+        elif resp == QMessageBox.Yes:
+            mode = 0
+        else:
+            mode = 1
+
+    entrance_dialog = NEntranceDialog( parent=None )
+    func_index = entrance_dialog.exec()
+
     if func_index == 1:
         from ui.NPartMainWindow import NPartMainWindow
         from db.DatabaseHandler import DatabaseHandler
@@ -73,7 +84,7 @@ if __name__ == '__main__':
         init_config: InitConfig = None
         try:
             init_config = InitConfig()
-            mode = config.getint( 'Config', 'mode' )
+            # mode = config.getint( 'Config', 'mode' )
             local_folder = config.get( 'Offline', 'local_folder' )
             work_folder = None
             user_name = None
@@ -91,12 +102,11 @@ if __name__ == '__main__':
                     vault = EpdmLib()
                     solidWorks_app = SolidWorksApi()
                     vault_name = config.get( 'Online', 'vault' )
-                    vault.Login( vault_name )
                     user_name = vault.GetUserName()
                     work_folder = vault.GetRootFolder()
                     database_handler = MssqlHandler( *database_setting[1:] )
                 except:
-                    QMessageBox.warning(None, '', '无法在线登录！将使用离线方式。')
+                    QMessageBox.warning( None, '', '无法在线登录！将使用离线方式。' )
                     vault = None
                     mode = 1
             if mode == 1:
@@ -113,7 +123,7 @@ if __name__ == '__main__':
                     database_handler = MssqlHandler( *database_setting[1:] )
             myWin = NPartMainWindow( database=database_handler, username=user_name,
                                      work_folder=work_folder, pdm_vault=vault, mode=mode,
-                                     local_folder=local_folder)
+                                     local_folder=local_folder )
             myWin.add_config_and_init( solidWorks_app, init_config.db_name )
             myWin.show()
             sys.exit( app.exec_() )
@@ -124,11 +134,16 @@ if __name__ == '__main__':
                 database_handler.close()
     elif func_index == 2:
         from ui2.NProductMainWindow import NProductMainWindow
-        from db.ProductDatasHandler import MssqlHandler as ProductDatabase
+        from db.ProductDatasHandler import MssqlHandler as Mssql_Database, SqliteHandler as Sqlite_Datbase
 
         try:
-            database = ProductDatabase( *database_setting[1:] )
-            theDialog = NProductMainWindow( parent=None, database=database )
+            if mode == 0:
+                database = Mssql_Database( *database_setting[1:] )
+            else:
+                user_name = config.get( 'Offline', 'userName' )
+                database_file = config.get( 'Offline', 'database_file' )
+                database = Sqlite_Datbase( database_file )
+            theDialog = NProductMainWindow( parent=None, database=database, offline=mode )
             theDialog.show()
             sys.exit( app.exec_() )
         except Exception as ex:

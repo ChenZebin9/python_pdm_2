@@ -43,7 +43,11 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
         self.__from_storage = 'D'
         self.setup_ui()
         # 预先打开巨轮ERP的连接
-        self.__jl_erp_database = JL_ERP_Database()
+        self.__jl_erp_database = None
+        # 记录当前工作数据每一行的唯一数值
+        self.__record_index = 0
+        # 每一行的特殊处理决定：0-按照建议的去做
+        self.__special_mark = {}
 
     def setup_ui(self):
         super( NCreatePickBillDialog, self ).setupUi( self )
@@ -92,8 +96,11 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
         :return:
         """
         for r in the_items:
+            id_item = QStandardItem( r[0] )
+            id_item.setData( self.__record_index, Qt.UserRole + 1 )
+            self.__record_index += 1
             one_row_in_table = [QStandardItem( self.__default_product_id ),
-                                QStandardItem( r[0] ),
+                                id_item,
                                 QStandardItem( r[1] ),
                                 QStandardItem( r[2] ),
                                 QStandardItem( r[3] ),
@@ -128,7 +135,10 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
                     if r[1] is not None and len( r[1] ) > 0:
                         tt = float( r[1] )
                         part_id = int( tt )
-                        one_row_in_table.append( QStandardItem( '{:08d}'.format( part_id ) ) )
+                        id_item = QStandardItem( '{:08d}'.format( part_id ) )
+                        id_item.setData( self.__record_index, Qt.UserRole + 1 )
+                        self.__record_index += 1
+                        one_row_in_table.append( id_item )
                         the_part: Part = Part.get_parts( database=self.__database, part_id=part_id )[0]
                         if self.__from_storage != 'F':
                             erp_code = the_part.get_specified_tag( database=self.__database, tag_name='巨轮中德ERP物料编码' )
@@ -139,20 +149,27 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
                             if self.__from_storage != 'F':
                                 erp_info = self.__database.get_erp_data( erp_code )
                             else:
+                                if self.__jl_erp_database is None:
+                                    self.__jl_erp_database = JL_ERP_Database()
                                 erp_info = self.__jl_erp_database.get_erp_data( erp_code )
                             one_row_in_table.append( QStandardItem( erp_info[1] ) )
-                            one_row_in_table.append( QStandardItem( r[3] ) )
                             one_row_in_table.append( QStandardItem( erp_info[2] ) )
+                            one_row_in_table.append( QStandardItem( r[3] ) )
                     elif r[2] is not None and len( r[2] ) > 0:
                         one_row_in_table.append( QStandardItem( '' ) )
-                        one_row_in_table.append( QStandardItem( r[2] ) )
+                        id_item = QStandardItem( r[2] )
+                        id_item.setData( self.__record_index, Qt.UserRole + 1 )
+                        self.__record_index += 1
+                        one_row_in_table.append( id_item )
                         if self.__from_storage != 'F':
                             erp_info = self.__database.get_erp_data( r[2] )
                         else:
+                            if self.__jl_erp_database is None:
+                                self.__jl_erp_database = JL_ERP_Database()
                             erp_info = self.__jl_erp_database.get_erp_data( r[2] )
                         one_row_in_table.append( QStandardItem( erp_info[1] ) )
-                        one_row_in_table.append( QStandardItem( r[3] ) )
                         one_row_in_table.append( QStandardItem( erp_info[2] ) )
+                        one_row_in_table.append( QStandardItem( r[3] ) )
                     self.__table_modal.appendRow( one_row_in_table )
                 self.itemsTableView.resizeColumnsToContents()
         except Exception as ex:
@@ -164,12 +181,13 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
             return
         indexes = self.itemsTableView.selectedIndexes()
         removed_row_cc = 0
-        row_to_remove = []
+        m = []
         for i in indexes:
             ii: QModelIndex = i
-            row_to_remove.append( ii.row() )
-        row_to_remove.sort()
-        for i in row_to_remove:
+            m.append( ii.row() )
+        m.sort()
+        a = sorted( set( m ), key=m.index )
+        for i in a:
             self.__table_modal.removeRow( i - removed_row_cc )
             removed_row_cc += 1
 
@@ -180,6 +198,8 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
             self.__do_close()
 
     def __do_accept(self):
+        except_type = -1
+        record_index = -1
         try:
             r_n = self.__table_modal.rowCount()
             if r_n < 1:
@@ -190,7 +210,9 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
             for i in range( r_n ):
                 row_data = []
                 part_id_cell: QStandardItem = self.__table_modal.item( i, 1 )
+                record_index = part_id_cell.data( Qt.UserRole + 1 )
                 part_id = int( part_id_cell.text().lstrip( '0' ) )
+                qty_value = 0.0
                 for j in c_n:
                     cell: QStandardItem = self.__table_modal.item( i, j )
                     if j == 5:
@@ -211,13 +233,17 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
                             row_data.append( '' )
                         else:
                             row_data.append( cell.text() )
-                record = [row_data[0], part_id, row_data[-1], qty_value]
+                record = [row_data[0], part_id, row_data[-1], qty_value, record_index]
                 data_4_paper.append( row_data )
                 items_4_database.append( record )
             bill_name = self.__billNrLineEdit.text()
             data_4_database = [bill_name, self.__operatorLineEdit.text(), self.__timeSelector.text(),
                                '出库单', self.__from_storage, items_4_database]
-            self.__database.create_picking_record( data_4_database )
+            resp = self.__database.create_picking_record( data_4_database, self.__special_mark )
+            if resp is not None:
+                except_type = resp[0]
+                record_index = resp[2]
+                raise Exception( resp[1] )
             pdf_creator = PdfLib.CreatePickBill( data_4_paper, '中德OPS项目部' if self.__from_storage != 'F' else 'OPS项目部',
                                                  self.__operatorLineEdit.text(),
                                                  self.__timeSelector.text(), self.__billNrLineEdit.text() )
@@ -240,12 +266,21 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
             if resp == QMessageBox.Yes:
                 os.startfile( to_save_file )
         except Exception as ex:
-            QMessageBox.warning( self, '', str( ex ), QMessageBox.Ok )
+            if except_type == 0:
+                resp = QMessageBox.question( self, '处理异常', str( ex ),
+                                             QMessageBox.Yes | QMessageBox.No,
+                                             QMessageBox.No )
+                if resp == QMessageBox.Yes:
+                    self.__special_mark[record_index] = 0
+            elif except_type == 1:
+                QMessageBox.warning( self, '建立领料单时异常', str( ex ), QMessageBox.Ok )
         finally:
-            self.__jl_erp_database.close()
+            if self.__jl_erp_database is not None:
+                self.__jl_erp_database.close()
 
     def __do_close(self):
-        self.__jl_erp_database.close()
+        if self.__jl_erp_database is not None:
+            self.__jl_erp_database.close()
         self.close()
 
     def fill_import_cache(self, data):

@@ -300,7 +300,10 @@ class DoStatistics( QThread ):
 
     def __do_statistics(self, qty):
         """ 实际的统计，返回 True 表示被中断了 """
-        p: Part = Part.get_parts( self.__database, part_id=self.__current_part )[0]
+        tt = Part.get_parts( self.__database, part_id=self.__current_part )
+        if len(tt) < 1:
+            return
+        p: Part = tt[0]
         if self.__stop_flag:
             return
         children = p.get_children( self.__database )

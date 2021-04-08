@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading CreatePartDialog.ui file 'HandleRequirementDialog.CreatePartDialog.ui'
+# Form implementation generated from reading ui file 'HandleRequirementDialog.ui'
 #
 # Created by: PyQt5 UI code generator 5.13.0
 #
@@ -49,21 +49,31 @@ class Ui_Dialog(object):
         self.doSearchButton = QtWidgets.QPushButton(self.layoutWidget1)
         self.doSearchButton.setObjectName("doSearchButton")
         self.h2_layout.addWidget(self.doSearchButton)
+        self.cleanSearchButton = QtWidgets.QPushButton(self.layoutWidget1)
+        self.cleanSearchButton.setObjectName("cleanSearchButton")
+        self.h2_layout.addWidget(self.cleanSearchButton)
         self.sourceRequirementTableView = QtWidgets.QTableView(Dialog)
         self.sourceRequirementTableView.setGeometry(QtCore.QRect(152, 131, 407, 123))
         self.sourceRequirementTableView.setObjectName("sourceRequirementTableView")
         self.destRequirementTableView = QtWidgets.QTableView(Dialog)
         self.destRequirementTableView.setGeometry(QtCore.QRect(152, 300, 407, 124))
         self.destRequirementTableView.setObjectName("destRequirementTableView")
-        self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
-        self.buttonBox.setGeometry(QtCore.QRect(152, 431, 193, 28))
-        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
-        self.buttonBox.setObjectName("buttonBox")
+        self.horizontalLayoutWidget = QtWidgets.QWidget(Dialog)
+        self.horizontalLayoutWidget.setGeometry(QtCore.QRect(310, 440, 281, 80))
+        self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
+        self.button_h_layout = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget)
+        self.button_h_layout.setContentsMargins(2, 2, 2, 2)
+        self.button_h_layout.setObjectName("button_h_layout")
+        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.button_h_layout.addItem(spacerItem1)
+        self.okButton = QtWidgets.QPushButton(self.horizontalLayoutWidget)
+        self.okButton.setObjectName("okButton")
+        self.button_h_layout.addWidget(self.okButton)
+        self.closeButton = QtWidgets.QPushButton(self.horizontalLayoutWidget)
+        self.closeButton.setObjectName("closeButton")
+        self.button_h_layout.addWidget(self.closeButton)
 
         self.retranslateUi(Dialog)
-        self.buttonBox.accepted.connect(Dialog.accept)
-        self.buttonBox.rejected.connect(Dialog.reject)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
@@ -74,3 +84,6 @@ class Ui_Dialog(object):
         self.pushForwardButton.setText(_translate("Dialog", "处理"))
         self.removeButton.setText(_translate("Dialog", "删除"))
         self.doSearchButton.setText(_translate("Dialog", "检索"))
+        self.cleanSearchButton.setText(_translate("Dialog", "清除"))
+        self.okButton.setText(_translate("Dialog", "OK"))
+        self.closeButton.setText(_translate("Dialog", "Close"))

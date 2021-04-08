@@ -35,7 +35,7 @@ class Ui_listDisplayDialog(object):
         self.h_layout.addWidget(self.buttonBox)
 
         self.retranslateUi(listDisplayDialog)
-        self.buttonBox.accepted.connect(listDisplayDialog.accept)
+        self.buttonBox.accepted.connect( listDisplayDialog.accept )
         self.buttonBox.rejected.connect(listDisplayDialog.reject)
         QtCore.QMetaObject.connectSlotsByName(listDisplayDialog)
 

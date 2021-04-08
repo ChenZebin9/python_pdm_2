@@ -97,6 +97,7 @@ else:
             cur.execute( f'INSERT INTO JJPart.ZdErp VALUES (\'{r[0]}\', \'{r[2]}\', \'{r[4]}\')' )
 
 print( '完成。' )
+nothing = input('按任意键退出……')
 conn.commit()
 cur.close()
 conn.close()

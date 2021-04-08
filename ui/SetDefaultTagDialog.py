@@ -26,7 +26,7 @@ class Ui_Dialog(object):
         self.h_layout.setObjectName("h_layout")
 
         self.retranslateUi(Dialog)
-        self.buttonBox.accepted.connect(Dialog.accept)
+        self.buttonBox.accepted.connect( Dialog.accept )
         self.buttonBox.rejected.connect(Dialog.reject)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 

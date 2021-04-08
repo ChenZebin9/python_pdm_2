@@ -40,13 +40,17 @@ class NCreatePartDialog( QDialog, Ui_Dialog ):
 
     def accept(self):
         try:
-            # TODO 创建新单元
+            # 创建新单元
             part_data = self.__part_info_panel.get_part_info()
-            # TODO 进行数据有效性的评估
+            # 进行数据有效性的评估
             if len( part_data[1] ) < 1:
                 raise Exception( '名称不能为空。' )
             if len( part_data[2] ) < 1:
                 raise Exception( 'The english name couldn\'t empty.' )
+            if not ('类别' in part_data[5]):
+                QMessageBox.warning(self, '数据不完整', '类别必须要选择！', QMessageBox.Ok)
+                self.reject()
+                return
             self.__database.create_a_new_part( part_data[0], part_data[1], part_data[2], part_data[3],
                                                part_data[4], part_data[5] )
             QMessageBox.information(self, '', f'完成创建{part_data[0]}。', QMessageBox.Ok)

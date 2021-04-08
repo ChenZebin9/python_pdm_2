@@ -164,6 +164,13 @@ for r in rs:
     t_c.execute( f'INSERT INTO [JJCom_WorkIn] VALUES ({CNN( r )})' )
 print( '完成 JJCom_WorkIn' )
 
+# JJCost_PurchaseLink
+c.execute( 'SELECT * FROM [JJCost].[PurchaseLink]' )
+rs = c.fetchall()
+for r in rs:
+    t_c.execute( f'INSERT INTO [JJCost_PurchaseLink] VALUES ({CNN( r )})' )
+print( '完成 JJCost_Supplier' )
+
 # JJCost_Supplier
 c.execute( 'SELECT * FROM [JJCost].[Supplier]' )
 rs = c.fetchall()
