@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>919</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>919</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>文件</string>
+    </property>
+    <addaction name="separator"/>
+    <addaction name="adminRightAction"/>
+    <addaction name="separator"/>
+    <addaction name="quitAction"/>
+   </widget>
+   <widget class="QMenu" name="menu_2">
+    <property name="title">
+     <string>派工</string>
+    </property>
+    <addaction name="addProgressAction"/>
+    <addaction name="separator"/>
+    <addaction name="generateBomAction"/>
+   </widget>
+   <widget class="QMenu" name="menu_3">
+    <property name="title">
+     <string>配料</string>
+    </property>
+    <widget class="QMenu" name="menu_4">
+     <property name="title">
+      <string>设置</string>
+     </property>
+     <addaction name="noKbnAction"/>
+    </widget>
+    <widget class="QMenu" name="menu_7">
+     <property name="title">
+      <string>领料</string>
+     </property>
+     <addaction name="pickupFromZdAction"/>
+     <addaction name="pickupFromJlAction"/>
+     <addaction name="pickupFromSiteAction"/>
+    </widget>
+    <addaction name="calculationMaterialAction"/>
+    <addaction name="calculateThrListAction"/>
+    <addaction name="menu_7"/>
+    <addaction name="separator"/>
+    <addaction name="menu_4"/>
+   </widget>
+   <widget class="QMenu" name="menu_5">
+    <property name="title">
+     <string>数据</string>
+    </property>
+    <widget class="QMenu" name="menu_6">
+     <property name="title">
+      <string>导入仓储数据</string>
+     </property>
+     <addaction name="importZdStoringAction"/>
+     <addaction name="importJlStoringAction"/>
+     <addaction name="separator"/>
+     <addaction name="importSiteStoringAction"/>
+    </widget>
+    <addaction name="importZdFoundationDataAction"/>
+    <addaction name="separator"/>
+    <addaction name="menu_6"/>
+    <addaction name="modifyStockAction"/>
+   </widget>
+   <addaction name="menu"/>
+   <addaction name="menu_2"/>
+   <addaction name="menu_3"/>
+   <addaction name="menu_5"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="quitAction">
+   <property name="text">
+    <string>退出</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="addProgressAction">
+   <property name="text">
+    <string>添加工序</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="calculationMaterialAction">
+   <property name="text">
+    <string>计算物料</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="noKbnAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>不计KBN</string>
+   </property>
+  </action>
+  <action name="importZdStoringAction">
+   <property name="text">
+    <string>中德仓库...</string>
+   </property>
+  </action>
+  <action name="importJlStoringAction">
+   <property name="text">
+    <string>巨轮仓库...</string>
+   </property>
+  </action>
+  <action name="importSiteStoringAction">
+   <property name="text">
+    <string>现场...</string>
+   </property>
+  </action>
+  <action name="generateBomAction">
+   <property name="text">
+    <string>生成清单...</string>
+   </property>
+  </action>
+  <action name="action_3">
+   <property name="text">
+    <string>中德仓储数据</string>
+   </property>
+  </action>
+  <action name="action_4">
+   <property name="text">
+    <string>巨轮仓储数据</string>
+   </property>
+  </action>
+  <action name="action_6">
+   <property name="text">
+    <string>现场仓储数据</string>
+   </property>
+  </action>
+  <action name="importZdFoundationDataAction">
+   <property name="text">
+    <string>导入中德物料基础数据...</string>
+   </property>
+  </action>
+  <action name="pickupFromJlAction">
+   <property name="text">
+    <string>巨轮...</string>
+   </property>
+  </action>
+  <action name="pickupFromZdAction">
+   <property name="text">
+    <string>中德...</string>
+   </property>
+  </action>
+  <action name="pickupFromSiteAction">
+   <property name="text">
+    <string>现场...</string>
+   </property>
+  </action>
+  <action name="calculateThrListAction">
+   <property name="text">
+    <string>根据清单配料...</string>
+   </property>
+  </action>
+  <action name="adminRightAction">
+   <property name="text">
+    <string>获取管理员权限</string>
+   </property>
+  </action>
+  <action name="modifyStockAction">
+   <property name="text">
+    <string>修改库存</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
