@@ -58,7 +58,6 @@ class ExcelHandler3( ExcelHandler ):
         return columns, data_s
 
 
-# 没用了
 class ExcelHandler2( ExcelHandler ):
     """ 使用 xlrd 速度比较快 """
 
@@ -77,6 +76,7 @@ class ExcelHandler2( ExcelHandler ):
         return ss.nrows + 1
 
     def get_datas(self, sheet_name):
+        from xlrd import xldate_as_datetime
         ss = self.__book.sheet_by_name( sheet_name )
         columns = []
         datas = {}
@@ -93,7 +93,11 @@ class ExcelHandler2( ExcelHandler ):
                 if rinfomap.get( row_index, 0 ) and rinfomap[row_index].hidden == 1:
                     continue
                 tcell = ss.cell( row_index, col_index )
-                vv = tcell.value
+                if tcell.ctype == 3:  # 处理日期数据
+                    date_value = xldate_as_datetime(tcell.value, 0)
+                    vv = date_value.strftime( '%Y-%m-%d' )
+                else:
+                    vv = tcell.value
                 if vv is None:
                     vv = ''
                 # 增加行号的数据

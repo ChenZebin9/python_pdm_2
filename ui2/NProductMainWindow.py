@@ -5,16 +5,18 @@ from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QCursor, QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import (QMainWindow, QHBoxLayout, QSplitter,
                              QFrame, QPushButton, QVBoxLayout, QLabel, QTableView,
-                             QTreeWidget, QTreeWidgetItem, QListWidget, QListWidgetItem, QMenu,
-                             QInputDialog, QAbstractItemView, QDateEdit, QTabWidget)
+                             QTreeWidget, QTreeWidgetItem, QListWidget, QMenu,
+                             QInputDialog, QAbstractItemView, QTabWidget)
 
-from Part import Tag, Product
+from Part import Tag
+from Product import Product
 from UiFrame import TagViewPanel
+from ui.NListDisplayDialog import *
+from ui2.NCreateNewPropertyDialog import *
 from ui2.NProductInfoDialog import *
+from ui2.NProductSoldDialog import *
 from ui2.ProductMainWindow import *
 from ui2.ProductServiceRecordDialog import Ui_Dialog as ServiceRecordDialog
-from ui.NListDisplayDialog import *
-from ui2.NProductSoldDialog import *
 
 
 class NProductMainWindow( QMainWindow, Ui_MainWindow ):
@@ -406,6 +408,8 @@ class ProductPanel( QFrame ):
 
         self.__menu_4_product_info = QMenu( parent=self.productInfoTable )
         self.__modify_product_one_info = self.__menu_4_product_info.addAction( '修改' )
+        self.__insert_product_one_info = self.__menu_4_product_info.addAction( '增加' )
+        self.__delete_product_one_info = self.__menu_4_product_info.addAction( '删除' )
 
         self.__initUI()
 
@@ -517,13 +521,15 @@ class ProductPanel( QFrame ):
         self.productInfoTable.setContextMenuPolicy( Qt.CustomContextMenu )
         self.productInfoTable.customContextMenuRequested.connect( self.__on_custom_context_menu_requested_2 )
         self.__modify_product_one_info.triggered.connect( self.__modify_product_one_info_handler )
+        self.__insert_product_one_info.triggered.connect( self.__insert_product_one_info_handle )
+        self.__delete_product_one_info.triggered.connect( self.__delete_product_one_info_handle )
 
     def __on_custom_context_menu_requested_2(self, pos):
         item_index = self.productInfoTable.indexAt( pos )
         r_index = item_index.row()
         self.__current_product_info_row = r_index
-        if r_index < 0:
-            return
+        self.__modify_product_one_info.setVisible( r_index >= 0 )
+        self.__delete_product_one_info.setVisible( r_index >= 0 )
         self.__menu_4_product_info.exec( QCursor.pos() )
 
     def __modify_product_one_info_handler(self):
@@ -540,6 +546,23 @@ class ProductPanel( QFrame ):
                 self.__database.update_product_other_info( self.current_product.product_id, the_key, text )
             except Exception as ex:
                 QMessageBox.warning( self, '', ex.__str__() )
+
+    def __insert_product_one_info_handle(self):
+        r_index = self.__current_product_info_row
+        dialog = NCreateNewPropertyDialog( self, self.__database, self.current_product.product_id, r_index )
+        dialog.exec_()
+        self.__update_product_info( self.current_product )
+
+    def __delete_product_one_info_handle(self):
+        resp = QMessageBox.question( self, '确认', '确定要删除该属性？', QMessageBox.Yes | QMessageBox.No, QMessageBox.No )
+        if resp == QMessageBox.No:
+            return
+        r_index = self.__current_product_info_row
+        r_m_index_1 = self.productInfoModel.index( r_index, 0 )
+        r_item_1: QStandardItem = self.productInfoModel.itemFromIndex( r_m_index_1 )
+        the_key = r_item_1.data( Qt.DisplayRole )
+        self.__database.delete_product_other_info( self.current_product.product_id, the_key )
+        self.productInfoModel.takeRow( r_index )
 
     def __on_custom_context_menu_requested(self, pos):
         item: QTreeWidgetItem = self.productView.itemAt( pos )
@@ -625,6 +648,19 @@ class ProductPanel( QFrame ):
             self.tagInfoList.addItem( one_item )
         # 显示其它信息
         # 产品相关信息
+        self.__update_product_info( product_obj )
+        # 产品的售后服务记录
+        self.serviceRecordModel.clear()
+        self.serviceRecordModel.setHorizontalHeaderLabels( ('编号', '描述') )
+        self.afterSaleInfoTable.horizontalHeader().setStretchLastSection( True )
+        service_info_s = self.__database.get_service_record( product_id=product_obj.product_id )
+        for info in service_info_s:
+            one_row = [QStandardItem( info[0] ), QStandardItem( info[1] )]
+            self.serviceRecordModel.appendRow( one_row )
+        if self.serviceRecordModel.rowCount() > 0:
+            self.afterSaleInfoTable.resizeColumnsToContents()
+
+    def __update_product_info(self, product_obj):
         self.productInfoModel.clear()
         self.productInfoModel.setHorizontalHeaderLabels( ('项目', '数值') )
         self.productInfoTable.horizontalHeader().setStretchLastSection( True )
@@ -640,16 +676,6 @@ class ProductPanel( QFrame ):
                 self.productInfoModel.appendRow( [QStandardItem( '终端客户' ), QStandardItem( info_s_2[0][1] )] )
         if self.productInfoModel.rowCount() > 0:
             self.productInfoTable.resizeColumnsToContents()
-        # 产品的售后服务记录
-        self.serviceRecordModel.clear()
-        self.serviceRecordModel.setHorizontalHeaderLabels( ('编号', '描述') )
-        self.afterSaleInfoTable.horizontalHeader().setStretchLastSection( True )
-        service_info_s = self.__database.get_service_record( product_id=product_obj.product_id )
-        for info in service_info_s:
-            one_row = [QStandardItem( info[0] ), QStandardItem( info[1] )]
-            self.serviceRecordModel.appendRow( one_row )
-        if self.serviceRecordModel.rowCount() > 0:
-            self.afterSaleInfoTable.resizeColumnsToContents()
 
     def do_when_tag_tree_select(self, tag_id):
         products = Product.get_products_from_tag( self.__database, tag_id )

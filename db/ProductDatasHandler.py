@@ -87,6 +87,18 @@ class ProductDatabaseHandler( metaclass=ABCMeta ):
         """
         pass
 
+    @abstractmethod
+    def delete_product_other_info(self, product_id, property_name):
+        pass
+
+    @abstractmethod
+    def insert_product_other_info(self, product_id, property_name, property_value, previous_index):
+        pass
+
+    @abstractmethod
+    def get_product_other_info_name(self):
+        pass
+
     # 在 parent_tag 下面，改变为 current_tag，删除其它的 tag
     @abstractmethod
     def change_product_tag(self, product_id, parent_tag_name, current_tag_name):
@@ -151,6 +163,15 @@ class ProductDatabaseHandler( metaclass=ABCMeta ):
 
 
 class SqliteHandler( ProductDatabaseHandler ):
+
+    def get_product_other_info_name(self):
+        pass
+
+    def delete_product_other_info(self, product_id, property_name):
+        pass
+
+    def insert_product_other_info(self, product_id, property_name, property_value, previous_index):
+        pass
 
     def insert_sale_contract(self, data_dict):
         """
@@ -516,6 +537,48 @@ class SqliteHandler( ProductDatabaseHandler ):
 
 
 class MssqlHandler( ProductDatabaseHandler ):
+
+    def get_product_other_info_name(self):
+        sql = 'SELECT DISTINCT([PropertyName]) FROM [JJProduce].[ProductProperty]'
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        result = []
+        for r in r_s:
+            result.append( r[0] )
+        return result
+
+    def delete_product_other_info(self, product_id, property_name):
+        sql = f'DELETE FROM [JJProduce].[ProductProperty] ' \
+              f'WHERE [ProductId]=\'{product_id}\' AND [PropertyName]=\'{property_name}\''
+        self.__c.execute( sql )
+        self.__conn.commit()
+
+    def insert_product_other_info(self, product_id, property_name, property_value, previous_index):
+        sql = f'SELECT [PropertyIndex] FROM [JJProduce].[ProductProperty] ' \
+              f'WHERE [ProductId]=\'{product_id}\' ORDER BY [PropertyIndex]'
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        c = len( r_s )
+        do_inc = True
+        if c > 0:
+            if previous_index == 0:
+                next_index = r_s[0][0]
+            elif previous_index > c - 1 or previous_index < 0:
+                next_index = r_s[-1][0] + 1
+                do_inc = False
+            else:
+                next_index = r_s[previous_index][0]
+        else:
+            next_index = 1
+            do_inc = False
+        if do_inc:
+            sql = f'UPDATE [JJProduce].[ProductProperty] SET [PropertyIndex]=[PropertyIndex]+1 ' \
+                  f'WHERE [PropertyIndex]>={next_index} AND [ProductId]=\'{product_id}\''
+            self.__c.execute( sql )
+        sql = f'INSERT INTO [JJProduce].[ProductProperty] VALUES ' \
+              f'(\'{product_id}\',\'{property_name}\',\'{property_value}\',{next_index})'
+        self.__c.execute( sql )
+        self.__conn.commit()
 
     def __init__(self, server, database, user, password):
         self.__conn = pymssql.connect( server=server, user=user,

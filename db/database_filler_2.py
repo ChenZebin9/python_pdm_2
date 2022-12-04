@@ -5,7 +5,7 @@ import shutil
 import sqlite3
 import time
 
-import pymssql
+import pyodbc
 
 
 def CN(dd):
@@ -46,7 +46,7 @@ original_db_file = r"D:\weiyun\OneDrive\Program\SQLite\Greatoo_JJ.db"
 dest_db_file = f'.\\{db_file}'
 shutil.copyfile( original_db_file, dest_db_file )
 
-conn = pymssql.connect( server='191.1.6.103', user='sa', password='8893945', database='Greatoo_JJ_Database' )
+conn = pyodbc.connect('DRIVER={SQL Server};SERVER=191.1.6.103;UID=_user;PWD=123456;DATABASE=Greatoo_JJ_Database')
 c = conn.cursor()
 
 t_conn = sqlite3.connect( db_file )
@@ -326,8 +326,7 @@ unit_list = (
     "付", "套", "件", "个", "片", "块", "台", "条", "支", "粒", "公斤", "米",
     "升", "吨", "盒", "袋", "根", "桶", "张", "只", "瓶", "箱", "双", "卷",
     "包", "把", "立方米", "平方厘米", "组", "圈", "平方米", "对", "立方厘米", "斤")
-jl_con = pymssql.connect( server='191.1.0.4', user='ops_dev', password='123@greatoo', database='JL_Mould',
-                          login_timeout=10 )
+jl_con = pyodbc.connect('DRIVER={SQL Server};Server=191.1.0.4;UID=ops_dev;PWD=123@greatoo;DATABASE=JL_Mould')
 jl_c = jl_con.cursor()
 sql = f'SELECT [ITEM_NO], [item_describe], [UNIT] FROM [dbo].[ops_v_item]'
 jl_c.execute( sql )

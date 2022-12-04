@@ -8,9 +8,10 @@ from ui.CreatePartDialog import Ui_Dialog
 class NCreatePartDialog( QDialog, Ui_Dialog ):
     ComTag = ('类别', '标准', '品牌', '来源', '单位', '产品')
 
-    def __init__(self, parent, database):
+    def __init__(self, parent, database, ref_part=None):
         self.__parent = parent
         self.__database = database
+        self.__ref_part = ref_part
         super( NCreatePartDialog, self ).__init__( parent )
         self.__part_info_panel = PartInfoPanel( parent=self, mode=1 )
         self.__has_created = False
@@ -36,10 +37,11 @@ class NCreatePartDialog( QDialog, Ui_Dialog ):
                 tag_dict[t[1]] = value_list
             else:
                 tag_dict[tag_name] = None
-        self.__part_info_panel.init_data( self.available_id, tag_dict )
+        self.__part_info_panel.init_data( self.available_id, tag_dict, self.__ref_part )
 
     def accept(self):
         try:
+            self.__has_created = False
             # 创建新单元
             part_data = self.__part_info_panel.get_part_info()
             # 进行数据有效性的评估
@@ -48,12 +50,12 @@ class NCreatePartDialog( QDialog, Ui_Dialog ):
             if len( part_data[2] ) < 1:
                 raise Exception( 'The english name couldn\'t empty.' )
             if not ('类别' in part_data[5]):
-                QMessageBox.warning(self, '数据不完整', '类别必须要选择！', QMessageBox.Ok)
-                self.reject()
+                QMessageBox.warning( self, '数据不完整', '类别必须要选择！', QMessageBox.Ok )
                 return
             self.__database.create_a_new_part( part_data[0], part_data[1], part_data[2], part_data[3],
                                                part_data[4], part_data[5] )
-            QMessageBox.information(self, '', f'完成创建{part_data[0]}。', QMessageBox.Ok)
+            QMessageBox.information( self, '', f'完成创建{part_data[0]}。', QMessageBox.Ok )
+            self.__parent.set_status_bar_text( f'刚刚创建了 -> {part_data[0]}' )
             self.__has_created = True
             self.reject()
         except Exception as ex:

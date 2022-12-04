@@ -49,10 +49,17 @@
      <addaction name="purchaseStatisticsAction"/>
      <addaction name="assemblyStatisticsAction"/>
     </widget>
+    <widget class="QMenu" name="portSettingMenu">
+     <property name="title">
+      <string>导出导入设置</string>
+     </property>
+     <addaction name="exportPurchaseLinkMenuItem"/>
+    </widget>
     <addaction name="refreshMenuItem"/>
     <addaction name="separator"/>
     <addaction name="importPartListMenuItem"/>
     <addaction name="exportPartListMenuItem"/>
+    <addaction name="portSettingMenu"/>
     <addaction name="separator"/>
     <addaction name="add2TreeViewMenuItem"/>
     <addaction name="statisticsInTimeAction"/>
@@ -83,6 +90,8 @@
     <addaction name="separator"/>
     <addaction name="selectDefaultTagMenuItem"/>
     <addaction name="addTag2PartMenuItem"/>
+    <addaction name="separator"/>
+    <addaction name="importTagsMenuItem"/>
    </widget>
    <widget class="QMenu" name="storingMenu">
     <property name="title">
@@ -392,6 +401,24 @@
   <action name="actionGoBack2Storage">
    <property name="text">
     <string>退料</string>
+   </property>
+  </action>
+  <action name="action">
+   <property name="text">
+    <string>导出采购链接</string>
+   </property>
+  </action>
+  <action name="exportPurchaseLinkMenuItem">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>导出采购链接</string>
+   </property>
+  </action>
+  <action name="importTagsMenuItem">
+   <property name="text">
+    <string>批量导入标签...</string>
    </property>
   </action>
  </widget>

@@ -1,5 +1,12 @@
 # coding=gbk
 """ 一些通用的、基础的功能 """
+import sqlite3
+from functools import reduce
+import clr
+
+import Com
+
+local_config_file = ''
 
 
 def dict_2_str(the_dict):
@@ -27,3 +34,94 @@ def str_2_dict(the_str):
         k_v = t.split( ':' )
         result_dict[k_v[0]] = k_v[1]
     return result_dict
+
+
+def str2float(s):
+    """
+    将str转换为float
+    :param s:
+    :return:
+    """
+    return reduce( lambda x, y: x + int2dec( y ), map( str2int, s.split( '.' ) ) )
+
+
+def char2num(s):
+    return {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9}[s]
+
+
+def str2int(s):
+    return reduce( lambda x, y: x * 10 + y, map( char2num, s ) )
+
+
+def intLen(i):
+    return len( '%d' % i )
+
+
+def int2dec(i):
+    return i / (10 ** intLen( i ))
+
+
+class Queue:
+    def __init__(self):
+        self.items = []
+
+    def is_empty(self):
+        return len( self.items ) <= 0
+
+    def enqueue(self, item):
+        self.items.insert( 0, item )
+
+    def dequeue(self):
+        return self.items.pop()
+
+    def size(self):
+        return len( self.items )
+
+    def is_exist(self, item):
+        return item in self.items
+
+    def current_list(self):
+        return self.items
+
+
+def capture_image(part_id):
+    """
+    截图，并返回数据
+    :param part_id: 零件号，用于生成临时文件
+    :return: byte[] or null
+    """
+    clr.FindAssembly( 'dlls/Greatoo_JJ_Com.dll' )
+    clr.AddReference( 'dlls/Greatoo_JJ_Com' )
+    from Greatoo_JJ_Com import CaptureImage
+    part_id_s = '{:08d}'.format( part_id )
+    t = CaptureImage.CaptureOne( part_id_s )
+    result = None
+    if t is not None:
+        result = t
+    clr.clrModule( 'dlls/Greatoo_JJ_Com' )
+    return result
+
+
+def get_property_value(name):
+    conn = sqlite3.connect( Com.local_config_file )
+    c = conn.cursor()
+    c.execute( f'SELECT [PropertyValue] FROM [operation_property] WHERE [PropertyName]=\'{name}\'' )
+    dd = c.fetchall()
+    conn.close()
+    if len( dd ) < 1:
+        return ''
+    else:
+        return dd[0][0]
+
+
+def save_property_value(name, value):
+    conn = sqlite3.connect( Com.local_config_file )
+    c = conn.cursor()
+    c.execute( f'SELECT [PropertyValue] FROM [operation_property] WHERE [PropertyName]=\'{name}\'' )
+    dd = c.fetchall()
+    if len( dd ) < 1:
+        c.execute( f'INSERT INTO [operation_property] VALUES (\'{name}\', \'{value}\')' )
+    else:
+        c.execute( f'UPDATE [operation_property] SET [PropertyValue]=\'{value}\' WHERE [PropertyName]=\'{name}\'' )
+    conn.commit()
+    conn.close()

@@ -41,6 +41,8 @@
           <option value="PyQt5.QtWidgets.dateChanged.connect" />
           <option value="PyQt5.QtWidgets.itemDoubleClicked.connect" />
           <option value="PyQt5.QtWidgets.itemSelectionChanged.connect" />
+          <option value="Entry.EpdmLib" />
+          <option value="Entry.SolidWorksApi" />
         </list>
       </option>
     </inspection_tool>

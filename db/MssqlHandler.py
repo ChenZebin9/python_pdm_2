@@ -1,10 +1,130 @@
+import datetime
+import io
+import tempfile
+
+from PIL import Image
+
 from db.DatabaseHandler import *
-import pymssql
+import pyodbc
 from decimal import Decimal
 import Com
+from db.jl_erp import JL_ERP_Database
 
 
 class MssqlHandler( DatabaseHandler ):
+
+    def replace_part_relation(self, relation_id, part_id):
+        sql = f'UPDATE [JJPart].[PartRelation] SET [ChildPart]={part_id} WHERE [PartRelationID]={relation_id}'
+        self.__c.execute( sql )
+        self.__conn.commit()
+
+    def search_thr_erp_id(self, id_str: str, is_zd=True):
+        pass
+
+    def search_thr_erp_description(self, des_str: str, is_zd=True):
+        pass
+
+    def update_zd_erp_foundation_info(self, _data):
+        insert_c = 0
+        update_c = 0
+        no_c = 0
+        for r in _data:
+            erp_id = r[0]
+            description = r[1]
+            _unit = r[2]
+            self.__c.execute( f'SELECT * FROM [JJPart].[ZdErp] WHERE [ErpId]=\'{erp_id}\'' )
+            rs = self.__c.fetchall()
+            if len( rs ) > 0:
+                if description != rs[0][1]:
+                    self.__c.execute(
+                        f'UPDATE [JJPart].[ZdErp] SET [Description]=\'{description}\' WHERE [ErpId]=\'{erp_id}\'' )
+                    update_c += 1
+                else:
+                    no_c += 1
+            else:
+                self.__c.execute(
+                    f'INSERT INTO [JJPart].[ZdErp] VALUES (\'{erp_id}\', \'{description}\', \'{_unit}\')' )
+                insert_c += 1
+        self.__conn.commit()
+        return f'新增{insert_c}个，更新{update_c}个，未处理{no_c}个。'
+
+    def generate_a_image(self, part_id, ver=None):
+        img_data = self.get_thumbnail_2_part( part_id, ver )
+        if img_data is None:
+            return None
+        byte_stream = io.BytesIO( img_data )
+        roiImage = Image.open( byte_stream )
+        o_size = roiImage.size
+        max_edge = max( o_size[0], o_size[1] )
+        scale_f = 200 / max_edge
+        w = int( o_size[0] * scale_f )
+        h = int( o_size[1] * scale_f )
+        roiImage = roiImage.resize( (w, h) )
+        imgByteArr = io.BytesIO()
+        roiImage.save( imgByteArr, format='PNG' )
+        imgByteArr = imgByteArr.getvalue()
+        target_file = '{0}\\{1:08d}.png'.format( tempfile.gettempdir(), part_id )
+        with open( target_file, 'wb' ) as f:
+            f.write( imgByteArr )
+        f.close()
+        return target_file
+
+    def get_identical_parts(self, part_id):
+        sql = f'SELECT [FunctionID] FROM [JJPart].[IdenticalPartLink] WHERE [Part]={part_id}'
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        result = []
+        if len( r_s ) < 1:
+            return None
+        sql = f'SELECT * FROM [JJPart].[IdenticalPart] WHERE [ID]={r_s[0][0]}'
+        self.__c.execute( sql )
+        fun_record = self.__c.fetchone()
+        sql = f'SELECT [Part] FROM [JJPart].[IdenticalPartLink] WHERE [FunctionID]={fun_record[0]}'
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        for r in r_s:
+            if r[0] != part_id:
+                result.append( r[0] )
+        return result, (fun_record[0], fun_record[1], fun_record[2])
+
+    def clear_storing_position(self, storage_position):
+        today = datetime.datetime.today()
+        t_str = today.strftime( '%Y-%m-%d' )
+        sql = f'UPDATE [JJStorage].[Storing] ' \
+              f'SET [Qty]=0.0, [LastRecordDate]=\'{t_str}\' WHERE [Position]=\'{storage_position}\''
+        self.__c.execute( sql )
+        self.__conn.commit()
+
+    def update_part_storing(self, part_id, qty, storage_position, _date, unit_price):
+        sql = f'SELECT [Qty] FROM [JJStorage].[Storing] WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
+        self.__c.execute( sql )
+        r_s = self.__c.fetchall()
+        if len( r_s ) < 1:
+            sql = f'INSERT INTO [JJStorage].[Storing] VALUES ' \
+                  f'({part_id}, \'{storage_position}\', {qty}, \'{_date}\', {unit_price})'
+        else:
+            sql = f'UPDATE [JJStorage].[Storing] SET [Qty]={qty}, [LastRecordDate]=\'{_date}\', UnitPrice={unit_price} ' \
+                  f'WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
+        self.__c.execute( sql )
+        self.__conn.commit()
+
+    def remove_file_link_from_part(self, part_id, file_path):
+        sql = f'DELETE FROM [JJPart].[FileRelation] WHERE [PartID]={part_id} AND [FilePath]=\'{file_path}\''
+        self.__c.execute( sql )
+
+    def get_database_type(self):
+        return 'MSSQL'
+
+    def add_file_link_2_part(self, part_id, file_path):
+        sql = f'SELECT COUNT([PartID]) FROM [JJPart].[FileRelation] ' \
+              f'WHERE [PartID]={part_id} AND [FilePath]=\'{file_path}\''
+        self.__c.execute( sql )
+        r = self.__c.fetchone()
+        if r[0] > 0:
+            return
+        sql = f'INSERT INTO [JJPart].[FileRelation] ([PartID], [FilePath], [ImageData]) ' \
+              f'VALUES ({part_id}, \'{file_path}\', null)'
+        self.__c.execute( sql )
 
     def set_part_hyper_link(self, part_id, the_link):
         if the_link is None or len( the_link.strip() ) < 1:
@@ -22,9 +142,9 @@ class MssqlHandler( DatabaseHandler ):
 
     def get_part_hyper_link(self, part_id):
         sql = f'SELECT [HyperLink] FROM [JJCost].[PurchaseLink] WHERE [PartId]={part_id}'
-        self.__c.execute(sql)
+        self.__c.execute( sql )
         rs = self.__c.fetchall()
-        if len(rs) < 1:
+        if len( rs ) < 1:
             return None
         return rs[0][0]
 
@@ -83,15 +203,13 @@ class MssqlHandler( DatabaseHandler ):
         """
         get_version_sql = f'SELECT [Version] FROM [JJPart].[PartThumbnail] ' \
                           f'WHERE [PartId]={part_id} ORDER BY [Version] DESC'
-        self.__c.execute( get_version_sql )
+        self.__c.execute(get_version_sql)
         r = self.__c.fetchone()
         next_version = 1
         if r is not None:
             next_version += r[0]
-        insert_new_img_sql = 'INSERT INTO [JJPart].[PartThumbnail] ([PartID], [Thumbnail], [Version])' \
-                             ' VALUES ({0}, {1}, {2})'.format( part_id, str( image_data, encoding='ascii' ),
-                                                               next_version )
-        self.__c.execute( insert_new_img_sql )
+        self.__c.execute('INSERT INTO [JJPart].[PartThumbnail] ([PartID], [Thumbnail], [Version]) VALUES (?, ?, ?)',
+                         (part_id, image_data, next_version))
         self.__conn.commit()
 
     def cancel_supply_operation(self, record_id, cancel_qty):
@@ -367,6 +485,7 @@ class MssqlHandler( DatabaseHandler ):
         from_storage = data[4]
         current_process = 14
         except_type = 0  # 异常级别：0-询问解决、1-报警（无法解决）
+        record_index = None
         try:
             insert_require_bill_sql = f'INSERT INTO [JJStorage].[KbnSupplyBill] VALUES (\'{bill_name}\', \'{the_date}\', ' \
                                       f'\'{operator}\')'
@@ -390,7 +509,7 @@ class MssqlHandler( DatabaseHandler ):
             for item in data[5]:
                 actual_storage = from_storage
                 record_index = item[4]
-                unit_price = None
+                # unit_price = None
                 qty_need = item[3]  # 当前所需的数量
                 while True:
                     if record_index in mark and mark[record_index] == 0:
@@ -411,6 +530,10 @@ class MssqlHandler( DatabaseHandler ):
                             for r in rs:
                                 if r[0] == 'F':
                                     rr.append( r )
+                        elif actual_storage == 'A':
+                            for r in rs:
+                                if r[0] == 'A':
+                                    rr.append( r )
                         else:
                             for r in rs:
                                 if r[0] == 'D' or r[0] == 'E':
@@ -421,13 +544,15 @@ class MssqlHandler( DatabaseHandler ):
                             # 整体数量是足够的
                             remain_qty = qty_need
                             for r in rr:
-                                if remain_qty < 0.0:
+                                if remain_qty <= 0.0:
                                     break
                                 if remain_qty > r[1]:
                                     q = r[1]
                                 else:
                                     q = remain_qty
                                 remain_qty -= q
+                                if q <= 0.0:
+                                    continue
                                 # 更新仓库库存
                                 update_storing = f'UPDATE [JJStorage].[Storing] ' \
                                                  f'SET [Qty]={r[1] - q}, [LastRecordDate]=\'{the_date}\' ' \
@@ -734,20 +859,27 @@ class MssqlHandler( DatabaseHandler ):
             return r_s
 
     def get_erp_info(self, erp_code, jl_erp=False):
-        # TODO 使用巨轮智能的仓库时的情况？
-        sql = f'SELECT * FROM JJPart.ZdErp WHERE ErpId=\'{erp_code}\''
-        self.__c.execute( sql )
-        r_s = self.__c.fetchall()
-        if len( r_s ) < 1:
-            return None
-        return r_s[0][0], r_s[0][1], r_s[0][2]
+        if jl_erp and self.__jl_erp_database is None:
+            self.__jl_erp_database = JL_ERP_Database()
+        if not jl_erp:
+            table_name = '[JJPart].[ZdErp]'
+            column_name = 'ErpId'
+            sql = f'SELECT * FROM {table_name} WHERE {column_name}=\'{erp_code}\''
+            self.__c.execute( sql )
+            r_s = self.__c.fetchall()
+            if len( r_s ) < 1:
+                return None
+            return r_s[0][0], r_s[0][1], r_s[0][2]
+        else:
+            erp_info = self.__jl_erp_database.get_erp_data( erp_code )
+            return erp_info[0], erp_info[1], erp_info[2]
 
     def get_products_by_id(self, product_id):
         self.__c.execute( 'SELECT * FROM JJProduce.Product WHERE ProductId=\'{0}\''.format( product_id ) )
         return self.__c.fetchall()
 
     def get_all_storing_position(self):
-        sql = 'SELECT DISTINCT(Position) FROM JJStorage.Storing'
+        sql = 'SELECT DISTINCT([Position]) FROM [JJStorage].[Storing] ORDER BY [Position]'
         self.__c.execute( sql )
         r_s = self.__c.fetchall()
         result = []
@@ -850,9 +982,10 @@ class MssqlHandler( DatabaseHandler ):
         self.__database = database
         self.__user = user
         self.__password = password
-        self.__conn = pymssql.connect( server=server, user=user, password=password, database=database,
-                                       login_timeout=10 )
+        self.__conn = pyodbc.connect('DRIVER={{SQL Server}};SERVER={0};DATABASE={1};UID={2};PWD={3}'.
+                                     format(server, database, user, password))
         self.__c = self.__conn.cursor()
+        self.__jl_erp_database = None
 
     def get_parts(self, part_id=None, name=None, english_name=None, description=None):
         select_cmd = 'SELECT t.PartID AS id, t.Description1 AS name, t.Description4 AS english_name,' \
@@ -921,7 +1054,10 @@ class MssqlHandler( DatabaseHandler ):
                    't8.[id]=pt8.[tag_id] AND t8.[parent_id]=2112 ON p.[PartID]=pt8.[part_id]'),
             2406: ('t9.[tag_name] AS product',
                    '[JJCom].[Tag] AS t9 INNER JOIN [JJCom].[PartTag] AS pt9 ON '
-                   't9.[id]=pt9.[tag_id] AND t9.[parent_id]=2406 ON p.[PartID]=pt9.[part_id]')
+                   't9.[id]=pt9.[tag_id] AND t9.[parent_id]=2406 ON p.[PartID]=pt9.[part_id]'),
+            2958: ('t10.[tag_name] AS storing ',
+                   '[JJCom].[Tag] AS t10 INNER JOIN [JJCom].[PartTag] AS pt10 ON '
+                   't10.[id]=pt10.[tag_id] AND t10.[parent_id]=2958 ON p.[PartID]=pt10.[part_id]')
         }
         the_display_columns = []
         from_tag_tables = []
@@ -982,6 +1118,35 @@ class MssqlHandler( DatabaseHandler ):
             else:
                 result[id] = list( t )
         return result
+
+    def get_tag_id(self, name, parent_name=None):
+        """
+        获取给定名称的tag的id，以便于进一步判断
+        :param name:
+        :param parent_name:
+        :return: int or None
+        """
+        if parent_name is None:
+            sql = f'SELECT [id] FROM [JJCom].[Tag] WHERE [tag_name] LIKE \'{name}\' AND [parent_id] IS NULL'
+            self.__c.execute( sql )
+            r = self.__c.fetchone()
+            if r is None:
+                return None
+            else:
+                return r[0]
+        sql = f'SELECT [id] FROM [JJCom].[Tag] ' \
+              f'WHERE [tag_name] LIKE \'{parent_name}\' AND [parent_id] IS NULL'
+        self.__c.execute( sql )
+        r = self.__c.fetchone()
+        if r is None:
+            return None
+        parent_id = r[0]
+        sql = f'SELECT [id] FROM [JJCom].[Tag] WHERE [tag_name] LIKE \'{name}\' AND [parent_id]={parent_id}'
+        self.__c.execute( sql )
+        r = self.__c.fetchone()
+        if r is None:
+            return None
+        return r[0]
 
     def get_tags(self, tag_id=None, name=None, parent_id=None):
         if tag_id is None and name is None and parent_id is None:
@@ -1065,10 +1230,13 @@ class MssqlHandler( DatabaseHandler ):
         return rs
 
     def close(self):
-        # if self.__c is not None:
-        #     self.__c.close()
-        if self.__conn is not None:
-            self.__conn.close()
+        try:
+            if self.__c is not None:
+                self.__c.close()
+            if self.__conn is not None:
+                self.__conn.close()
+        except pyodbc.ProgrammingError as ex:
+            print('Error when close database: ' + ex.__str__())
 
     def save_change(self):
         if self.__conn is not None:

@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ListDisplayDialog.CreatePartDialog.ui file 'CreatePickBillDialog.ListDisplayDialog.CreatePartDialog.ui'
+# Form implementation generated from reading ui file 'CreatePickBillDialog.ui'
 #
-# Created by: PyQt5 UI code generator 5.11.3
+# Created by: PyQt5 UI code generator 5.13.0
 #
 # WARNING! All changes made in this file will be lost!
 
+
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(483, 396)
+        Dialog.resize(663, 526)
         self.verticalLayoutWidget = QtWidgets.QWidget(Dialog)
         self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 481, 391))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
@@ -41,10 +43,15 @@ class Ui_Dialog(object):
         self.addButton.setLayoutDirection(QtCore.Qt.LeftToRight)
         self.addButton.setObjectName("addButton")
         self.midRightHL.addWidget(self.addButton)
+        self.freeAddButton = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.freeAddButton.setObjectName("freeAddButton")
+        self.midRightHL.addWidget(self.freeAddButton)
         self.removeButton = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.removeButton.setMinimumSize(QtCore.QSize(0, 0))
         self.removeButton.setObjectName("removeButton")
         self.midRightHL.addWidget(self.removeButton)
+        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.midRightHL.addItem(spacerItem)
         self.midHL.addLayout(self.midRightHL)
         self.mainVLayout.addLayout(self.midHL)
         self.bottomHL = QtWidgets.QHBoxLayout()
@@ -67,6 +74,6 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "创建领料单"))
-        self.addButton.setText(_translate("Dialog", "+"))
-        self.removeButton.setText(_translate("Dialog", "-"))
-
+        self.addButton.setText(_translate("Dialog", "导入..."))
+        self.freeAddButton.setText(_translate("Dialog", "添加..."))
+        self.removeButton.setText(_translate("Dialog", "移除"))

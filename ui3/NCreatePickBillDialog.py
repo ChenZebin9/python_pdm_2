@@ -3,17 +3,17 @@ import os
 import sys
 
 import clr
-import win32con
-import win32ui
 from PyQt5.QtCore import (Qt, QDate, QModelIndex)
 from PyQt5.QtGui import (QStandardItemModel, QStandardItem)
-from PyQt5.QtWidgets import (QDialog, QApplication, QLineEdit, QDateEdit, QMessageBox, QDialogButtonBox)
+from PyQt5.QtWidgets import (QDialog, QApplication, QLineEdit, QDateEdit, QMessageBox, QDialogButtonBox, QFileDialog)
 
+import Com
 from excel.ExcelHandler import (ExcelHandler2, ExcelHandler3)
 from ui3.CreatePickBillDialog import *
 from ui.NImportSettingDialog import (NImportSettingDialog)
 from db.MssqlHandler import MssqlHandler
 from db.DatabaseHandler import DatabaseHandler
+from ui3.NErpItemSelector import NErpItemSelector
 from Part import Part
 from db.jl_erp import JL_ERP_Database
 
@@ -49,11 +49,19 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
         # 每一行的特殊处理决定：0-按照建议的去做
         self.__special_mark = {}
 
+    def get_default_storage(self):
+        """
+        获取默认的仓库
+        :return:
+        """
+        return self.__from_storage
+
     def setup_ui(self):
         super( NCreatePickBillDialog, self ).setupUi( self )
         self.setLayout( self.mainVLayout )
 
         self.__timeSelector.setCalendarPopup( True )
+        self.__timeSelector.setDisplayFormat( 'yyyy-MM-dd' )
         self.__timeSelector.setAlignment( Qt.AlignCenter )
         self.__timeSelector.setDate( QDate.currentDate() )
         self.__billNrLineEdit.setAlignment( Qt.AlignCenter )
@@ -65,9 +73,21 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
         self.midRightHL.setAlignment( Qt.AlignTop )
 
         self.addButton.clicked.connect( self.__add_items )
+        self.freeAddButton.clicked.connect( self.__add_items )
         self.removeButton.clicked.connect( self.__remove_item )
 
         self.theDialogButtonBox.clicked.connect( self.__buttonBox_clicked )
+
+        header_goods = self.itemsTableView.horizontalHeader()
+        header_goods.sectionClicked.connect( self.__sort_by_column )
+
+    def __sort_by_column(self, column):
+        header_goods = self.itemsTableView.horizontalHeader()
+        i = header_goods.sortIndicatorOrder()
+        if i == 0:
+            self.__table_modal.sort( column, Qt.AscendingOrder )
+        else:
+            self.__table_modal.sort( column, Qt.DescendingOrder )
 
     def set_config(self, config_dict: dict):
         """
@@ -86,16 +106,21 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
         self.__billNrLineEdit.setText( config_dict['清单'] )
         # 设置列表的表头
         self.__table_modal.setHorizontalHeaderLabels(
-            NCreatePickBillDialog.Column_names_1 if self.__from_storage != 'F' else NCreatePickBillDialog.Column_names_2 )
+            NCreatePickBillDialog.Column_names_1 if self.__from_storage != 'F' else
+            NCreatePickBillDialog.Column_names_2 )
         self.itemsTableView.setModel( self.__table_modal )
 
     def add_items(self, the_items):
         """
         支持从外部对话框添加项目
-        :param the_items: list，一个包括有项目信息的列表 ([零件号，物料编码，物料描述，单位])
+        :param the_items: list，一个包括有项目信息的列表 ([零件号，物料编码，物料描述，单位，数量])
         :return:
         """
         for r in the_items:
+            if len( r ) < 5:
+                qty = 0.
+            else:
+                qty = r[4]
             id_item = QStandardItem( r[0] )
             id_item.setData( self.__record_index, Qt.UserRole + 1 )
             self.__record_index += 1
@@ -104,30 +129,39 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
                                 QStandardItem( r[1] ),
                                 QStandardItem( r[2] ),
                                 QStandardItem( r[3] ),
-                                QStandardItem( '0' )]
+                                QStandardItem( '{0:.2f}'.format( qty ) )]
             self.__table_modal.appendRow( one_row_in_table )
         self.itemsTableView.resizeColumnsToContents()
 
     def __add_items(self):
         try:
-            open_flags = win32con.OFN_FILEMUSTEXIST
-            fspec = 'Excel Files (*.xls, *.xlsx)|*.xls;*.xlsx||'
-            dlg = win32ui.CreateFileDialog( 1, None, None, open_flags, fspec )
-            selected_file = None
-            if dlg.DoModal() == win32con.IDOK:
-                selected_file = dlg.GetPathName()
-            if selected_file is None:
-                return
-            file_name = selected_file
-            self.__one_import_data.clear()
-            dialog = NImportSettingDialog( self, '领料数据', None )
-            if selected_file[-3:].upper() == 'XLS':
-                excel = ExcelHandler2( file_name )
-            else:
-                excel = ExcelHandler3( file_name )
-            config_settings = ('合同号', '零件号', '物料编码', '数量')
-            dialog.set_excel_mode( config_settings, excel, True )
-            dialog.exec_()
+            if self.sender() is self.addButton:
+                f_spec = 'Excel Files (*.xls, *.xlsx)'
+                previous_path = Com.get_property_value( 'load_path' )
+                ini_path = previous_path if previous_path != '' else '.'
+                file_name, _ = QFileDialog.getOpenFileName( self, caption='选择数据文件',
+                                                            filter=f_spec, directory=ini_path )
+                if file_name == '':
+                    return
+                load_path = os.path.dirname( file_name )
+                Com.save_property_value( 'load_path', load_path )
+                self.__one_import_data.clear()
+                dialog = NImportSettingDialog( self, '领料数据', None )
+                if file_name[-3:].upper() == 'XLS':
+                    excel = ExcelHandler2( file_name )
+                else:
+                    excel = ExcelHandler3( file_name )
+                config_settings = ('合同号', '零件号', '物料编码', '数量')
+                the_default_data = (self.__default_product_id, None, None, None)
+                dialog.set_excel_mode( config_settings, excel, True, default_data=the_default_data )
+                dialog.exec_()
+            elif self.sender() is self.freeAddButton:
+                self.__one_import_data.clear()
+                dlg = NErpItemSelector( self.__database, self )
+                if self.__from_storage == 'F':
+                    dlg.setWindowTitle( '从巨轮仓库选择' )
+                    dlg.is_zd_erp = False
+                dlg.exec_()
             if len( self.__one_import_data ):
                 for r in self.__one_import_data:
                     # 合同号，零件号，中德物料编码，数量
@@ -244,18 +278,24 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
                 except_type = resp[0]
                 record_index = resp[2]
                 raise Exception( resp[1] )
-            pdf_creator = PdfLib.CreatePickBill( data_4_paper, '中德OPS项目部' if self.__from_storage != 'F' else 'OPS项目部',
+            if self.__from_storage == 'F':
+                department_name = '巨轮OPS项目部'
+            elif self.__from_storage == 'A':
+                department_name = 'OPS生产现场'
+            else:
+                department_name = '中德OPS项目部'
+            pdf_creator = PdfLib.CreatePickBill( data_4_paper, department_name,
                                                  self.__operatorLineEdit.text(),
                                                  self.__timeSelector.text(), self.__billNrLineEdit.text() )
-            # 选择要保存到的文件
-            dlg = win32ui.CreateFileDialog( 0, None, f'{bill_name}.pdf', win32con.OFN_OVERWRITEPROMPT,
-                                            'Pdf Files (*.pdf)|*.pdf||' )
-            to_save_file = None
-            if dlg.DoModal() == win32con.IDOK:
-                to_save_file = dlg.GetPathName()
-            if to_save_file is None:
+            save_path = Com.get_property_value( 'save_path' )
+            ini_path = f'./{bill_name}.pdf' if save_path == '' else f'{save_path}{bill_name}.pdf'
+            to_save_file, _ = QFileDialog.getSaveFileName( self, caption='保存文件', filter='Pdf Files (*.pdf)',
+                                                           directory=ini_path )
+            if to_save_file is '':
                 QMessageBox.warning( self, '取消', '终止输出！', QMessageBox.Ok )
                 return
+            save_path = os.path.dirname( to_save_file )
+            Com.save_property_value( 'save_path', save_path )
             if to_save_file.lower()[-4:] != '.pdf':
                 to_save_file += '.pdf'
             pdf_creator.DoPrint( to_save_file )

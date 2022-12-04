@@ -2,68 +2,58 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="接下来要改善物料检索的速度，先进行保存。">
-      <change afterPath="$PROJECT_DIR$/AnalysisData.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/Analysis-00.toc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/COLLECT-00.toc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/EXE-00.toc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/Entry.exe.manifest" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/PDM_2.exe" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/PKG-00.pkg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/PKG-00.toc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/PYZ-00.pyz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/PYZ-00.toc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/Tree-00.toc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/Tree-01.toc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/base_library.zip" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/run.exe.sdzbjgrz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/warn-Entry.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/build/Entry/xref-Entry.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/db/Greatoo_JJ_210328.db" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/CaptureImage.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/batch_change_item_state.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/fill_produce_data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/fill_storage_from_erp.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/fill_zd_purchase_bill.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/zd_erp_purchase.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/chen.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/chen.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/python_pdm_2.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/python_pdm_2.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Com.py" beforeDir="false" afterPath="$PROJECT_DIR$/Com.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DataImporter.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/Entry.py" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Part.py" beforeDir="false" afterPath="$PROJECT_DIR$/Part.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UiFrame.py" beforeDir="false" afterPath="$PROJECT_DIR$/UiFrame.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/Analysis-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/COLLECT-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/EXE-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/Entry.exe.manifest" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/PDM_2.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/PKG-00.pkg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/PKG-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/PYZ-00.pyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/PYZ-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/Tree-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/Tree-01.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/base_library.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/run.exe.sdzbjgrz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/warn-Entry.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/Entry/xref-Entry.html" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/db/DatabaseHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/DatabaseHandler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/Greatoo_JJ_210328.db" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/db/MssqlHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/MssqlHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/ProductDatasHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/ProductDatasHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/SqliteHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/SqliteHandler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/database_creator.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/database_filler.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/db/database_filler_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/database_filler_2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/fill_zderp_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/fill_zderp_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/greatoo_jj_5.1.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/zd_erp.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/dlls/EpdmLib.dll" beforeDir="false" afterPath="$PROJECT_DIR$/dlls/EpdmLib.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/jl_erp.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/jl_erp.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/excel/ExcelHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/excel/ExcelHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/file_version_info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/file_version_info.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pdm_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/pdm_config.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pyinstaller_setup.bat" beforeDir="false" afterPath="$PROJECT_DIR$/pyinstaller_setup.bat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rt_config.db" beforeDir="false" afterPath="$PROJECT_DIR$/rt_config.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/CreatePartDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/CreatePartDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/ImportSettingDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/ListDisplayDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/ListDisplayDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/DocOutputDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/DocOutputDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/EntranceDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/EntranceDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/EntranceDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/EntranceDialog.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/MyTreeWidget.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/MyTreeWidget.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui/NCreatePartDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NCreatePartDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/NImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NImportSettingDialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui/NPartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NPartMainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/PartColumnSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartColumnSettingDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/SetDefaultTagDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/SetDefaultTagDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.ui" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui2/NProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/NProductMainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui2/ProductInfoDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductInfoDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductServiceRecordDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui2/ProductSoldDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/ProductSoldDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/CreateRequirementDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreateRequirementDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/HandlePickMaterialDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/HandlePickMaterialDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/HandleRequirementDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/HandleRequirementDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/HandleRequirementDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/HandleRequirementDialog.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui3/CreatePickBillDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.ui" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/NHandleRequirementDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NHandleRequirementDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" afterDir="false" />
     </list>
+    <list id="c94801ca-76b8-4067-801c-611b98218bd5" name="no change" comment="" />
+    <list id="f6384629-2289-462f-ba66-139d2ac8a6b4" name="在变基之前未提交的更改 [Default]" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -102,11 +92,17 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/ui/NPartMainWindow.py" root0="SKIP_INSPECTION" />
+  </component>
   <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
   <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
   <component name="JsGulpfileManager">
     <detection-done>true</detection-done>
     <sorting>DEFINITION_ORDER</sorting>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="1PQ3zzPYQCnCcZwQKmq69BBTrH5" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
@@ -116,13 +112,13 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">
-    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
-    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/ui2" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
-  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;E:/__zebin_laptap_backup/weiyun/OneDrive/Program/Python/python_pdm_2&quot;
+  }
+}</component>
   <component name="PyDebuggerOptionsProvider">
     <option name="myPyQtBackend" value="PyQt5" />
   </component>
@@ -161,7 +157,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="Entry" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="Entry" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="python_pdm_2" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -173,7 +169,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="D:\weiyun\OneDrive\Program\Python\python_pdm_2\Entry.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Entry.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -246,11 +242,11 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.CCC" />
       <item itemvalue="Python.Entry" />
+      <item itemvalue="Python.CCC" />
+      <item itemvalue="Python.database_filler_2" />
       <item itemvalue="Python.fill_storage_from_erp" />
       <item itemvalue="Python.fill_zderp_data" />
-      <item itemvalue="Python.database_filler_2" />
     </list>
     <recent_temporary>
       <list>
@@ -261,6 +257,9 @@
         <item itemvalue="Python.fill_zderp_data" />
       </list>
     </recent_temporary>
+  </component>
+  <component name="ShelveChangesManager">
+    <option name="remove_strategy" value="true" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="project-level" UseSingleDictionary="true" transferred="true" />
   <component name="SvnConfiguration">
@@ -439,29 +438,12 @@
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.ini" />
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.bat" />
   </component>
-  <component name="Vcs.Log.History.Properties">
-    <option name="COLUMN_ORDER">
-      <list>
-        <option value="0" />
-        <option value="2" />
-        <option value="3" />
-        <option value="1" />
-      </list>
-    </option>
-  </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
       <map>
         <entry key="MAIN">
           <value>
-            <State>
-              <option name="COLUMN_WIDTH">
-                <map>
-                  <entry key="2" value="160" />
-                  <entry key="3" value="160" />
-                </map>
-              </option>
-            </State>
+            <State />
           </value>
         </entry>
       </map>
@@ -480,7 +462,6 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="再次上传。" />
@@ -507,77 +488,6 @@
     <MESSAGE value="接下来要改善物料检索的速度，先进行保存。" />
     <MESSAGE value="用MSSQL的数据充分填充SQLite。" />
     <option name="LAST_COMMIT_MESSAGE" value="用MSSQL的数据充分填充SQLite。" />
-  </component>
-  <component name="WindowStateProjectService">
-    <state x="574" y="128" key="#com.intellij.ide.util.MemberChooser" timestamp="1617861153728">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="574" y="128" key="#com.intellij.ide.util.MemberChooser/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1615344520651" />
-    <state x="574" y="128" key="#com.intellij.ide.util.MemberChooser/0.0.1536.824@0.0.1536.824" timestamp="1617861153728" />
-    <state width="1515" height="253" key="GridCell.Tab.0.bottom" timestamp="1617892656180">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.0.bottom/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.0.bottom/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543467" />
-    <state width="1515" height="253" key="GridCell.Tab.0.bottom/0.0.1536.824@0.0.1536.824" timestamp="1617892656180" />
-    <state width="1515" height="253" key="GridCell.Tab.0.center" timestamp="1617892656180">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.0.center/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.0.center/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543467" />
-    <state width="1515" height="253" key="GridCell.Tab.0.center/0.0.1536.824@0.0.1536.824" timestamp="1617892656180" />
-    <state width="1515" height="253" key="GridCell.Tab.0.left" timestamp="1617892656180">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.0.left/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.0.left/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543451" />
-    <state width="1515" height="253" key="GridCell.Tab.0.left/0.0.1536.824@0.0.1536.824" timestamp="1617892656180" />
-    <state width="1515" height="253" key="GridCell.Tab.0.right" timestamp="1617892656180">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.0.right/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.0.right/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543467" />
-    <state width="1515" height="253" key="GridCell.Tab.0.right/0.0.1536.824@0.0.1536.824" timestamp="1617892656180" />
-    <state width="1515" height="253" key="GridCell.Tab.1.bottom" timestamp="1617892656064">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.1.bottom/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.1.bottom/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543319" />
-    <state width="1515" height="253" key="GridCell.Tab.1.bottom/0.0.1536.824@0.0.1536.824" timestamp="1617892656064" />
-    <state width="1515" height="253" key="GridCell.Tab.1.center" timestamp="1617892656064">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.1.center/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.1.center/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543319" />
-    <state width="1515" height="253" key="GridCell.Tab.1.center/0.0.1536.824@0.0.1536.824" timestamp="1617892656064" />
-    <state width="1515" height="253" key="GridCell.Tab.1.left" timestamp="1617892656064">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.1.left/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.1.left/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543319" />
-    <state width="1515" height="253" key="GridCell.Tab.1.left/0.0.1536.824@0.0.1536.824" timestamp="1617892656064" />
-    <state width="1515" height="253" key="GridCell.Tab.1.right" timestamp="1617892656064">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="278" key="GridCell.Tab.1.right/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1616923439673" />
-    <state width="1515" height="362" key="GridCell.Tab.1.right/0.0.1536.824/1920.0.1536.824@1920.0.1536.824" timestamp="1616917543319" />
-    <state width="1515" height="253" key="GridCell.Tab.1.right/0.0.1536.824@0.0.1536.824" timestamp="1617892656064" />
-    <state x="270" y="56" key="SettingsEditor" timestamp="1610515009416">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="270" y="56" key="SettingsEditor/0.0.1536.824@0.0.1536.824" timestamp="1610515009416" />
-    <state x="93" y="93" width="1350" height="638" maximized="true" key="com.intellij.history.integration.ui.views.FileHistoryDialog" timestamp="1617867788980">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="93" y="93" width="1350" height="638" maximized="true" key="com.intellij.history.integration.ui.views.FileHistoryDialog/0.0.1536.824@0.0.1536.824" timestamp="1617867788980" />
-    <state x="296" y="141" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2" timestamp="1614875847833">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="296" y="141" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2/0.0.1536.824@0.0.1536.824" timestamp="1614875847833" />
-    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup" timestamp="1611302051344">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup/0.0.1536.824/1920.0.1536.824@0.0.1536.824" timestamp="1611302051344" />
   </component>
   <component name="masterDetails">
     <states>

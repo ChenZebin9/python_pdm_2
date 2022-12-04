@@ -70,7 +70,7 @@
        </sizepolicy>
       </property>
       <property name="text">
-       <string>采购管理</string>
+       <string>生产配料管理</string>
       </property>
      </widget>
     </item>
@@ -83,7 +83,7 @@
        </sizepolicy>
       </property>
       <property name="text">
-       <string>生成领料单</string>
+       <string/>
       </property>
      </widget>
     </item>

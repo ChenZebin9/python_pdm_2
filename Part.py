@@ -3,7 +3,8 @@ import os.path
 from decimal import Decimal
 import datetime
 
-from PyQt5.QtCore import (QThread, pyqtSignal)
+from PyQt5.QtCore import (QThread, pyqtSignal, Qt)
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
 from db.DatabaseHandler import DatabaseHandler
 
@@ -47,6 +48,16 @@ class Part:
 
     @staticmethod
     def get_unit_price(database: DatabaseHandler, part_id):
+        # 查找库存里的数据
+        storing_data = database.get_storing( part_id )
+        if storing_data is not None:
+            pos_list = ('D', 'E', 'F', 'A')  # 以此顺序进行查询
+            for p in pos_list:
+                for s in storing_data:
+                    if s[1] == p and s[4] is not None and s[4] > 0.0001:
+                        return float( s[4] )
+        # 通过领料记录来查询数据
+        """
         p_obj = Part.get_parts( database, part_id=part_id )
         if len( p_obj ) >= 1:
             p = p_obj[0]
@@ -62,10 +73,16 @@ class Part:
                     if all_qty <= 0.0:
                         return 0.0
                     return float( all_price / all_qty )
+        """
+        # 通过PDM的记录来查询数据
         pdm_records = database.get_price_from_self_record( part_id=part_id, top=1 )
         if pdm_records is not None:
             r = pdm_records[0]
-            price = (r[1] + r[2]) / (Decimal.from_float( 1.0 ) + r[3]) / r[4]
+            f1 = Decimal.from_float( r[1] ) if type( r[1] ) == float else r[1]
+            f2 = Decimal.from_float( r[2] ) if type( r[2] ) == float else r[2]
+            f3 = Decimal.from_float( r[3] ) if type( r[3] ) == float else r[3]
+            f4 = Decimal.from_float( r[4] ) if type( r[4] ) == float else r[4]
+            price = (f1 + f2) / (Decimal.from_float( 1.0 ) + f3) / f4
             return float( price )
         return float( 0.0 )
 
@@ -74,6 +91,18 @@ class Part:
         for r in rr:
             t = Tag( r[0], r[1], r[2], r[3], database=database )
             self.tags.append( t )
+
+    def get_tags_id(self, database):
+        """
+        获取tag零件的所有id
+        :param database:
+        :return:
+        """
+        result = []
+        rr = database.get_tags_2_part( self.__part_id )
+        for r in rr:
+            result.append( r[0] )
+        return result
 
     def get_specified_tag(self, database, tag_name):
         """ 根据给定的tag名称，查找其子tag所指定的part """
@@ -168,6 +197,7 @@ class Tag:
         self.tag_id = tag_id
         self.name = name
         self.parent_id = parent_id
+        self.parent_name = ''
         self.sort_index = sort_index
         self.children = []
         self.__search = False
@@ -178,6 +208,7 @@ class Tag:
     def __build_whole_name(self, database, parent):
         ts = database.get_tags( tag_id=parent )
         t = ts[0]
+        self.parent_name = t[1]
         self.__whole_name = '{0} > {1}'.format( t[1], self.__whole_name )
         if t[2] is not None:
             self.__build_whole_name( database, t[2] )
@@ -194,7 +225,7 @@ class Tag:
     def sort_children_by_name(self, database):
         if len( self.children ) < 1:
             return False, None
-        t_list = sorted( self.children, key=lambda c: c.name )
+        t_list = sorted( self.children, key=lambda c: c.name.lower() )
         index = 1
         for t in t_list:
             t.sort_index = index
@@ -253,7 +284,8 @@ class DoStatistics( QThread ):
         self.__part_id = None
         self.__stat_type = None
         self.__database = None
-        self.__result = {}
+        self.__result = {}  # 最终统计结果
+        self.__ignore_part = {}  # 由于某些物料打包采购了，则在统计结果排除相应的子项
         self.__stop_flag = False
         self.__db_type = database[0]
         self.__database = database[1]
@@ -261,6 +293,17 @@ class DoStatistics( QThread ):
 
         # 当前在运算的 Part
         self.__current_part = None
+
+        # 预存各种tag的id
+        # 来源
+        self.__purchase_tag = self.__database.get_tag_id( '采购', '来源' )
+        self.__no_standard_tag = self.__database.get_tag_id( '自制', '来源' )
+        self.__assembly_tag = self.__database.get_tag_id( '装配', '来源' )
+        # 类别
+        self.__dwg_type_tag = self.__database.get_tag_id( '图纸', '类别' )
+        self.__doc_type_tag = self.__database.get_tag_id( '文档', '类别' )
+        # 统计策略
+        self.__package_purchase_tag = self.__database.get_tag_id( '打包', '统计策略' )
 
     def set_data(self, part_id, stat_type):
         self.__part_id = part_id
@@ -286,6 +329,17 @@ class DoStatistics( QThread ):
             if self.__stop_flag:
                 return
             qty = self.__result[i]
+            # 判断是否被打包在某个单元中，如果是，则将其移除
+            if len( self.__ignore_part ) > 0:
+                if i in self.__ignore_part:
+                    i_qty = self.__ignore_part[i]
+                    t_qty = i_qty - qty
+                    if t_qty <= 0:
+                        qty = qty - i_qty
+                        self.__ignore_part.pop( i )
+                    else:
+                        qty = 0
+                        self.__ignore_part[i] = t_qty
             if qty <= 0.0:
                 continue
             unit_price = 0.0
@@ -301,7 +355,7 @@ class DoStatistics( QThread ):
     def __do_statistics(self, qty):
         """ 实际的统计，返回 True 表示被中断了 """
         tt = Part.get_parts( self.__database, part_id=self.__current_part )
-        if len(tt) < 1:
+        if len( tt ) < 1:
             return
         p: Part = tt[0]
         if self.__stop_flag:
@@ -313,33 +367,63 @@ class DoStatistics( QThread ):
         for c in children:
             if self.__stop_flag:
                 return
+            the_part: Part = c[1]
 
-            # 注明时采购时，就不要再往下查询
-            pur_type = c[1].get_specified_tag( self.__database, '来源' )
             # 根据类别和设置进行判断
-            p_type = c[1].get_specified_tag( self.__database, '类别' )
-
+            all_tags = the_part.get_tags_id( self.__database )
             self.__current_part = c[1].get_part_id()
             if self.__stat_type[0]:
                 # 完全的统计
                 self.__do_statistics( qty * c[2] )
             elif self.__stat_type[1]:
+                # 判断是不是打包采购的物品
+                if self.__package_purchase_tag in all_tags:
+                    self.__add_2_ignore_dict( c[1].get_part_id(), qty * c[2] )
                 # 统计要投料（采购）的
-                if p_type == '图纸' or p_type == '文档':
+                if (self.__dwg_type_tag in all_tags) or (self.__doc_type_tag in all_tags):
                     continue
-                if pur_type == '采购':
+                if self.__purchase_tag in all_tags:
                     self.__add_2_result( c[1].get_part_id(), qty * c[2] )
                     continue
+                if self.__no_standard_tag in all_tags:
+                    # 由于自制零件，有可能直接从外部采购，也有可能采购胚料，再进行外协加工。
+                    if not self.__stat_type[-1]:
+                        # 在不用累计价格的情况下，则不进行分析
+                        self.__add_2_result( c[1].get_part_id(), qty * c[2] )
+                        continue
+                    else:
+                        unit_price = Part.get_unit_price( self.__database, c[1].get_part_id() )
+                        if unit_price > 0.001:
+                            # 有找到单价，则不再进行向下分析
+                            self.__add_2_result( c[1].get_part_id(), qty * c[2] )
+                            continue
                 self.__do_statistics( qty * c[2] )
             elif self.__stat_type[2]:
                 # 统计要装配的
-                if p_type == '图纸' or p_type == '文档':
+                if (self.__dwg_type_tag in all_tags) or (self.__doc_type_tag in all_tags):
                     continue
-                # TODO: 改成询问的？
-                if pur_type == '自制' or pur_type == '采购':
+                if (self.__assembly_tag in all_tags) or (self.__no_standard_tag in all_tags):
                     self.__add_2_result( c[1].get_part_id(), qty * c[2] )
                     continue
                 self.__do_statistics( qty * c[2] )
+
+    def __add_2_ignore_dict(self, part_id, qty):
+        tt = Part.get_parts( self.__database, part_id=part_id )
+        if len( tt ) < 1:
+            return
+        p: Part = tt[0]
+        if self.__stop_flag:
+            return
+        children = p.get_children( self.__database )
+        if children is not None:
+            for c in children:
+                the_part: Part = c[1]
+                c_part_id = the_part.get_part_id()
+                c_qty = qty * c[2]
+                if c_part_id in self.__ignore_part:
+                    self.__ignore_part[c_part_id] += c_qty
+                else:
+                    self.__ignore_part[c_part_id] = c_qty
 
     def __add_2_result(self, part_id, qty):
         if part_id in self.__result:
@@ -348,66 +432,36 @@ class DoStatistics( QThread ):
             self.__result[part_id] = qty
 
 
-class Product:
-    """ 代表一个产品 """
+class TagTreeBuilder( QThread ):
+    """ 创意一个Tag的树型数据，以作为MVC中的M """
 
-    def __init__(self, product_id, actual_status, product_comment, status_comment, config):
-        self.product_id = product_id
-        self.actual_status = actual_status
-        self.product_comment = product_comment
-        self.status_comment = status_comment
-        self.config = config
-        self.tags = []
-        self.children = []
+    model_created = pyqtSignal( QStandardItemModel )
 
-    @staticmethod
-    def get_products(database, product_id=None, product_comment=None, status_comment=None, config=None, top=False):
-        rs = database.get_products( product_id, product_comment, status_comment, config, top )
-        result = []
-        for r in rs:
-            pp = Product( r[0], r[2], r[7], r[8], r[9] )
-            t_children = pp.get_children( database )
-            if t_children is not None:
-                pp.children.extend( t_children )
-            result.append( pp )
-        return result
+    def __init__(self, database):
+        super( TagTreeBuilder, self ).__init__()
+        self.__tag_id = None
+        self.__tag_name = None
+        self.__parent_id = None
+        self.tag_tree_model = QStandardItemModel()
+        self.__database_type = database[0]
+        self.__database = database[1]
 
-    def get_children(self, database, mode=0):
-        """
-        mode = 0: 查找子清单
-        mode = 1: 查找父清单
-        """
-        rs = None
-        if mode == 0:
-            rs = database.get_children( self.product_id )
-        elif mode == 1:
-            rs = database.get_parent( self.product_id )
-        if rs is None:
-            return None
-        result = []
-        for r in rs:
-            pp = Product( r[0], r[2], r[7], r[8], r[9] )
-            result.append( pp )
-        return result
+    def set_search_arg(self, tag_id=None, name=None, parent_id=None):
+        self.__tag_id = tag_id
+        self.__tag_name = name
+        self.__parent_id = parent_id
 
-    def get_tags(self, database):
-        self.tags.clear()
-        rr = database.get_tags_2_product( self.product_id )
-        for r in rr:
-            t = Tag( r[0], r[1], r[2], r[3], database=database )
-            self.tags.append( t )
-
-    @staticmethod
-    def get_products_from_tag(database, tag_id):
-        rs = database.get_products_2_tag( tag_id )
-        result = []
-        for r in rs:
-            pp = Product( r[0], r[2], r[7], r[8], r[9] )
-            result.append( pp )
-        return result
-
-    def __eq__(self, other):
-        return self.product_id == other.product_id
-
-    def __hash__(self):
-        return hash( self.product_id )
+    def run(self):
+        self.tag_tree_model.clear()
+        self.tag_tree_model.setHorizontalHeaderLabels(['标签'])
+        tags = Tag.get_tags( self.__database, tag_id=self.__tag_id, name=self.__tag_name, parent_id=self.__parent_id )
+        for t in tags:
+            node = QStandardItem( t.name )
+            node.setData( t, Qt.UserRole )
+            self.tag_tree_model.appendRow( node )
+            t.search_children( self.__database )
+            for c in t.children:
+                c_node = QStandardItem( c.name )
+                c_node.setData( c, Qt.UserRole )
+                node.appendRow( c_node )
+        self.model_created.emit(self.tag_tree_model)

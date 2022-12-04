@@ -247,13 +247,13 @@ class DocOutputDialog( QDialog ):
                         if file_3d_s[0] != 'SLDASM':
                             set_3d_flag = True
                     elif k == 'SLDPRT':
-                        if file_3d_s[0] != 'SLDASM' and file_3d_s[0] != 'SLDPRT':
+                        if file_3d_s[0] != 'SLDASM' or file_3d_s[0] != 'SLDPRT':
                             set_3d_flag = True
-                    elif k == 'PDF':
-                        if file_2d_s[0] != 'PDF':
-                            set_2d_flag = True
                     elif k == 'SLDDRW':
-                        if file_2d_s[0] != 'SLDDRW' and file_2d_s[0] != 'PDF':
+                        if file_2d_s[0] == '_' or file_2d_s[0] == 'PDF':
+                            set_2d_flag = True
+                    elif k == 'PDF':
+                        if file_2d_s[0] == '_' or file_2d_s[0] == 'PDF':
                             set_2d_flag = True
                     else:
                         set_2d_flag = True

@@ -3,19 +3,22 @@ import os
 import subprocess
 import time
 from decimal import Decimal
+from ftplib import FTP
 
-from PyQt5.QtCore import (QThread, pyqtSignal)
+from PyQt5.QtCore import (QThread, pyqtSignal, Qt, QModelIndex)
 from PyQt5.QtGui import (QIntValidator, QPixmap, QCursor, QStandardItemModel, QStandardItem)
 from PyQt5.QtWidgets import (QFrame, QLabel, QTextEdit,
                              QListWidget, QHBoxLayout, QFormLayout, QVBoxLayout,
                              QPushButton, QComboBox, QTableWidget,
                              QTableWidgetItem, QListWidgetItem, QTableView,
-                             QMenu, QSplitter, QFileDialog, QCheckBox)
+                             QMenu, QSplitter, QFileDialog, QCheckBox, QLineEdit, QMessageBox, QApplication,
+                             QInputDialog, QTreeWidgetItem, QAbstractItemView, QTreeWidget)
+from _socket import timeout
 
-from Part import Part, DoStatistics
+import Com
+from Part import Part, DoStatistics, TagTreeBuilder, Tag
 from db.DatabaseHandler import DatabaseHandler
-from ui.MyTreeWidget import *
-from utils.CaptureImage import WScreenShot, ConfirmImage
+from ui.MyTreeWidget import MyTreeView
 
 
 class PartInfoPanel( QFrame ):
@@ -39,9 +42,10 @@ class PartInfoPanel( QFrame ):
         self.tagTableWidget = QTableWidget( self )
         self.__init_ui()
 
-    def init_data(self, part_id, tag_data):
+    def init_data(self, part_id, tag_data, ref_part: Part):
         """
         数据的初始化，仅在新建单元时被调用
+        :param ref_part: 参照的 Part
         :param tag_data: {}, Tag 表格的数据
         :param part_id: int, 可用的 Part Id
         :return:
@@ -53,20 +57,33 @@ class PartInfoPanel( QFrame ):
         self.tagTableWidget.setColumnCount( 2 )
         self.tagTableWidget.setHorizontalHeaderLabels( ['标签名', '值'] )
         i = 0
+        ref_tag_dict = {}
+        if ref_part is not None:
+            self.nameLineEdit.setText( ref_part.name )
+            self.englishNameLineEdit.setText( ref_part.english_name )
+            self.descriptionLineEdit.setText( ref_part.description )
+            self.commentTextEdit.setText( ref_part.comment )
+            for t in ref_part.tags:
+                p_n = t.parent_name
+                ref_tag_dict[p_n] = t.name
         for k in tag_data:
             item = QTableWidgetItem( k )
             self.tagTableWidget.setItem( i, 0, item )
             value_items = tag_data[k]
             if value_items is not None:
-                a_combo_box = QComboBox()
+                a_input_box = QComboBox()
                 for v in value_items:
-                    a_combo_box.addItem( v )
-                a_combo_box.setEditable( True )
-                a_combo_box.setCurrentIndex( -1 )
-                self.tagTableWidget.setCellWidget( i, 1, a_combo_box )
+                    a_input_box.addItem( v )
+                a_input_box.setEditable( True )
+                a_input_box.setCurrentIndex( -1 )
+                self.tagTableWidget.setCellWidget( i, 1, a_input_box )
+                if k in ref_tag_dict and k.find( '编码' ) < 0:
+                    a_input_box.setCurrentText( ref_tag_dict[k] )
             else:
-                a_edit_line = QLineEdit()
-                self.tagTableWidget.setCellWidget( i, 1, a_edit_line )
+                a_input_box = QLineEdit()
+                self.tagTableWidget.setCellWidget( i, 1, a_input_box )
+                if k in ref_tag_dict and k.find( '编码' ) < 0:
+                    a_input_box.setText( ref_tag_dict[k] )
             i += 1
         self.tagTableWidget.horizontalHeader().setStretchLastSection( True )
         self.tagTableWidget.resizeColumnsToContents()
@@ -153,15 +170,17 @@ class PartInfoPanel( QFrame ):
 
 class PartInfoPanelInMainWindow( QFrame ):
 
-    def __init__(self, parent=None, work_folder=None, database=None, is_offline=False):
+    def __init__(self, parent=None, work_folder=None, database=None, is_offline=False, mode=-1):
         # 当前被选定的 part
-        self.__current_part: Part = None
+        self.__current_part = None
         self.__work_folder = work_folder
         self.__parent = parent
         self.__database: DatabaseHandler = database
         self.__vault = None
         self.__is_offline = is_offline
         self.__current_select_tag = None
+        self.__mode = mode
+        self.__no_ftp = False  # 不使用FTP的模式
         # 本地文件的存放路径，当为 None 时，表示不访问本地图纸。
         self.__local_path = None
         super().__init__( parent )
@@ -173,7 +192,7 @@ class PartInfoPanelInMainWindow( QFrame ):
         """ 操作单元信息的按钮 """
         self.__save_to_part_button = QPushButton( '保存' )
         self.__copy_part_button = QPushButton( '复制' )
-        self.__hyper_link_button = QPushButton( '采购链接' )
+        self.__hyper_link_button = QPushButton( '编辑链接' )
         self.__the_hyper_link_label = QLabel()
 
         """ 标签清单的右键菜单 """
@@ -212,10 +231,14 @@ class PartInfoPanelInMainWindow( QFrame ):
         self.__menu_4_files_list = QMenu( parent=self.relationFilesList )
         self.__open_file_menu = self.__menu_4_files_list.addAction( '打开文件' )
         self.__open_file_location = self.__menu_4_files_list.addAction( '进入文件所在目录' )
+        self.__add_file_to_link = self.__menu_4_files_list.addAction( '添加文件' )
+        self.__remove_file_from_link = self.__menu_4_files_list.addAction( '移除文件链接' )
         self.relationFilesList.setContextMenuPolicy( Qt.CustomContextMenu )
         self.relationFilesList.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
         self.__open_file_menu.triggered.connect( self.__open_file_by_menu )
         self.__open_file_location.triggered.connect( self.__do_open_file_location )
+        self.__add_file_to_link.triggered.connect( self.__add_file_to_link_handler )
+        self.__remove_file_from_link.triggered.connect( self.__remove_file_from_link_handler )
 
         self.__setup_ui()
 
@@ -259,19 +282,13 @@ class PartInfoPanelInMainWindow( QFrame ):
         # 将主窗口最小化
         self.__parent.hide()
         time.sleep( 0.5 )
-        img_data = None
         try:
-            win = WScreenShot()
-            win.exec_()
-            if win.image_file is not None:
-                confirm_dialog = ConfirmImage( win.image_file )
-                confirm_dialog.exec_()
+            current_part_id = self.__current_part.get_part_id()
+            img_data = Com.capture_image( current_part_id )
+            if img_data is not None:
                 # 更新数据
-                img_data = confirm_dialog.get_img_data()
-                if img_data is not None:
-                    self.__database.set_part_thumbnail( self.__current_part.get_part_id(), img_data )
-                os.unlink( win.image_file )
-                img_data = self.__database.get_thumbnail_2_part( self.__current_part.get_part_id() )
+                self.__database.set_part_thumbnail( current_part_id, bytes( img_data ) )
+                img_data = self.__database.get_thumbnail_2_part( current_part_id )
                 if img_data is not None:
                     img = QPixmap()
                     img.loadFromData( img_data )
@@ -319,7 +336,8 @@ class PartInfoPanelInMainWindow( QFrame ):
         if self.__vault is not None:
             # 更新PDM的数据
             try:
-                ifs = self.__database.get_part_info_quick( self.__current_part.get_part_id() )
+                _id = self.__current_part.get_part_id()
+                ifs = self.__database.get_part_info_quick( _id )
                 if ifs is None:
                     raise Exception( '居然没找到响应的Part！' )
                 ifs.insert( 3, the_english_name )
@@ -329,6 +347,7 @@ class PartInfoPanelInMainWindow( QFrame ):
                     for k in linked_file.keys():
                         file_s.extend( linked_file[k] )
                     _thread.start_new_thread( self.__vault.UpdateFileInPdm, (file_s, ifs) )
+                    self.__parent.set_status_bar_text( f'更新了{id}的属性。' )
             except Exception as ex:
                 QMessageBox.critical( self.__parent, '更新PDM数据时失败', str( ex ), QMessageBox.Yes )
         self.__save_to_part_button.setEnabled( False )
@@ -353,8 +372,16 @@ class PartInfoPanelInMainWindow( QFrame ):
             self.__database.save_change()
 
     def __copy_part_handler(self):
-        """ 点击复制时的响应语句 """
-        pass
+        """
+        复制当前的Part，以供新建时使用
+        :return:
+        """
+        if self.__current_part is None:
+            self.__parent.set_status_bar_text( '没有选择项目！' )
+            return
+        self.__parent.part_2_paste = self.__current_part
+        _id = self.__current_part.get_part_id()
+        self.__parent.set_status_bar_text( f'复制了{_id}的属性。' )
 
     def set_part_operate_button_status(self, which_button, status):
         """
@@ -382,11 +409,20 @@ class PartInfoPanelInMainWindow( QFrame ):
             if item is not None:
                 self.__menu_4_tag_list.exec( QCursor.pos() )
         elif self.sender() == self.relationFilesList:
-            if self.relationFilesList.count() < 1:
+            if self.__current_part is None:
                 return
             self.__current_file_item = self.relationFilesList.itemAt( pos )
-            if self.__current_file_item is not None:
-                self.__menu_4_files_list.exec( QCursor.pos() )
+            if self.relationFilesList.count() < 1 or self.__current_file_item is None:
+                self.__open_file_menu.setVisible( False )
+                self.__open_file_location.setVisible( False )
+                self.__add_file_to_link.setVisible( True )
+                self.__remove_file_from_link.setVisible( False )
+            else:
+                self.__open_file_menu.setVisible( True )
+                self.__open_file_location.setVisible( True )
+                self.__add_file_to_link.setVisible( False )
+                self.__remove_file_from_link.setVisible( True )
+            self.__menu_4_files_list.exec( QCursor.pos() )
         elif self.sender() == self.imageLabel:
             if self.__current_part is not None:
                 self.__menu_4_image_label.exec( QCursor.pos() )
@@ -463,49 +499,105 @@ class PartInfoPanelInMainWindow( QFrame ):
         if self.__current_file_item is not None:
             self.__open_file( self.__current_file_item )
 
+    def __add_file_to_link_handler(self):
+        try:
+            if self.__database.get_database_type() == 'SQLite':
+                self.__parent.set_status_bar_text( 'SQLite数据库，暂不起用该功能！' )
+                return
+            selected_file, _ = QFileDialog.getOpenFileName( self, caption='选择要关联的文件',
+                                                            filter='Any Files in Vault (*.*)',
+                                                            directory=self.__work_folder )
+            if selected_file == '':
+                return
+            s = len( self.__work_folder )
+            file_name = selected_file[s:]
+            self.__database.add_file_link_2_part( self.__current_part.get_part_id(), file_name )
+            self.__database.save_change()
+            self.relationFilesList.addItem( file_name )
+        except Exception as ex:
+            QMessageBox.warning( self.__parent, '添加文件时出错', str( ex ) )
+
+    def __remove_file_from_link_handler(self):
+        try:
+            if self.__database.get_database_type() == 'SQLite':
+                self.__parent.set_status_bar_text( 'SQLite数据库，暂不起用该功能！' )
+                return
+            resp = QMessageBox.question( self.__parent, '确认', '确定要删除此链接吗？', QMessageBox.Yes | QMessageBox.No,
+                                         QMessageBox.No )
+            if resp == QMessageBox.No:
+                return
+            self.__database.remove_file_link_from_part( self.__current_part.get_part_id(),
+                                                        self.__current_file_item.text() )
+            self.__database.save_change()
+            the_index = self.relationFilesList.indexFromItem( self.__current_file_item )
+            self.relationFilesList.takeItem( the_index.row() )
+        except Exception as ex:
+            QMessageBox.warning( self.__parent, '移除文件链接时出错', str( ex ) )
+
     def __open_file(self, item: QListWidgetItem):
         try:
+            file_type_tuple = ('.SLDDRW', '.DOC', '.DOCX', '.PDF', '.XLS', '.XLSX')
             file_name = item.text()
             file_version = None
             if file_name in self.__current_file_version:
                 file_version = f"{self.__current_part.part_id}.{self.__current_file_version[file_name]}" \
                                f"-{self.__current_part.name}"
-            suffix = os.path.splitext( file_name )[1]
-            if suffix.upper() == '.SLDDRW':
-                if self.__local_path is not None and os.path.exists( self.__local_path ):
-                    # 进行本地PDF文件的查找
+            suffix = os.path.splitext(file_name)[1]
+            if suffix.upper() in file_type_tuple:
+                if self.__local_path is not None and os.path.exists(self.__local_path):
                     part_num = self.__current_part.part_id
                     the_file = []
-                    dirs = os.listdir( self.__local_path )
+                    # 通过FTP查找文件
                     version_alarm = file_version is None
-                    for f in dirs:
-                        if f.startswith( part_num ) and os.path.splitext( f )[1].upper() == '.PDF':
-                            the_file.append( f )
-                            one_file_name = os.path.splitext( f )[0]
+                    ftp = None
+                    if not self.__no_ftp:
+                        ftp = FTP()
+                        ftp.connect(host='191.1.6.103', port=21, timeout=5.0)
+                        ftp.login(user='ftp_reader', passwd='5678')
+                        ftp.encoding = 'GB2312'
+                        ftp.cwd('/pdm')
+                        all_files = ftp.nlst('.')
+                    else:
+                        all_files = os.listdir(self.__local_path)
+                    for f in all_files:
+                        if f.startswith(part_num) and os.path.splitext(f)[1].upper() == '.PDF':
+                            the_file.append(f)
+                            one_file_name = os.path.splitext(f)[0]
                             if file_version is not None:
                                 if one_file_name > file_version:
                                     version_alarm = False
+                    # 进行本地PDF文件的查找
                     open_pdf = True
-                    check_last_version = version_alarm and len( the_file ) > 0
-                    if (not self.__is_offline) and check_last_version:
-                        resp = QMessageBox.question( self.__parent, '', '本地PDF的图纸版本是旧版的，是否要打开原有文件？',
-                                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No )
+                    check_last_version = version_alarm and len(the_file) > 0
+                    if (not self.__is_offline) and check_last_version and (self.__mode != 3):
+                        resp = QMessageBox.question(self.__parent, '', 'PDF的图纸版本是旧版的，是否要打开原有文件？',
+                                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                         if resp == QMessageBox.No:
                             open_pdf = False
                     if open_pdf or not check_last_version:
-                        if len( the_file ) > 0:
-                            the_file.sort( reverse=True )
-                            item, ok = QInputDialog.getItem( self, '选择图纸', '文件名：', the_file, 0, False )
+                        if len(the_file) > 0:
+                            the_file.sort(reverse=True)
+                            item, ok = QInputDialog.getItem(self, '选择图纸', '文件名：', the_file, 0, False)
                             if ok and item:
-                                os.startfile( f'{self.__local_path}\\{item}' )
+                                local_file_name = f'{self.__local_path}\\{item}'
+                                if (ftp is not None) and (not os.path.exists(local_file_name)):
+                                    # 将FTP的文件下载到本地
+                                    file_handle = open(local_file_name, 'wb').write
+                                    ftp.retrbinary(f'RETR {item}', file_handle)
+                                if ftp is not None:
+                                    ftp.quit()
+                                os.startfile(local_file_name)
                             return
-            full_path = '{0}\\{1}'.format( self.__work_folder, file_name )
-            if os.path.exists( full_path ):
-                os.startfile( full_path )
+            full_path = '{0}\\{1}'.format(self.__work_folder, file_name)
+            if os.path.exists(full_path) and self.__mode != 3:
+                os.startfile(full_path)
             else:
-                QMessageBox.information( self.__parent, '无法打开', '{0}文件不存在'.format( full_path ), QMessageBox.Ok )
+                QMessageBox.information(self.__parent, '无法打开', '{0}文件不存在'.format(full_path), QMessageBox.Ok)
+        except timeout:
+            QMessageBox.warning(self.__parent, '超时', '没有FTP，下次将使用本地数据', QMessageBox.Ok)
+            self.__no_ftp = True
         except Exception as e:
-            QMessageBox.critical( self.__parent, '打开时出错', str( e ), QMessageBox.Ok )
+            QMessageBox.critical(self.__parent, '打开时出错', str(e), QMessageBox.Ok)
 
     def set_vault(self, vault):
         self.__vault = vault
@@ -562,8 +654,11 @@ class ChildrenTablePanel( QFrame ):
         self.__all_selected_id = None
         # 当数据进行后台更新时
         self.__update_data_silence = False
+        # 预备进行代替的Relation_id的，同时也作为标记
+        self.__ready_2_replace_r_id = -1
         self.childrenTableWidget = QTableWidget( self )
         self.addItemButton = QPushButton( self )
+        self.replaceItemButton = QPushButton( self )
         self.deleteItemButton = QPushButton( self )
         self.sortItemButton = QPushButton( self )
         self.saveAllItemsButton = QPushButton( self )
@@ -577,10 +672,12 @@ class ChildrenTablePanel( QFrame ):
 
     def __init_ui(self):
         self.addItemButton.setText( '添加' )
+        self.replaceItemButton.setText( '替代' )
         self.deleteItemButton.setText( '删除' )
         self.sortItemButton.setText( '排序' )
         self.saveAllItemsButton.setText( '保存' )
         self.addItemButton.setEnabled( False )
+        self.replaceItemButton.setEnabled( False )
         self.deleteItemButton.setEnabled( False )
         self.sortItemButton.setEnabled( False )
         self.saveAllItemsButton.setEnabled( False )
@@ -591,12 +688,14 @@ class ChildrenTablePanel( QFrame ):
         v_box.setAlignment( Qt.AlignTop )
         if self.__mode == 0:  # 表示是子项目清单
             v_box.addWidget( self.addItemButton )
+            v_box.addWidget( self.replaceItemButton )
             v_box.addWidget( self.deleteItemButton )
             v_box.addWidget( self.sortItemButton )
             v_box.addWidget( self.saveAllItemsButton )
             v_box.addWidget( self.editModeCheckBox )
         else:
             self.addItemButton.setVisible( False )
+            self.replaceItemButton.setVisible( False )
             self.deleteItemButton.setVisible( False )
             self.sortItemButton.setVisible( False )
             self.saveAllItemsButton.setVisible( False )
@@ -610,12 +709,33 @@ class ChildrenTablePanel( QFrame ):
         # 按键的动作响应
         self.go2ItemButton.clicked.connect( self.__go_2_part )
         self.addItemButton.clicked.connect( self.__add_2_part_list )
+        self.replaceItemButton.clicked.connect( self.__replace_item )
         self.deleteItemButton.clicked.connect( self.__remove_from_part_list )
         self.sortItemButton.clicked.connect( self.__sort_part_list )
         self.saveAllItemsButton.clicked.connect( self.__save_part_list )
         self.editModeCheckBox.toggled.connect( lambda: self.__set_list_edit_mode( self.editModeCheckBox.isChecked() ) )
         # 编辑某个单元格的响应函数
         self.childrenTableWidget.cellChanged.connect( self.__item_change )
+
+        # 设置点击表头可以排序
+        header_goods = self.childrenTableWidget.horizontalHeader()
+        header_goods.setSectionsClickable( True )
+        header_goods.sectionClicked.connect( self.__sort_by_column )
+        #
+        self.__sort_flags = {}
+
+    def __sort_by_column(self, column_index):
+        # 列排列的相应函数
+        sort_flags = False
+        if column_index in self.__sort_flags:
+            sort_flags = self.__sort_flags[column_index]
+        if sort_flags:
+            self.childrenTableWidget.sortByColumn( column_index, Qt.AscendingOrder )
+            sort_flags = False
+        else:
+            self.childrenTableWidget.sortByColumn( column_index, Qt.DescendingOrder )
+            sort_flags = True
+        self.__sort_flags[column_index] = sort_flags
 
     def __item_change(self, r, c):
         if self.__update_data_silence:
@@ -685,18 +805,94 @@ class ChildrenTablePanel( QFrame ):
         self.__parent.set_status_bar_text( f'添加了{next_index}子项目。' )
         self.__update_data_silence = False
 
-    def __remove_from_part_list(self):
-        self.__update_data_silence = True
-        # 从清单中移除
-        if self.__select_row >= 0:
-            part_id_item: QTableWidgetItem = self.childrenTableWidget.item( self.__select_row, 1 )
-            data = part_id_item.data( Qt.UserRole )
-            if data is not None:
-                self.__2_remove_row.append( data )
-            self.childrenTableWidget.removeRow( self.__select_row )
+    def __replace_item(self):
+        if self.__ready_2_replace_r_id > 0:
+            # 正式进行代替
+            if self.__parent_part is not None:
+                if self.__parent_part == self.__part_list_belong_2:
+                    self.__parent.set_status_bar_text( '所选项目与被代替的项目相同。' )
+                    return
+
+                id_item = self.childrenTableWidget.item( self.__select_row, 1 )
+                original_part_id = id_item.text()
+                name_item = self.childrenTableWidget.item( self.__select_row, 2 )
+                description_item = self.childrenTableWidget.item( self.__select_row, 3 )
+                id_item.setText( self.__parent_part.part_id )
+                name_item.setText( self.__parent_part.name )
+                description_item.setText( self.__parent_part.description )
+
+                self.__database.replace_part_relation( self.__ready_2_replace_r_id, self.__parent_part.get_part_id() )
+                self.__parent.set_status_bar_text(
+                    f'完成代替。第{self.__select_row + 1}行由{original_part_id}更改为{self.__parent_part.part_id}。' )
+
+                self.__update_data_silence = False
+                self.replaceItemButton.setText( '替代' )
+                self.deleteItemButton.setText( '删除' )
+                self.__ready_2_replace_r_id = -1
+                self.addItemButton.setEnabled( True )
+                self.sortItemButton.setEnabled( True )
+                self.saveAllItemsButton.setEnabled( True )
+                self.go2ItemButton.setEnabled( True )
+                self.editModeCheckBox.setEnabled( True )
+                self.childrenTableWidget.setEnabled( True )
+            else:
+                self.__parent.set_status_bar_text( '没有选择可替代的项目。' )
         else:
-            self.__parent.set_status_bar_text( '没有选择要移除的子项目。' )
-        self.__update_data_silence = False
+            self.__update_data_silence = True
+            # 预备代替项目
+            if self.__select_row >= 0:
+                part_id_item: QTableWidgetItem = self.childrenTableWidget.item( self.__select_row, 1 )
+                r_id = part_id_item.data( Qt.UserRole )
+                p_id = int( part_id_item.data( Qt.DisplayRole ).lstrip( '0' ) )
+                if r_id is not None:
+                    identical_parts = self.__database.get_identical_parts( p_id )
+                    if identical_parts is not None and len( identical_parts[0] ) > 0:
+                        self.__ready_2_replace_r_id = r_id
+                        self.replaceItemButton.setText( '执行替代' )
+                        self.deleteItemButton.setText( '取消替代' )
+                        self.addItemButton.setEnabled( False )
+                        self.sortItemButton.setEnabled( False )
+                        self.saveAllItemsButton.setEnabled( False )
+                        self.go2ItemButton.setEnabled( False )
+                        self.editModeCheckBox.setEnabled( False )
+                        self.childrenTableWidget.setEnabled( False )
+                        selectable_parts = []
+                        for p_id in identical_parts[0]:
+                            the_part = Part.get_parts( self.__database, part_id=p_id )
+                            if len( the_part ) > 0:
+                                selectable_parts.append( the_part[0] )
+                        self.__parent.show_parts_from_outside( selectable_parts )
+                    else:
+                        self.__parent.set_status_bar_text( '没有可供替代的零件。' )
+                        self.__update_data_silence = False
+            else:
+                self.__parent.set_status_bar_text( '没有选择要替代的子项目。' )
+                self.__update_data_silence = False
+
+    def __remove_from_part_list(self):
+        if self.__ready_2_replace_r_id > 0:
+            self.__update_data_silence = False
+            self.replaceItemButton.setText( '替代' )
+            self.deleteItemButton.setText( '删除' )
+            self.__ready_2_replace_r_id = -1
+            self.addItemButton.setEnabled( True )
+            self.sortItemButton.setEnabled( True )
+            self.saveAllItemsButton.setEnabled( True )
+            self.go2ItemButton.setEnabled( True )
+            self.editModeCheckBox.setEnabled( True )
+            self.childrenTableWidget.setEnabled( True )
+        else:
+            self.__update_data_silence = True
+            # 从清单中移除
+            if self.__select_row >= 0:
+                part_id_item: QTableWidgetItem = self.childrenTableWidget.item( self.__select_row, 1 )
+                data = part_id_item.data( Qt.UserRole )
+                if data is not None:
+                    self.__2_remove_row.append( data )
+                self.childrenTableWidget.removeRow( self.__select_row )
+            else:
+                self.__parent.set_status_bar_text( '没有选择要移除的子项目。' )
+            self.__update_data_silence = False
 
     def __sort_part_list(self):
         self.__update_data_silence = True
@@ -704,25 +900,24 @@ class ChildrenTablePanel( QFrame ):
         r_c = self.childrenTableWidget.rowCount()
         if r_c < 2:
             return
+        resp = QMessageBox.question( self.__parent, '', '确定要重新排序', QMessageBox.Yes | QMessageBox.No, QMessageBox.No )
+        if resp == QMessageBox.No:
+            return
         c_c = 8
-        temp_dict = {}
-        for i in range( r_c ):
-            f_cell = self.childrenTableWidget.takeItem( i, 0 )
-            k = f_cell.data( Qt.DisplayRole )
-            one_row = [f_cell]
+        all_rows = []
+        for _i in range( r_c ):
+            one_row = []
             for j in range( 1, c_c ):
-                one_row.append( self.childrenTableWidget.takeItem( i, j ) )
-            temp_dict[k] = one_row
-        sorted_list = list( temp_dict.keys() )
-        sorted_list.sort()
+                one_row.append( self.childrenTableWidget.takeItem( _i, j ) )
+            all_rows.append( one_row )
+
         j = 0
-        for k in sorted_list:
-            one_row = temp_dict[k]
+        for one_row in all_rows:
             index_item = QTableWidgetItem()
             index_item.setData( Qt.DisplayRole, 10 * (j + 1) )
             self.childrenTableWidget.setItem( j, 0, index_item )
-            for c in range( 1, c_c ):
-                self.childrenTableWidget.setItem( j, c, one_row[c] )
+            for _c in range( 1, c_c ):
+                self.childrenTableWidget.setItem( j, _c, one_row[_c - 1] )
             j += 1
         QTableWidget.resizeColumnsToContents( self.childrenTableWidget )
         QTableWidget.resizeRowsToContents( self.childrenTableWidget )
@@ -733,7 +928,10 @@ class ChildrenTablePanel( QFrame ):
         # 保存清单数据
         row_cc = self.childrenTableWidget.rowCount()
         for i in range( row_cc ):
-            index = (self.childrenTableWidget.item( i, 0 )).data( Qt.DisplayRole )
+            the_item = self.childrenTableWidget.item( i, 0 )
+            if the_item is None:
+                continue
+            index = the_item.data( Qt.DisplayRole )
             part_id_item = self.childrenTableWidget.item( i, 1 )
             part_id = int( part_id_item.text().lstrip( '0' ) )
             relation_id = part_id_item.data( Qt.UserRole )
@@ -748,12 +946,14 @@ class ChildrenTablePanel( QFrame ):
         self.__2_remove_row.clear()
         self.set_part_children( self.__part_list_belong_2, self.__database )
         self.__parent.set_status_bar_text( '完成子清单的更新。' )
+        self.editModeCheckBox.toggle()
 
     def __set_list_edit_mode(self, is_edit_mode):
         self.__update_data_silence = True
         # 编辑模式的相应函数
         self.__parent.set_children_list_edit_mode( is_edit_mode )
         self.addItemButton.setEnabled( is_edit_mode )
+        self.replaceItemButton.setEnabled( is_edit_mode )
         self.deleteItemButton.setEnabled( is_edit_mode )
         self.sortItemButton.setEnabled( is_edit_mode )
         self.saveAllItemsButton.setEnabled( is_edit_mode )
@@ -808,6 +1008,7 @@ class ChildrenTablePanel( QFrame ):
             return
         self.childrenTableWidget.setColumnCount( 8 )
         self.childrenTableWidget.setHorizontalHeaderLabels( ChildrenTablePanel.Columns_header )
+        self.__sort_flags.clear()
         if part is None:
             r_number = 0
         else:
@@ -849,6 +1050,7 @@ class ChildrenTablePanel( QFrame ):
             index += 1
         QTableWidget.resizeColumnsToContents( self.childrenTableWidget )
         QTableWidget.resizeRowsToContents( self.childrenTableWidget )
+        self.childrenTableWidget.clearSelection()
         for i in range( r_number ):
             for j in range( 8 ):
                 item = self.childrenTableWidget.item( i, j )
@@ -864,36 +1066,40 @@ class TagViewPanel( QFrame ):
         self.__database = database
         self.filterLineEdit = QLineEdit( self )
         self.cleanTextPushButton = QPushButton( self )
-        self.tagTreeWidget = MyTreeWidget2( self, database )
+        self.tagTreeView = MyTreeView( self, database )
         self.tagFilterListWidget = QListWidget( self )
         """ 进行标签查看的右键菜单 """
-        self.__menu_4_tag_tree = QMenu( parent=self.tagTreeWidget )
+        self.__menu_4_tag_tree = QMenu( parent=self.tagTreeView )
         self.__add_tag_2_filter = self.__menu_4_tag_tree.addAction( '添加至过滤' )
         self.__add_tag_2_filter.triggered.connect( self.__on_add_2_filter )
         self.__current_selected_tag = None
         """ 进行标签编辑时的右键菜单 """
         self.__selected_tag_in_edit_mode = None
-        self.__menu_4_tag_tree_edit = QMenu( parent=self.tagTreeWidget )
+        self.__menu_4_tag_tree_edit = QMenu( parent=self.tagTreeView )
         self.__create_new_tag = self.__menu_4_tag_tree_edit.addAction( '插入' )
         self.__del_tag = self.__menu_4_tag_tree_edit.addAction( '删除' )
         self.__rename_tag = self.__menu_4_tag_tree_edit.addAction( '重命名' )
         self.__sort_tag = self.__menu_4_tag_tree_edit.addAction( '排序' )
-        self.__cut_tag = self.__menu_4_tag_tree_edit.addAction( '剪切' )
-        self.__paste_tag_into = self.__menu_4_tag_tree_edit.addAction( '粘帖' )
+        # self.__cut_tag = self.__menu_4_tag_tree_edit.addAction( '剪切' )
+        # self.__paste_tag_into = self.__menu_4_tag_tree_edit.addAction( '粘帖' )
         # 用于右键菜单的 item
         self.__item_this_time = None
-        self.__create_new_tag.triggered.connect( self.tagTreeWidget.create_new_tag )
-        self.__del_tag.triggered.connect( self.tagTreeWidget.del_tag )
-        self.__rename_tag.triggered.connect( self.tagTreeWidget.rename_tag )
-        self.__sort_tag.triggered.connect( self.tagTreeWidget.sort_tag )
-        self.__cut_tag.triggered.connect( self.tagTreeWidget.cut_tag )
-        self.__paste_tag_into.triggered.connect( lambda: self.tagTreeWidget.paste_tag_into( self.__item_this_time ) )
+        self.__create_new_tag.triggered.connect( self.tagTreeView.create_new_tag )
+        self.__del_tag.triggered.connect( self.tagTreeView.del_tag )
+        self.__rename_tag.triggered.connect( self.tagTreeView.rename_tag )
+        self.__sort_tag.triggered.connect( self.tagTreeView.sort_tag )
+        # self.__cut_tag.triggered.connect( self.tagTreeView.cut_tag )
+        # self.__paste_tag_into.triggered.connect( lambda: self.tagTreeView.paste_tag_into( self.__item_this_time ) )
         """ 标签过来清单的右键菜单 """
         self.__menu_4_tag_list = QMenu( parent=self.tagFilterListWidget )
         self.__del_tag_from_filter = self.__menu_4_tag_list.addAction( '删除' )
         self.__clean_tag_from_filter = self.__menu_4_tag_list.addAction( '清空' )
         self.__del_tag_from_filter.triggered.connect( self.__on_del_from_filter )
         self.__clean_tag_from_filter.triggered.connect( self.__on_clean_filter )
+        """ MVC模式的后台处理线程 """
+        self.__tag_tree_builder = TagTreeBuilder( database.copy() )
+        self.tagTreeView.setModel( self.__tag_tree_builder.tag_tree_model )
+        self.__tag_tree_builder.model_created.connect( self.update_tag_tree )
 
         self.__edit_mode = False
 
@@ -904,11 +1110,11 @@ class TagViewPanel( QFrame ):
 
     def set_mode(self, edit_mode):
         self.__edit_mode = edit_mode
-        self.tagTreeWidget.set_edit_mode( edit_mode )
+        self.tagTreeView.set_edit_mode( edit_mode )
 
     def __init_ui(self):
-        self.cleanTextPushButton.setText( '清空' )
-        self.cleanTextPushButton.clicked.connect( self.__reset_search )
+        self.cleanTextPushButton.setText( '重置' )
+        self.cleanTextPushButton.clicked.connect( self.reset_search )
         self.tagFilterListWidget.setFixedHeight( 100 )
         v_box = QVBoxLayout( self )
 
@@ -918,40 +1124,44 @@ class TagViewPanel( QFrame ):
         filter_h_box.addWidget( self.cleanTextPushButton )
 
         v_box.addLayout( filter_h_box )
-        v_box.addWidget( self.tagTreeWidget )
+        v_box.addWidget( self.tagTreeView )
+
         v_box.addWidget( self.tagFilterListWidget )
 
         self.setLayout( v_box )
 
-        self.tagTreeWidget.setHeaderLabels( ['标签'] )
-        self.tagTreeWidget.itemSelectionChanged.connect( self.__select_tag )
-        self.tagTreeWidget.itemExpanded.connect( self.__when_item_expand )
+        self.tagTreeView.clicked.connect( self.__tag_view_clicked )
         self.filterLineEdit.returnPressed.connect( self.__do_search )
-        self.tagTreeWidget.setContextMenuPolicy( Qt.CustomContextMenu )
-        self.tagTreeWidget.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
+        self.tagTreeView.setContextMenuPolicy( Qt.CustomContextMenu )
+        self.tagTreeView.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
 
         self.tagFilterListWidget.setContextMenuPolicy( Qt.CustomContextMenu )
         self.tagFilterListWidget.customContextMenuRequested.connect( self.__on_custom_context_menu_requested )
 
+    def update_tag_tree(self, m: QStandardItemModel):
+        """ MVC模式下，更新tag模型数据 """
+        self.tagTreeView.setEnabled( True )
+
     def __on_custom_context_menu_requested(self, pos):
-        if self.sender() is self.tagTreeWidget:
-            self.__item_this_time = self.tagTreeWidget.itemAt( pos )
+        if self.sender() is self.tagTreeView:
+            index = self.tagTreeView.indexAt( pos )
+            self.__item_this_time = self.__tag_tree_builder.tag_tree_model.itemFromIndex( index )
             if not self.__edit_mode:
                 if self.__item_this_time is None:
                     self.__current_selected_tag = None
                     return
-                t = self.__item_this_time.data( 0, Qt.UserRole )
+                t = self.__item_this_time.data( Qt.UserRole )
                 self.__current_selected_tag = t
                 self.__menu_4_tag_tree.exec( QCursor.pos() )
             else:
-                self.tagTreeWidget.item_when_right_click( self.__item_this_time )
+                self.tagTreeView.item_when_right_click( self.__item_this_time )
                 shown = self.__item_this_time is not None
                 self.__rename_tag.setVisible( shown )
                 self.__sort_tag.setVisible( shown )
-                tag_in_clipper = self.tagTreeWidget.clipper_not_empty( self.__database )
-                self.__cut_tag.setVisible( shown and not tag_in_clipper )
+                # tag_in_clipper = self.tagTreeView.clipper_not_empty( self.__database )
+                # self.__cut_tag.setVisible( shown and not tag_in_clipper )
                 self.__del_tag.setVisible( shown )
-                self.__paste_tag_into.setVisible( tag_in_clipper )
+                # self.__paste_tag_into.setVisible( tag_in_clipper )
                 self.__menu_4_tag_tree_edit.exec( QCursor.pos() )
         elif self.sender() is self.tagFilterListWidget:
             if self.tagFilterListWidget.count() < 1:
@@ -998,65 +1208,38 @@ class TagViewPanel( QFrame ):
         r_list = list( result )
         self.parent.show_parts_from_outside( r_list )
 
-    def fill_data(self, tags):
-        self.tagTreeWidget.clear()
-        for t in tags:
-            t.search_children( self.__database )
-            node = QTreeWidgetItem( self.tagTreeWidget )
-            node.setText( 0, t.name )
-            node.setData( 0, Qt.UserRole, t )
-            self.tagTreeWidget.addTopLevelItem( node )
-            for c in t.children:
-                n_node = QTreeWidgetItem( node )
-                n_node.setText( 0, c.name )
-                n_node.setData( 0, Qt.UserRole, c )
-                node.addChild( n_node )
-
-    def __select_tag(self):
+    def __tag_view_clicked(self, index: QModelIndex):
+        item: QStandardItem = self.__tag_tree_builder.tag_tree_model.itemFromIndex( index )
+        t = None
+        if item is not None:
+            t = item.data( Qt.UserRole )
         if self.__edit_mode:
-            node = self.tagTreeWidget.currentItem()
-            if node is None:
-                self.__selected_tag_in_edit_mode = None
-            else:
-                self.__selected_tag_in_edit_mode = node
-            return
-        node = self.tagTreeWidget.currentItem()
-        t = node.data( 0, Qt.UserRole )
-        self.parent.do_when_tag_tree_select( t.tag_id )
+            self.__selected_tag_in_edit_mode = t
+        else:
+            self.parent.do_when_tag_tree_select( t.tag_id )
 
-    def __when_item_expand(self, item: QTreeWidgetItem):
-        data = item.data( 0, Qt.UserRole )
-        for cc in data.children:
-            cc.search_children( self.__database )
-            if len( cc.children ) < 1:
-                continue
-            for c in cc.children:
-                node = QTreeWidgetItem( self.tagTreeWidget )
-                node.setText( 0, c.name )
-                node.setData( 0, Qt.UserRole, c )
-
-    def __reset_search(self):
+    def reset_search(self):
         self.filterLineEdit.setText( '' )
-        tags = Tag.get_tags( self.__database, name=None )
-        self.fill_data( tags )
+        self.__tag_tree_builder.set_search_arg()
+        self.tagTreeView.setEnabled( False )
+        self.__tag_tree_builder.start()
 
     def __do_search(self):
+        if not self.tagTreeView.isEnabled():
+            return
         filter_text = self.filterLineEdit.text().strip()
         if filter_text == '':
             filter_text = None
-        tags = Tag.get_tags( self.__database, name=filter_text )
-        self.fill_data( tags )
+        self.__tag_tree_builder.set_search_arg( name=filter_text )
+        self.tagTreeView.setEnabled( False )
+        self.__tag_tree_builder.start()
 
     def clipboard_is_not_empty(self):
-        return self.tagTreeWidget.clipper_not_empty( self.__database )
+        return self.tagTreeView.clipper_not_empty( self.__database )
 
     def get_current_selected_tag(self):
         # 当前所选的 Tag
-        node = self.__selected_tag_in_edit_mode
-        if node is None:
-            return None
-        the_tag = node.data( 0, Qt.UserRole )
-        return the_tag
+        return self.__selected_tag_in_edit_mode
 
 
 class PartTablePanel( QFrame ):
@@ -1099,28 +1282,28 @@ class PartTablePanel( QFrame ):
 
     def __init_ui(self):
         vbox = QVBoxLayout( self )
-        hbox = QHBoxLayout( self )
+        h_box = QHBoxLayout( self )
 
-        hbox.addWidget( QLabel( '序号' ) )
+        h_box.addWidget( QLabel( '序号' ) )
         self.idLineEdit.setValidator( QIntValidator() )
         self.idLineEdit.setMaxLength( 4 )
         self.idLineEdit.setAlignment( Qt.AlignRight )
-        hbox.addWidget( self.idLineEdit )
+        h_box.addWidget( self.idLineEdit )
         self.nameComboBox.addItems( ['中文名称', '英文名称'] )
         self.nameComboBox.setCurrentIndex( 0 )
-        hbox.addWidget( self.nameComboBox )
-        hbox.addWidget( self.nameLineEdit )
-        hbox.addWidget( QLabel( '描述' ) )
-        hbox.addWidget( self.desLineEdit )
+        h_box.addWidget( self.nameComboBox )
+        h_box.addWidget( self.nameLineEdit )
+        h_box.addWidget( QLabel( '描述' ) )
+        h_box.addWidget( self.desLineEdit )
         self.cleanPushButton.setText( '清空' )
         self.cleanPushButton.clicked.connect( self.__clean_input )
-        hbox.addWidget( self.cleanPushButton )
+        h_box.addWidget( self.cleanPushButton )
 
         self.idLineEdit.returnPressed.connect( self.do_search )
         self.nameLineEdit.returnPressed.connect( self.do_search )
         self.desLineEdit.returnPressed.connect( self.do_search )
 
-        vbox.addLayout( hbox )
+        vbox.addLayout( h_box )
         vbox.addWidget( self.partList )
         self.setLayout( vbox )
         if self.__parent is not None:
@@ -1224,6 +1407,10 @@ class PartTablePanel( QFrame ):
                             parts.append( p )
                 else:
                     parts.extend( tt )
+                if len( parts ) < 1:
+                    parts = Part.get_parts( self.__database, part_id=part_id,
+                                            name=name, english_name=english_name, description=description )
+                    self.__parent.set_status_bar_text( '在更广泛的范围搜索！' )
         else:
             parts = Part.get_parts( self.__database, part_id=part_id,
                                     name=name, english_name=english_name, description=description )
@@ -1302,7 +1489,7 @@ class PartTablePanel( QFrame ):
 
     def set_list_data_2(self, part_table_data):
         """
-        使用 get_parts_2 函数的新一代 list_data
+        使用 get_parts_2 函数的新一代 list_data。目前未使用！
         :param part_table_data:  相对于 set_list_data 包含更多的数据，是一个纯粹的二维数组
         :return:
         """
@@ -1380,7 +1567,7 @@ class PartTablePanel( QFrame ):
         self.partList.horizontalHeader().setSectionsClickable( True )
         self.partList.horizontalHeader().setSortIndicatorShown( True )
 
-    def set_list_data(self, parts):
+    def set_list_data(self, parts: [Part]):
         a_parts = []  # 接下来要计算的新Parts List
         if self.__show_storage:
             has_calculated = []
@@ -1746,10 +1933,10 @@ class CostInfoPanel( QFrame ):
         if pdm_records is not None:
             for one_record in pdm_records:
                 tt = one_record[:]
-                t1 = Decimal.from_float( one_record[1] ) if type( one_record[1] ) == float else one_record[1]
-                t2 = Decimal.from_float( one_record[2] ) if type( one_record[2] ) == float else one_record[2]
-                t3 = Decimal.from_float( one_record[3] ) if type( one_record[3] ) == float else one_record[3]
-                t4 = Decimal.from_float( one_record[4] ) if type( one_record[4] ) == float else one_record[4]
+                t1 = Decimal.from_float( tt[1] ) if type( tt[1] ) == float else tt[1]
+                t2 = Decimal.from_float( tt[2] ) if type( tt[2] ) == float else tt[2]
+                t3 = Decimal.from_float( tt[3] ) if type( tt[3] ) == float else tt[3]
+                t4 = Decimal.from_float( tt[4] ) if type( tt[4] ) == float else tt[4]
                 unit_price = (t1 + t2) / (Decimal.from_float( 1.0 ) + t3) / t4
                 bill_nr = '{:06d}'.format( one_record[0] )
                 one_row_in_table = [QStandardItem( bill_nr )]

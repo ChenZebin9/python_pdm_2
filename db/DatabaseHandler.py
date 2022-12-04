@@ -4,6 +4,13 @@ from abc import abstractmethod, ABCMeta
 class DatabaseHandler( metaclass=ABCMeta ):
 
     @abstractmethod
+    def get_database_type(self):
+        """
+        获取数据库的类型名称
+        :return: str; MSSQL 或 SQLite
+        """
+
+    @abstractmethod
     def get_parts(self, part_id=None, name=None, english_name=None, description=None):
         pass
 
@@ -17,6 +24,16 @@ class DatabaseHandler( metaclass=ABCMeta ):
         :param description:
         :param column_config: [0:5] 原有的标志位；[5:-1] 可配置的标志位；[-1:] 原有的备注标志位
         :return:
+        """
+        pass
+
+    @abstractmethod
+    def get_tag_id(self, name, parent_name=None):
+        """
+        获取给定名称的tag的id，以便于进一步判断
+        :param name:
+        :param parent_name:
+        :return: int or None
         """
         pass
 
@@ -44,6 +61,15 @@ class DatabaseHandler( metaclass=ABCMeta ):
     @abstractmethod
     def get_thumbnail_2_part(self, part_id, ver=None):
         pass
+
+    @abstractmethod
+    def generate_a_image(self, part_id, ver=None):
+        """
+        在系统临时目录下，生成一个JPG格式的图片
+        :param part_id:
+        :param ver:
+        :return: 图片目录
+        """
 
     @abstractmethod
     def get_children(self, part_id):
@@ -125,6 +151,26 @@ class DatabaseHandler( metaclass=ABCMeta ):
         pass
 
     @abstractmethod
+    def search_thr_erp_id(self, id_str: str, is_zd=True):
+        """
+        通过erp的物料编码进行检索
+        :param id_str: 物料编码数据段
+        :param is_zd: 是中德的仓库
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def search_thr_erp_description(self, des_str: str, is_zd=True):
+        """
+        通过erp的物料描述进行搜索
+        :param des_str: 物料描述数据段
+        :param is_zd: 是中德的仓库
+        :return:
+        """
+        pass
+
+    @abstractmethod
     def get_storing(self, part_id=None, position=None):
         """
         通过零件号和仓位代号，获取仓储数据
@@ -139,6 +185,37 @@ class DatabaseHandler( metaclass=ABCMeta ):
         """
         获取所有的仓位
         :return: list，仓位清单
+        """
+        pass
+
+    @abstractmethod
+    def clear_storing_position(self, storage_position):
+        """
+        清除仓储位置的库存
+        :param storage_position:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def update_part_storing(self, part_id, qty, storage_position, _date, unit_price):
+        """
+        更新仓储数据
+        :param unit_price:
+        :param part_id:
+        :param qty:
+        :param storage_position:
+        :param _date:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def update_zd_erp_foundation_info(self, _data):
+        """
+        更新中德的ERP基础物料数据
+        :param _data: [(erp_id, description, _unit)]
+        :return: 处理的统计结果
         """
         pass
 
@@ -368,6 +445,16 @@ class DatabaseHandler( metaclass=ABCMeta ):
         pass
 
     @abstractmethod
+    def replace_part_relation(self, relation_id, part_id):
+        """
+        将relaition_id下的关联项目，代替为所给的part_id
+        :param relation_id: 关联的 ID
+        :param part_id: 新的零件 ID
+        :return:
+        """
+        pass
+
+    @abstractmethod
     def get_part_hyper_link(self, part_id):
         """
         获取项目的采购链接
@@ -382,6 +469,35 @@ class DatabaseHandler( metaclass=ABCMeta ):
         设置项目的采购链接
         :param part_id:
         :param the_link:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def add_file_link_2_part(self, part_id, file_path):
+        """
+        将文件路径添加至零件的链接
+        :param part_id:
+        :param file_path:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def remove_file_link_from_part(self, part_id, file_path):
+        """
+        从零件中移除文件链接
+        :param part_id:
+        :param file_path:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def get_identical_parts(self, part_id):
+        """
+        获取同质单元
+        :param part_id:
         :return:
         """
         pass

@@ -212,6 +212,8 @@ class NImportSettingDialog( QDialog, Ui_Dialog ):
             self.dataConfigTableWidget.setCellWidget( index, 1, combo )
             if default_data is not None:
                 vv = default_data[i]
+                if vv is None:
+                    vv = ''
             else:
                 vv = ''
             default_value_item = QTableWidgetItem( vv )

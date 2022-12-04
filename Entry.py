@@ -3,7 +3,10 @@ import sys
 import os
 import sqlite3
 
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QMessageBox
+
+import Com
 from ui.NEntranceDialog import NEntranceDialog
 
 
@@ -56,6 +59,8 @@ if __name__ == '__main__':
     """ app = QApplication(sys.argv) 要放置在最前面，否则会出现许多可怪的问题。 """
     app = QApplication( sys.argv )
 
+    version = '1.4.2.2'
+
     config = configparser.ConfigParser()
     if not config.read( 'pdm_config.ini', encoding='GBK' ):
         raise Exception( 'INI file not found.' )
@@ -71,7 +76,11 @@ if __name__ == '__main__':
         else:
             mode = 1
 
+    icon = QIcon()
+    icon.addPixmap( QPixmap( 'OPS_ING_MMI.ico' ), QIcon.Normal, QIcon.Off )
+
     entrance_dialog = NEntranceDialog( parent=None )
+    entrance_dialog.setWindowIcon( icon )
     func_index = entrance_dialog.exec()
 
     if func_index == 1:
@@ -84,13 +93,13 @@ if __name__ == '__main__':
         init_config: InitConfig = None
         try:
             init_config = InitConfig()
-            # mode = config.getint( 'Config', 'mode' )
             local_folder = config.get( 'Offline', 'local_folder' )
             work_folder = None
             user_name = None
             vault = None
             solidWorks_app = None
             to_offline = False
+            Com.local_config_file = init_config.db_name
             if mode == 0:
                 try:
                     import clr
@@ -105,7 +114,8 @@ if __name__ == '__main__':
                     user_name = vault.GetUserName()
                     work_folder = vault.GetRootFolder()
                     database_handler = MssqlHandler( *database_setting[1:] )
-                except:
+                except Exception as ex:
+                    QMessageBox.warning( None, '异常', str( ex ) )
                     QMessageBox.warning( None, '', '无法在线登录！将使用离线方式。' )
                     vault = None
                     mode = 1
@@ -124,17 +134,19 @@ if __name__ == '__main__':
             myWin = NPartMainWindow( database=database_handler, username=user_name,
                                      work_folder=work_folder, pdm_vault=vault, mode=mode,
                                      local_folder=local_folder )
-            myWin.add_config_and_init( solidWorks_app, init_config.db_name )
+            myWin.setWindowIcon( icon )
+            myWin.add_config( solidWorks_app, init_config.db_name )
             myWin.show()
             sys.exit( app.exec_() )
         except Exception as ex:
             QMessageBox.warning( None, '启动时出错', str( ex ) )
+            # raise ex
         finally:
-            if database_handler is not None:
+            if database_handler is not None and database_handler.get_database_type() != 'SQLite':
                 database_handler.close()
     elif func_index == 2:
         from ui2.NProductMainWindow import NProductMainWindow
-        from db.ProductDatasHandler import MssqlHandler as Mssql_Database, SqliteHandler as Sqlite_Datbase
+        from db.ProductDatasHandler import MssqlHandler as Mssql_Database, SqliteHandler as Sqlite_Database
 
         try:
             if mode == 0:
@@ -142,17 +154,39 @@ if __name__ == '__main__':
             else:
                 user_name = config.get( 'Offline', 'userName' )
                 database_file = config.get( 'Offline', 'database_file' )
-                database = Sqlite_Datbase( database_file )
+                database = Sqlite_Database( database_file )
             theDialog = NProductMainWindow( parent=None, database=database, offline=mode )
+            theDialog.setWindowIcon( icon )
             theDialog.show()
             sys.exit( app.exec_() )
         except Exception as ex:
             QMessageBox.warning( None, '启动时出错', str( ex ) )
             sys.exit( -1 )
     elif func_index == 3:
-        """ 采购管理 """
-        pass
-    elif func_index == 4:
-        from ui3 import NCreatePickBillDialog
+        """ 生产配料管理 """
+        from ui4.NAssemblyToolWindow import NAssemblyToolWindow
+        from db.SqliteHandler import SqliteHandler
+        from db.MssqlHandler import MssqlHandler
 
-        NCreatePickBillDialog.run_function( database_setting )
+        user_name = config.get( 'Offline', 'userName' )
+        if mode == 0:
+            database = MssqlHandler( *database_setting[1:] )
+        else:
+            database_file = config.get( 'Offline', 'database_file' )
+            database = SqliteHandler( database_file )
+        theDialog = NAssemblyToolWindow( parent=None, database=database, user=user_name )
+        theDialog.setWindowIcon( icon )
+        theDialog.show()
+        sys.exit( app.exec_() )
+    elif func_index == 4:
+        pass
+        # from ui3 import NCreatePickBillDialog
+        #
+        # NCreatePickBillDialog.run_function( database_setting )
+
+"""
+历史：
+1.4.0.2 2022.01.08 改变了截图的方式，采用clr的方法。
+1.4.2.5 2022.07.08 改正了子项目排序的问题。
+1.4.3.5 2022.07.09 标签采用后台更新。子项目增加了代替的功能。
+"""
