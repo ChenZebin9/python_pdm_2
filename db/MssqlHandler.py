@@ -13,15 +13,108 @@ from db.jl_erp import JL_ERP_Database
 
 class MssqlHandler( DatabaseHandler ):
 
+    def get_identical_description(self, filter_text):
+        """
+        根据所给的字符，获取同质单元的描述
+        :param filter_text: 关键字
+        :return:
+        """
+        sql = 'SELECT [ID], [Description] FROM [JJPart].[IdenticalPart] ' \
+              f'WHERE [Description] LIKE \'%{filter_text}%\' AND [StatusType]=100'
+        self.__c.execute(sql)
+        r_s = self.__c.fetchall()
+        return r_s
+
+    def set_identical_description(self, fun_description, fun_id=-1):
+        """
+        创建或更新同质单元描述
+        :param fun_description: 描述文本
+        :param fun_id: -1：创建并返回新Id，>0：更新同质描述
+        :return:
+        """
+        next_id = 0
+        if fun_id < 0:
+            # 创建新同质描述
+            sql = f'INSERT INTO [JJPart].[IdenticalPart] ([Description], [StatusType], [Code]) VALUES ' \
+                  f'(\'{fun_description}\', 100, null)'
+            self.__c.execute(sql)
+            self.__conn.commit()
+            sql = 'SELECT MAX([ID]) FROM [JJPart].[IdenticalPart]'
+            self.__c.execute(sql)
+            next_id = self.__c.fetchone()[0]
+            return next_id
+        else:
+            # 更新现有同质描述
+            sql = f'SELECT * FROM [JJPart].[IdenticalPart] WHERE [ID]={fun_id}'
+            self.__c.execute(sql)
+            r_s = self.__c.fetchall()
+            if len(r_s) < 1:
+                raise Exception('没有找到相应的同质描述ID。')
+            sql = f'UPDATE [JJPart].[IdenticalPart] SET [Description]=\'{fun_description}\' WHERE [ID]={fun_id}'
+            self.__c.execute(sql)
+            self.__conn.commit()
+            return fun_id
+
+    def delete_identical_description(self, fun_id):
+        """
+        删除同质单元描述
+        :param fun_id:
+        :return:
+        """
+        sql = f'SELECT * FROM [JJPart].[IdenticalPart] WHERE [ID]={fun_id}'
+        self.__c.execute(sql)
+        r_s = self.__c.fetchall()
+        if len(r_s) < 1:
+            raise Exception('没有找到相应的同质描述ID。')
+        sql = f'UPDATE [JJPart].[IdenticalPart] SET [StatusType]=0 WHERE [ID]={fun_id}'
+        self.__c.execute(sql)
+        self.__conn.commit()
+
+    def edit_part_to_identical_group(self, fun_id, part_id, grade=6, add_action=True):
+        """
+        一个零件对于同质组的操作，加入或移除
+        :param grade: 评分，1-10，仅作为参考
+        :param fun_id:
+        :param part_id:
+        :param add_action: True - 加入，False - 移除
+        :return:
+        """
+        try:
+            sql = f'SELECT [ID] FROM [JJPart].[IdenticalPartLink] WHERE [FunctionID]={fun_id} AND [Part]={part_id}'
+            self.__c.execute(sql)
+            r_s = self.__c.fetchall()
+            if add_action:
+                if len(r_s) < 1:
+                    insert_sql = f'INSERT INTO [JJPart].[IdenticalPartLink] ' \
+                                 f'([FunctionID], [Part], [Evaluate], [QtyProp]) VALUES ' \
+                                 f'({fun_id}, {part_id}, {grade}, 1)'
+                    self.__c.execute(insert_sql)
+                else:
+                    _id = r_s[0][0]
+                    update_sql = f'UPDATE [JJPart].[IdenticalPartLink] SET [Evaluate]={grade} WHERE [ID]={_id}'
+                    self.__c.execute(update_sql)
+            else:
+                if len(r_s) < 1:
+                    raise Exception('零件不属于该同质组，无法移除。')
+                _id = r_s[0][0]
+                delete_sql = f'DELETE FROM [JJPart].[IdenticalPartLink] WHERE [ID]={_id}'
+                self.__c.execute(delete_sql)
+            self.__conn.commit()
+        except Exception as ex:
+            self.__conn.rollback()
+            raise ex
+
     def replace_part_relation(self, relation_id, part_id):
         sql = f'UPDATE [JJPart].[PartRelation] SET [ChildPart]={part_id} WHERE [PartRelationID]={relation_id}'
         self.__c.execute( sql )
         self.__conn.commit()
 
     def search_thr_erp_id(self, id_str: str, is_zd=True):
+        # TODO 待补全
         pass
 
     def search_thr_erp_description(self, des_str: str, is_zd=True):
+        # TODO 待补全
         pass
 
     def update_zd_erp_foundation_info(self, _data):
@@ -69,23 +162,36 @@ class MssqlHandler( DatabaseHandler ):
         f.close()
         return target_file
 
-    def get_identical_parts(self, part_id):
-        sql = f'SELECT [FunctionID] FROM [JJPart].[IdenticalPartLink] WHERE [Part]={part_id}'
-        self.__c.execute( sql )
-        r_s = self.__c.fetchall()
-        result = []
-        if len( r_s ) < 1:
-            return None
-        sql = f'SELECT * FROM [JJPart].[IdenticalPart] WHERE [ID]={r_s[0][0]}'
-        self.__c.execute( sql )
-        fun_record = self.__c.fetchone()
-        sql = f'SELECT [Part] FROM [JJPart].[IdenticalPartLink] WHERE [FunctionID]={fun_record[0]}'
-        self.__c.execute( sql )
-        r_s = self.__c.fetchall()
-        for r in r_s:
-            if r[0] != part_id:
-                result.append( r[0] )
-        return result, (fun_record[0], fun_record[1], fun_record[2])
+    def get_identical_parts(self, _id, mode=1, keep_original=False):
+        """
+        获取同质单元
+        :param keep_original: 当 mode=1 时，是否保留原零件
+        :param mode: 1=id 代表零件号，0=id代表功能号
+        :param _id:
+        :return: 当mode=1时，([PartID], (ID, Description, StatusType))；当mode≠1时，[PartID]
+        """
+        if mode == 1:
+            sql = f'SELECT [FunctionID] FROM [JJPart].[IdenticalPartLink] WHERE [Part]={_id}'
+            self.__c.execute(sql)
+            r_s = self.__c.fetchall()
+            result = []
+            if len(r_s) < 1:
+                return None
+            sql = f'SELECT * FROM [JJPart].[IdenticalPart] WHERE [ID]={r_s[0][0]}'
+            self.__c.execute(sql)
+            fun_record = self.__c.fetchone()
+            sql = f'SELECT [Part] FROM [JJPart].[IdenticalPartLink] WHERE [FunctionID]={fun_record[0]} ORDER BY [Part]'
+            self.__c.execute(sql)
+            r_s = self.__c.fetchall()
+            for r in r_s:
+                if r[0] != _id or keep_original:
+                    result.append(r[0])
+            return result, (fun_record[0], fun_record[1], fun_record[2])
+        else:
+            sql = f'SELECT [Part] FROM [JJPart].[IdenticalPartLink] WHERE [FunctionID]={_id} ORDER BY [Part]'
+            self.__c.execute(sql)
+            r_s = self.__c.fetchall()
+            return r_s
 
     def clear_storing_position(self, storage_position):
         today = datetime.datetime.today()

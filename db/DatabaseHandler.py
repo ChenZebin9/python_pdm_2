@@ -494,10 +494,52 @@ class DatabaseHandler( metaclass=ABCMeta ):
         pass
 
     @abstractmethod
-    def get_identical_parts(self, part_id):
+    def get_identical_parts(self, _id, mode=1, keep_original=False):
         """
         获取同质单元
+        :param keep_original: 当 mode=1 时，是否保留原零件
+        :param mode: 1=id 代表零件号，0=id代表功能号
+        :param _id:
+        :return: 当mode=1时，([PartID], (ID, Description, StatusType))；当mode≠1时，[PartID]
+        """
+        pass
+
+    @abstractmethod
+    def get_identical_description(self, filter_text):
+        """
+        根据所给的字符，获取同质单元的描述
+        :param filter_text: 关键字
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def set_identical_description(self, fun_description, fun_id=-1):
+        """
+        创建或更新同质单元描述
+        :param fun_description: 描述文本
+        :param fun_id: -1：创建并返回新Id，>0：更新同质描述
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def delete_identical_description(self, fun_id):
+        """
+        删除同质单元描述
+        :param fun_id:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def edit_part_to_identical_group(self, fun_id, part_id, grade=6,add_action=True):
+        """
+        一个零件对于同质组的操作，加入或移除
+        :param grade: 评分，1-10，仅作为参考
+        :param fun_id:
         :param part_id:
+        :param add_action: True - 加入，False - 移除
         :return:
         """
         pass

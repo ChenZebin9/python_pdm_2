@@ -42,7 +42,7 @@ else:
     db_file = user_db_name
 
 # 复制文件
-original_db_file = r"D:\weiyun\OneDrive\Program\SQLite\Greatoo_JJ.db"
+original_db_file = r"D:\微云同步助手\360311890\OneDrive\Program\SQLite\Greatoo_JJ.db"
 dest_db_file = f'.\\{db_file}'
 shutil.copyfile( original_db_file, dest_db_file )
 

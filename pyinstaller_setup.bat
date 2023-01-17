@@ -13,6 +13,7 @@ XCOPY %CD%\dlls D:\setup_rom\python_pdm_2\PDM_2\dlls /D/E/-Y
 XCOPY %CD%\images D:\setup_rom\python_pdm_2\PDM_2\images /D/E/-Y
 COPY pdm_config.ini D:\setup_rom\python_pdm_2\PDM_2\
 COPY rt_config.db D:\setup_rom\python_pdm_2\PDM_2\
+COPY OPS_ING_MMI.ico D:\setup_rom\python_pdm_2\PDM_2\
 ECHO **** Finish Copy.
 
 ECHO Delete Cache

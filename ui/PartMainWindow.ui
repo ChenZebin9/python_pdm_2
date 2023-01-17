@@ -107,10 +107,21 @@
     <addaction name="separator"/>
     <addaction name="actionViewSupply"/>
    </widget>
+   <widget class="QMenu" name="IdenticalManageMenu">
+    <property name="title">
+     <string>同质化</string>
+    </property>
+    <addaction name="identicalGroupEditModeMenuItem"/>
+    <addaction name="separator"/>
+    <addaction name="createIdenticalDesciptionMenuItem"/>
+    <addaction name="joinIntoIdenticalGroupMenuItem"/>
+    <addaction name="removeFromIdenticalGroupMenuItem"/>
+   </widget>
    <addaction name="operationMenu"/>
    <addaction name="dataMenu"/>
    <addaction name="tagMenu"/>
    <addaction name="storingMenu"/>
+   <addaction name="IdenticalManageMenu"/>
    <addaction name="windowsMenu"/>
    <addaction name="settingMenu"/>
   </widget>
@@ -182,6 +193,15 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5"/>
   </widget>
+  <widget class="QDockWidget" name="identicalManagementDockWidget">
+   <property name="windowTitle">
+    <string>同质化管理</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_7"/>
+  </widget>
   <action name="exitMenuItem">
    <property name="text">
     <string>关闭</string>
@@ -235,6 +255,9 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
    </property>
   </action>
   <action name="showOutputListMenuItem">
@@ -419,6 +442,43 @@
   <action name="importTagsMenuItem">
    <property name="text">
     <string>批量导入标签...</string>
+   </property>
+  </action>
+  <action name="createIdenticalDesciptionMenuItem">
+   <property name="text">
+    <string>新建同质描述</string>
+   </property>
+  </action>
+  <action name="joinIntoIdenticalGroupMenuItem">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>添加至同质描述</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="identicalGroupEditModeMenuItem">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>编辑模式</string>
+   </property>
+  </action>
+  <action name="action_2">
+   <property name="text">
+    <string>添加至同质描述</string>
+   </property>
+  </action>
+  <action name="removeFromIdenticalGroupMenuItem">
+   <property name="text">
+    <string>从同质描述移除</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
    </property>
   </action>
  </widget>

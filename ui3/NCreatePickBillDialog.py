@@ -136,7 +136,7 @@ class NCreatePickBillDialog( QDialog, Ui_Dialog ):
     def __add_items(self):
         try:
             if self.sender() is self.addButton:
-                f_spec = 'Excel Files (*.xls, *.xlsx)'
+                f_spec = 'Excel Files (*.xls *.xlsx)'
                 previous_path = Com.get_property_value( 'load_path' )
                 ini_path = previous_path if previous_path != '' else '.'
                 file_name, _ = QFileDialog.getOpenFileName( self, caption='选择数据文件',

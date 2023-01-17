@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="接下来要改善物料检索的速度，先进行保存。">
+    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="最新保存。">
       <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/python_pdm_2.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/python_pdm_2.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Com.py" beforeDir="false" afterPath="$PROJECT_DIR$/Com.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DataImporter.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/DataTransport.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataTransport.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Entry.py" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Part.py" beforeDir="false" afterPath="$PROJECT_DIR$/Part.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UiFrame.py" beforeDir="false" afterPath="$PROJECT_DIR$/UiFrame.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/Entry/Analysis-00.toc" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/build/Entry/COLLECT-00.toc" beforeDir="false" />
@@ -25,30 +22,18 @@
       <change beforePath="$PROJECT_DIR$/build/Entry/base_library.zip" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/build/Entry/run.exe.sdzbjgrz" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/build/Entry/warn-Entry.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/Entry/xref-Entry.html" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/db/DatabaseHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/DatabaseHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/Greatoo_JJ_210328.db" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/db/MssqlHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/MssqlHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/ProductDatasHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/ProductDatasHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/SqliteHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/SqliteHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/database_filler_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/database_filler_2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/jl_erp.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/jl_erp.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/excel/ExcelHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/excel/ExcelHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/file_version_info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/file_version_info.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pdm_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/pdm_config.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pyinstaller_setup.bat" beforeDir="false" afterPath="$PROJECT_DIR$/pyinstaller_setup.bat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/DocOutputDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/DocOutputDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/EntranceDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/EntranceDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/EntranceDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/EntranceDialog.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/MyTreeWidget.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/MyTreeWidget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/NCreatePartDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NCreatePartDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/NImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NImportSettingDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rt_config.db" beforeDir="false" afterPath="$PROJECT_DIR$/rt_config.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui/NPartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NPartMainWindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui2/NProductMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui2/NProductMainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/CreatePickBillDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/CreatePickBillDialog.ui" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" afterDir="false" />
     </list>
@@ -86,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="master" />
+        <entry key="$PROJECT_DIR$" value="StorageManagement" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -116,7 +101,8 @@
   &quot;keyToString&quot;: {
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;E:/__zebin_laptap_backup/weiyun/OneDrive/Program/Python/python_pdm_2&quot;
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/chen_/AppData/Local/Programs/Python/Python37/Scripts/pyrcc5.exe&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.externalTools&quot;
   }
 }</component>
   <component name="PyDebuggerOptionsProvider">
@@ -242,8 +228,8 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.Entry" />
       <item itemvalue="Python.CCC" />
+      <item itemvalue="Python.Entry" />
       <item itemvalue="Python.database_filler_2" />
       <item itemvalue="Python.fill_storage_from_erp" />
       <item itemvalue="Python.fill_zderp_data" />
@@ -251,8 +237,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.Entry" />
-        <item itemvalue="Python.fill_storage_from_erp" />
         <item itemvalue="Python.database_filler_2" />
+        <item itemvalue="Python.fill_storage_from_erp" />
         <item itemvalue="Python.CCC" />
         <item itemvalue="Python.fill_zderp_data" />
       </list>
@@ -427,7 +413,14 @@
       <option name="project" value="LOCAL" />
       <updated>1596772791905</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="最新保存。">
+      <created>1670160262787</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1670160262787</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -437,6 +430,17 @@
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.cs" />
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.ini" />
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.bat" />
+  </component>
+  <component name="Vcs.Log.History.Properties">
+    <option name="COLUMN_ID_ORDER">
+      <list>
+        <option value="Default.Root" />
+        <option value="Default.Author" />
+        <option value="Default.Date" />
+        <option value="Default.Subject" />
+        <option value="Space.CommitStatus" />
+      </list>
+    </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -487,7 +491,8 @@
     <MESSAGE value="截至2020年2月8日的更改，接下来要增加配料管理功能，进行备份。" />
     <MESSAGE value="接下来要改善物料检索的速度，先进行保存。" />
     <MESSAGE value="用MSSQL的数据充分填充SQLite。" />
-    <option name="LAST_COMMIT_MESSAGE" value="用MSSQL的数据充分填充SQLite。" />
+    <MESSAGE value="最新保存。" />
+    <option name="LAST_COMMIT_MESSAGE" value="最新保存。" />
   </component>
   <component name="masterDetails">
     <states>

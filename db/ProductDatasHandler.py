@@ -2,7 +2,7 @@
 """ 操作产品的相关数据库中的数据的工具，也分 SQLite 及 MSSQL 两种。 """
 
 import sqlite3
-import pymssql
+import pyodbc
 from abc import abstractmethod, ABCMeta
 
 
@@ -581,8 +581,8 @@ class MssqlHandler( ProductDatabaseHandler ):
         self.__conn.commit()
 
     def __init__(self, server, database, user, password):
-        self.__conn = pymssql.connect( server=server, user=user,
-                                       password=password, database=database, login_timeout=10 )
+        self.__conn = pyodbc.connect('DRIVER={{SQL Server}};SERVER={0};DATABASE={1};UID={2};PWD={3}'.
+                                     format(server, database, user, password))
         self.__c = self.__conn.cursor()
 
     def close(self):

@@ -83,6 +83,9 @@ if __name__ == '__main__':
     entrance_dialog.setWindowIcon( icon )
     func_index = entrance_dialog.exec()
 
+    init_config = InitConfig()
+    Com.local_config_file = init_config.db_name
+
     if func_index == 1:
         from ui.NPartMainWindow import NPartMainWindow
         from db.DatabaseHandler import DatabaseHandler
@@ -90,16 +93,15 @@ if __name__ == '__main__':
         from db.MssqlHandler import MssqlHandler
 
         database_handler: DatabaseHandler = None
-        init_config: InitConfig = None
+
         try:
-            init_config = InitConfig()
             local_folder = config.get( 'Offline', 'local_folder' )
             work_folder = None
             user_name = None
             vault = None
             solidWorks_app = None
             to_offline = False
-            Com.local_config_file = init_config.db_name
+
             if mode == 0:
                 try:
                     import clr
@@ -107,7 +109,6 @@ if __name__ == '__main__':
                     clr.FindAssembly( 'dlls/EpdmLib.dll' )
                     clr.AddReference( 'dlls/EpdmLib' )
                     from EpdmLib import *
-
                     vault = EpdmLib()
                     solidWorks_app = SolidWorksApi()
                     vault_name = config.get( 'Online', 'vault' )

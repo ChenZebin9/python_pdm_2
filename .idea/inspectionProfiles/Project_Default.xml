@@ -43,6 +43,7 @@
           <option value="PyQt5.QtWidgets.itemSelectionChanged.connect" />
           <option value="Entry.EpdmLib" />
           <option value="Entry.SolidWorksApi" />
+          <option value="PyQt5.QtWidgets.QWidget.set_status_bar_text" />
         </list>
       </option>
     </inspection_tool>
