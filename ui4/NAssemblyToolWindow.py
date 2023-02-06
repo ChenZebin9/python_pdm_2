@@ -71,6 +71,9 @@ class ProgressStructPanel(QFrame):
             root_items = []
             for c in children_part:
                 p: Part = c[1]
+                t = p.get_specified_tag(self.__database, '类别')
+                if t == '文档' or t == '图纸':
+                    continue
                 r_node = QTreeWidgetItem(self.progressStructTreeWidget)
                 r_node.setText(0, '{0:04d} {1}'.format(p.get_part_id(), p.name))
                 r_node.setData(0, Qt.UserRole, (p, True, 1.))
@@ -78,12 +81,16 @@ class ProgressStructPanel(QFrame):
                 for pc in p_c:
                     c_node = QTreeWidgetItem()
                     p_cc = pc[1]
-                    c_node.setText(0, '{0:04d} {1} x {2}'.format(p_cc.get_part_id(), p_cc.name, round(c[2])))
+                    t1 = p_cc.get_specified_tag(self.__database, '类别')
+                    if t1 == '文档' or t1 == '图纸':
+                        continue
+                    # 装配清单统计时，宜采用<实际数量>
+                    c_node.setText(0, '{0:04d} {1} x {2}'.format(p_cc.get_part_id(), p_cc.name, round(c[3])))
                     t = p_cc.get_specified_tag(self.__database, '来源')
                     c_flag = False
                     if t is not None and t == '装配':
                         c_flag = True
-                    c_node.setData(0, Qt.UserRole, (p_cc, c_flag, c[2]))
+                    c_node.setData(0, Qt.UserRole, (p_cc, c_flag, c[3]))
                     r_node.addChild(c_node)
                 root_items.append(r_node)
             self.progressStructTreeWidget.addTopLevelItems(root_items)
@@ -128,6 +135,9 @@ class ProgressStructPanel(QFrame):
             for c in children:
                 node = QTreeWidgetItem()
                 p = c[1]
+                tt = p.get_specified_tag(self.__database, '类别')
+                if tt == '文档' or tt == '图纸':
+                    continue
                 node.setText(0, '{0:04d} {1} x {2}'.format(p.get_part_id(), p.name, round(c[2])))
                 t = p.get_specified_tag(self.__database, '来源')
                 c_flag = False
@@ -852,50 +862,373 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
     def generate_bom(self):
         try:
             all_materials = self.materialTable.get_all_material()
-            resp_1 = QMessageBox.question(self, '询问', '是否仅生成材料清单？', QMessageBox.Yes | QMessageBox.No,
-                                          QMessageBox.Yes)
+            bom_type_list = ('统计清单', '装配记录清单', '所有清单')
+            bom_type, ok = QInputDialog.getItem(self, '选择', '清单形式', bom_type_list, current=0, editable=False)
+            if not ok:
+                self.show_status_message('取消输出清单。', 5)
+                return
             not_enough_qty_item = all_materials[0]
             if not_enough_qty_item > 0:
                 resp = QMessageBox.question(self, '缺料', f'有 {not_enough_qty_item} 项物料的可用库存不足，是否继续？',
                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if resp == QMessageBox.No:
+                    self.show_status_message('取消输出清单。', 5)
                     return
 
             wb = xw.Book()
             des_dict = {}
 
-            if resp_1 == QMessageBox.No:
-                self.show_status_message('将生成多个清单。', 10.0)
+            bom_type_index = bom_type_list.index(bom_type)
 
-                # 处理现场的领料
-                ws1 = wb.sheets.active
-                ws1.name = '现场物料'
-                headers = ('序号', '零件号', '图示', '描述', '数量', '单位')
-                ws1.range((1, 1), (1, len(headers) + 1)).value = headers
+            if bom_type_index == 0:
+                if len(all_materials[4]) < 1:
+                    QMessageBox.warning(self, '', '没有物料清单', QMessageBox.Yes)
+                    return
+                zd_storage_dict = dict()
+                for m in all_materials[2]:
+                    zd_storage_dict[m[0]] = m[2]
+                jl_storage_dict = dict()
+                for m in all_materials[3]:
+                    jl_storage_dict[m[0]] = m[2]
+                site_storage_dict = dict()
+                for m in all_materials[1]:
+                    site_storage_dict[m[0]] = m[2]
+                # 生成统计清单
+                ws = wb.sheets.active
+                ws.name = 'bom'
+                headers = (
+                    '零件号', '名称', '型号描述', '品牌', '标准', '单位', '数量', '巨轮中德物料编码', '中德仓库库存',
+                    '巨轮仓库库存', '现场库存', '配料策略', '类型')
+                ws.range((1, 1), (1, len(headers) + 1)).value = headers
+                i = 2
+                for r in all_materials[4]:
+                    p: Part = r[0]
+                    part_id = p.get_part_id()
+                    id_cell = ws.range((i, 1))
+                    id_cell.value = part_id
+                    id_cell.number_format = '00000000'
+                    qty_zd = zd_storage_dict[p] if p in zd_storage_dict.keys() else 0.0
+                    qty_jl = jl_storage_dict[p] if p in jl_storage_dict.keys() else 0.0
+                    qty_site = site_storage_dict[p] if p in site_storage_dict.keys() else 0.0
+                    name_cell = ws.range((i, 2))
+                    name_cell.value = p.name
+                    description_cell = ws.range((i, 3))
+                    description_cell.value = p.description
+                    t1 = p.get_specified_tag(self.__database, '品牌')
+                    brand_cell = ws.range((i, 4))
+                    brand_cell.value = t1
+                    t2 = p.get_specified_tag(self.__database, '标准')
+                    standard_cell = ws.range((i, 5))
+                    standard_cell.value = t2
+                    t3 = p.get_specified_tag(self.__database, '单位')
+                    unit_cell = ws.range((i, 6))
+                    unit_cell.value = t3
+                    qty_cell = ws.range((i, 7))
+                    qty_cell.value = r[1]
+                    qty_cell.number_format = '0.00'
+                    t4 = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
+                    zd_erp_id_cell = ws.range((i, 8))
+                    zd_erp_id_cell.value = t4
+                    zd_qty_cell = ws.range((i, 9))
+                    zd_qty_cell.value = qty_zd
+                    zd_qty_cell.number_format = '0.00'
+                    jl_qty_cell = ws.range((i, 10))
+                    jl_qty_cell.value = qty_jl
+                    jl_qty_cell.number_format = '0.00'
+                    site_qty_cell = ws.range((i, 11))
+                    site_qty_cell.value = qty_site
+                    site_qty_cell.number_format = '0.00'
+                    t5 = p.get_specified_tag(self.__database, '类别')
+                    type_cell = ws.range((i, 12))
+                    type_cell.value = t5
+                    t6 = p.get_specified_tag(self.__database, '配料策略')
+                    supply_type_cell = ws.range((i, 13))
+                    supply_type_cell.value = t6
+                    i += 1
+            else:
+                if bom_type_index == 2:
+                    self.show_status_message('将生成多个清单。', 10.0)
 
-                c_m_1 = len(all_materials[1])
-                c_row = 1 if c_m_1 < 1 else c_m_1 + 1
-                ws1.range((1, 1), (c_row, 1)).column_width = 5
-                ws1.range((1, 2), (c_row, 2)).column_width = 10
-                ws1.range((1, 3), (c_row, 3)).column_width = 20
-                ws1.range((1, 4), (c_row, 4)).column_width = 35
-                ws1.range((1, 5), (c_row, 5)).column_width = 8
-                ws1.range((1, 6), (c_row, 6)).column_width = 5
-                if c_m_1 > 0:
-                    ws1.range((2, 1), (c_row, 1)).row_height = 80
+                    # 处理现场的领料
+                    ws1 = wb.sheets.active
+                    ws1.name = '现场物料'
+                    headers = ('序号', '零件号', '图示', '描述', '数量', '单位')
+                    ws1.range((1, 1), (1, len(headers) + 1)).value = headers
+
+                    c_m_1 = len(all_materials[1])
+                    c_row = 1 if c_m_1 < 1 else c_m_1 + 1
+                    ws1.range((1, 1), (c_row, 1)).column_width = 5
+                    ws1.range((1, 2), (c_row, 2)).column_width = 10
+                    ws1.range((1, 3), (c_row, 3)).column_width = 20
+                    ws1.range((1, 4), (c_row, 4)).column_width = 35
+                    ws1.range((1, 5), (c_row, 5)).column_width = 8
+                    ws1.range((1, 6), (c_row, 6)).column_width = 5
+                    if c_m_1 > 0:
+                        ws1.range((2, 1), (c_row, 1)).row_height = 80
+                        i = 2
+                        img_name = {}
+                        for r in all_materials[1]:
+                            p: Part = r[0]
+                            part_id = p.get_part_id()
+                            ws1.range((i, 1)).value = i - 1
+                            id_cell = ws1.range((i, 2))
+                            id_cell.value = part_id
+                            id_cell.number_format = '00000000'
+                            img = self.__database.generate_a_image(p.get_part_id())
+                            if img is not None:
+                                img_w, img_h = Image.open(img).size
+                                img_cell = ws1.range((i, 3))
+                                cell_ratio = img_cell.width / img_cell.height
+                                img_ratio = img_w / img_h
+                                if img_ratio > cell_ratio:
+                                    pic_width = img_cell.width - 2
+                                    pic_height = pic_width / img_ratio
+                                else:
+                                    pic_height = img_cell.height - 2
+                                    pic_width = pic_height * img_ratio
+                                f = pic_height / img_h
+                                pic_top = img_cell.top + (img_cell.height - pic_height) / 2
+                                pic_left = img_cell.left + (img_cell.width - pic_width) / 2
+                                if p.part_id in img_name:
+                                    _name = f'{0}_{img_name[p.part_id] + 1}'
+                                    img_name[p.part_id] += 1
+                                else:
+                                    _name = p.part_id
+                                    img_name[_name] = 1
+                                ws1.pictures.add(img, left=pic_left, top=pic_top, width=pic_width, height=pic_height,
+                                                 scale=int(f), name=_name)
+                            if part_id not in des_dict:
+                                description = [p.name]
+                                if p.description is not None and p.description != '':
+                                    description.append(p.description)
+                                t1 = p.get_specified_tag(self.__database, '品牌')
+                                t2 = p.get_specified_tag(self.__database, '标准')
+                                t3 = p.get_specified_tag(self.__database, '单位')
+                                unit_str = t3 if len(t3) > 0 else '件'
+                                if len(t1) > 0:
+                                    description.append(f'({t1})')
+                                if len(t2) > 0:
+                                    description.append(f'({t2})')
+                                des_str = ' '.join(description)
+                                des_dict[part_id] = (des_str, unit_str)
+                            else:
+                                des_str, unit_str = des_dict[part_id]
+                            ws1.range((i, 4)).value = des_str
+                            ws1.range((i, 5)).value = r[2]
+                            ws1.range((i, 6)).value = unit_str
+                            i += 1
+
+                    # 处理中德仓库的领料
+                    ws2 = wb.sheets.add('中德仓库物料', after=ws1)
+                    headers = ('序号', '零件号', 'ERP物料编号', '物料描述', '数量', '单位')
+                    ws2.range((1, 1), (1, len(headers) + 1)).value = headers
+                    c_m_2 = len(all_materials[2])
+                    c_row = 1 if c_m_2 > 0 else c_m_2 + 1
+                    ws2.range((1, 1), (c_row, 1)).column_width = 5
+                    ws2.range((1, 2), (c_row, 2)).column_width = 10
+                    ws2.range((1, 3), (c_row, 3)).column_width = 13
+                    ws2.range((1, 4), (c_row, 4)).column_width = 60
+                    ws2.range((1, 5), (c_row, 5)).column_width = 5
+                    ws2.range((1, 6), (c_row, 6)).column_width = 5
+                    if c_m_2 > 0:
+                        i = 2
+                        for r in all_materials[2]:
+                            p: Part = r[0]
+                            part_id = p.get_part_id()
+                            erp_id = r[1]
+                            ws2.range((i, 1)).value = i - 1
+                            id_cell = ws2.range((i, 2))
+                            id_cell.value = part_id
+                            id_cell.number_format = '00000000'
+                            ws2.range((i, 3)).value = erp_id
+                            info = self.__database.get_erp_info(erp_id)
+                            if info is not None:
+                                ws2.range((i, 4)).value = info[1]
+                                ws2.range((i, 6)).value = info[2]
+                            else:
+                                if part_id in des_dict:
+                                    p_des, unit_str = des_dict[part_id]
+                                    ws2.range((i, 4)).value = p_des
+                                    ws2.range((i, 6)).value = unit_str
+                                else:
+                                    description = [p.name]
+                                    if p.description is not None and p.description != '':
+                                        description.append(p.description)
+                                    t1 = p.get_specified_tag(self.__database, '品牌')
+                                    t2 = p.get_specified_tag(self.__database, '标准')
+                                    t3 = p.get_specified_tag(self.__database, '单位')
+                                    unit_str = t3 if len(t3) > 0 else '件'
+                                    if len(t1) > 0:
+                                        description.append(f'({t1})')
+                                    if len(t2) > 0:
+                                        description.append(f'({t2})')
+                                    des_str = ' '.join(description)
+                                    des_dict[part_id] = (des_str, unit_str)
+                                    ws2.range((i, 4)).value = des_str
+                                    ws2.range((i, 6)).value = unit_str
+                            ws2.range((i, 5)).value = r[2]
+                            i += 1
+
+                    # 处理巨轮仓库的领料
+                    ws3 = wb.sheets.add('巨轮仓库物料', after=ws2)
+                    ws3.range((1, 1), (1, len(headers) + 1)).value = headers
+                    c_m_3 = len(all_materials[3])
+                    c_row = 1 if c_m_3 > 0 else c_m_3 + 1
+                    ws3.range((1, 1), (c_row, 1)).column_width = 5
+                    ws3.range((1, 2), (c_row, 2)).column_width = 10
+                    ws3.range((1, 3), (c_row, 3)).column_width = 13
+                    ws3.range((1, 4), (c_row, 4)).column_width = 60
+                    ws3.range((1, 5), (c_row, 5)).column_width = 5
+                    ws3.range((1, 6), (c_row, 6)).column_width = 5
+                    if c_m_3 > 0:
+                        i = 2
+                        for r in all_materials[3]:
+                            p: Part = r[0]
+                            part_id = p.get_part_id()
+                            erp_id = r[1]
+                            ws3.range((i, 1)).value = i - 1
+                            id_cell = ws3.range((i, 2))
+                            id_cell.value = part_id
+                            id_cell.number_format = '00000000'
+                            ws3.range((i, 3)).value = erp_id
+                            info = self.__database.get_erp_info(erp_id, jl_erp=True)
+                            if info is not None:
+                                ws3.range((i, 4)).value = info[1]
+                                ws3.range((i, 6)).value = info[2]
+                            else:
+                                if part_id in des_dict:
+                                    p_des, unit_str = des_dict[part_id]
+                                    ws3.range((i, 4)).value = p_des
+                                    ws3.range((i, 6)).value = unit_str
+                                else:
+                                    description = [p.name]
+                                    if p.description is not None and p.description != '':
+                                        description.append(p.description)
+                                    t1 = p.get_specified_tag(self.__database, '品牌')
+                                    t2 = p.get_specified_tag(self.__database, '标准')
+                                    t3 = p.get_specified_tag(self.__database, '单位')
+                                    unit_str = t3 if len(t3) > 0 else '件'
+                                    if len(t1) > 0:
+                                        description.append(f'({t1})')
+                                    if len(t2) > 0:
+                                        description.append(f'({t2})')
+                                    des_str = ' '.join(description)
+                                    des_dict[part_id] = (des_str, unit_str)
+                                    ws3.range((i, 4)).value = des_str
+                                    ws3.range((i, 6)).value = unit_str
+                            ws3.range((i, 5)).value = r[2]
+                            i += 1
+
+                    # 产生的半成品
+                    ws4 = wb.sheets.add('半成品', after=ws3)
+                    output_items = self.selectedProcessList.get_all_item()
+                    headers = ('序号', '零件号', '图示', '描述', '数量', '单位')
+                    ws4.range((1, 1), (1, len(headers) + 1)).value = headers
+                    c_m_4 = len(output_items)
+                    c_row = 1 if c_m_4 < 1 else c_m_4 + 1
+                    ws4.range((1, 1), (c_row, 1)).column_width = 5
+                    ws4.range((1, 2), (c_row, 2)).column_width = 10
+                    ws4.range((1, 3), (c_row, 3)).column_width = 20
+                    ws4.range((1, 4), (c_row, 4)).column_width = 35
+                    ws4.range((1, 5), (c_row, 5)).column_width = 8
+                    ws4.range((1, 6), (c_row, 6)).column_width = 5
+                    if c_m_4 > 0:
+                        ws4.range((2, 1), (c_row, 1)).row_height = 80
+                        i = 2
+                        for r in output_items:
+                            p: Part = r[0]
+                            part_id = p.get_part_id()
+                            ws4.range((i, 1)).value = i - 1
+                            id_cell = ws4.range((i, 2))
+                            id_cell.value = part_id
+                            id_cell.number_format = '00000000'
+                            img = self.__database.generate_a_image(p.get_part_id())
+                            if img is not None:
+                                img_w, img_h = Image.open(img).size
+                                img_cell = ws4.range((i, 3))
+                                cell_ratio = img_cell.width / img_cell.height
+                                img_ratio = img_w / img_h
+                                if img_ratio > cell_ratio:
+                                    pic_width = img_cell.width - 2
+                                    pic_height = pic_width / img_ratio
+                                else:
+                                    pic_height = img_cell.height - 2
+                                    pic_width = pic_height * img_ratio
+                                f = pic_height / img_h
+                                pic_top = img_cell.top + (img_cell.height - pic_height) / 2
+                                pic_left = img_cell.left + (img_cell.width - pic_width) / 2
+                                ws4.pictures.add(img, left=pic_left, top=pic_top, width=pic_width, height=pic_height,
+                                                 scale=int(f), name=p.part_id)
+                            if part_id not in des_dict:
+                                description = [p.name]
+                                if p.description is not None and p.description != '':
+                                    description.append(p.description)
+                                t1 = p.get_specified_tag(self.__database, '品牌')
+                                t2 = p.get_specified_tag(self.__database, '标准')
+                                t3 = p.get_specified_tag(self.__database, '单位')
+                                unit_str = t3 if len(t3) > 0 else '件'
+                                if len(t1) > 0:
+                                    description.append(f'({t1})')
+                                if len(t2) > 0:
+                                    description.append(f'({t2})')
+                                des_str = ' '.join(description)
+                                des_dict[part_id] = (des_str, unit_str)
+                            else:
+                                des_str, unit_str = des_dict[part_id]
+                            ws4.range((i, 4)).value = des_str
+                            ws4.range((i, 5)).value = r[1]
+                            ws4.range((i, 6)).value = unit_str
+                            i += 1
+
+                    # 所有物料
+                    ws5 = wb.sheets.add('全部材料', after=ws4)
+                else:
+                    ws5 = wb.sheets.active
+                    ws5.name = '全部材料'
+
+                if ws5 is None:
+                    raise Exception('生成《全部材料》的工作表异常！')
+
+                _txt, _ok = QInputDialog.getText(self, '输入', '《全部材料》工作表标题')
+
+                headers = ('序号', '零件号', '图示', '物料描述', '数量', '可用库存', '单位', '配料策略')
+                header_cells = ws5.range((1, 1), (1, len(headers)))
+                header_cells.value = headers
+                header_cells.api.HorizontalAlignment = -4108
+                header_cells.api.Borders(9).LineStyle = 1  # 底部边框
+                header_cells.api.Borders(9).Weight = 3
+                header_cells.api.Font.Bold = True  # 字体加粗
+                c_m_5 = len(all_materials[4])
+                c_row = 1 if c_m_5 < 1 else c_m_5 + 1
+                ws5.range((1, 1), (c_row, 1)).column_width = 5
+                ws5.range((1, 2), (c_row, 2)).column_width = 10
+                ws5.range((1, 3), (c_row, 3)).column_width = 20
+                ws5.range((1, 4), (c_row, 4)).column_width = 40
+                ws5.range((1, 5), (c_row, 5)).column_width = 10
+                ws5.range((1, 6), (c_row, 6)).column_width = 10
+                ws5.range((1, 7), (c_row, 7)).column_width = 5
+                ws5.range((1, 8), (c_row, 8)).column_width = 10
+                if c_m_5 > 0:
+                    ws5.range((1, 1)).row_height = 20
+                    ws5.range((2, 1), (c_row, 1)).row_height = 80
                     i = 2
                     img_name = {}
-                    for r in all_materials[1]:
+                    for r in all_materials[4]:
                         p: Part = r[0]
                         part_id = p.get_part_id()
-                        ws1.range((i, 1)).value = i - 1
-                        id_cell = ws1.range((i, 2))
+                        qty = r[1]
+                        available_qty = r[2]
+                        index_cell = ws5.range((i, 1))
+                        index_cell.value = i - 1
+                        index_cell.api.HorizontalAlignment = -4108
+                        id_cell = ws5.range((i, 2))
                         id_cell.value = part_id
                         id_cell.number_format = '00000000'
+                        id_cell.api.HorizontalAlignment = -4108
                         img = self.__database.generate_a_image(p.get_part_id())
                         if img is not None:
                             img_w, img_h = Image.open(img).size
-                            img_cell = ws1.range((i, 3))
+                            img_cell = ws5.range((i, 3))
                             cell_ratio = img_cell.width / img_cell.height
                             img_ratio = img_w / img_h
                             if img_ratio > cell_ratio:
@@ -913,9 +1246,19 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                             else:
                                 _name = p.part_id
                                 img_name[_name] = 1
-                            ws1.pictures.add(img, left=pic_left, top=pic_top, width=pic_width, height=pic_height,
+                            ws5.pictures.add(img, left=pic_left, top=pic_top, width=pic_width, height=pic_height,
                                              scale=int(f), name=_name)
-                        if part_id not in des_dict:
+                        qty_cell = ws5.range((i, 5))
+                        qty_cell.value = qty
+                        qty_cell.number_format = '0.00'
+                        qty_cell.api.HorizontalAlignment = -4108
+                        available_qty_cell = ws5.range((i, 6))
+                        available_qty_cell.value = available_qty
+                        available_qty_cell.number_format = '0.00'
+                        available_qty_cell.api.HorizontalAlignment = -4108
+                        if part_id in des_dict:
+                            des_str, unit_str = des_dict[part_id]
+                        else:
                             description = [p.name]
                             if p.description is not None and p.description != '':
                                 description.append(p.description)
@@ -927,290 +1270,31 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                                 description.append(f'({t1})')
                             if len(t2) > 0:
                                 description.append(f'({t2})')
-                            des_str = ' '.join(description)
+                            des_str = '\n'.join(description)
                             des_dict[part_id] = (des_str, unit_str)
-                        else:
-                            des_str, unit_str = des_dict[part_id]
-                        ws1.range((i, 4)).value = des_str
-                        ws1.range((i, 5)).value = r[2]
-                        ws1.range((i, 6)).value = unit_str
+                        des_cell = ws5.range((i, 4))
+                        des_cell.value = des_str
+                        des_cell.api.HorizontalAlignment = -4108
+                        unit_cell = ws5.range((i, 7))
+                        unit_cell.value = unit_str
+                        unit_cell.api.HorizontalAlignment = -4108
+                        t4 = p.get_specified_tag(self.__database, '配料策略')
+                        if len(t4) > 0:
+                            supply_type_cell = ws5.range((i, 8))
+                            supply_type_cell.value = t4
+                            supply_type_cell.api.HorizontalAlignment = -4108
                         i += 1
-
-                # 处理中德仓库的领料
-                ws2 = wb.sheets.add('中德仓库物料', after=ws1)
-                headers = ('序号', '零件号', 'ERP物料编号', '物料描述', '数量', '单位')
-                ws2.range((1, 1), (1, len(headers) + 1)).value = headers
-                c_m_2 = len(all_materials[2])
-                c_row = 1 if c_m_2 > 0 else c_m_2 + 1
-                ws2.range((1, 1), (c_row, 1)).column_width = 5
-                ws2.range((1, 2), (c_row, 2)).column_width = 10
-                ws2.range((1, 3), (c_row, 3)).column_width = 13
-                ws2.range((1, 4), (c_row, 4)).column_width = 60
-                ws2.range((1, 5), (c_row, 5)).column_width = 5
-                ws2.range((1, 6), (c_row, 6)).column_width = 5
-                if c_m_2 > 0:
-                    i = 2
-                    for r in all_materials[2]:
-                        p: Part = r[0]
-                        part_id = p.get_part_id()
-                        erp_id = r[1]
-                        ws2.range((i, 1)).value = i - 1
-                        id_cell = ws2.range((i, 2))
-                        id_cell.value = part_id
-                        id_cell.number_format = '00000000'
-                        ws2.range((i, 3)).value = erp_id
-                        info = self.__database.get_erp_info(erp_id)
-                        if info is not None:
-                            ws2.range((i, 4)).value = info[1]
-                            ws2.range((i, 6)).value = info[2]
-                        else:
-                            if part_id in des_dict:
-                                p_des, unit_str = des_dict[part_id]
-                                ws2.range((i, 4)).value = p_des
-                                ws2.range((i, 6)).value = unit_str
-                            else:
-                                description = [p.name]
-                                if p.description is not None and p.description != '':
-                                    description.append(p.description)
-                                t1 = p.get_specified_tag(self.__database, '品牌')
-                                t2 = p.get_specified_tag(self.__database, '标准')
-                                t3 = p.get_specified_tag(self.__database, '单位')
-                                unit_str = t3 if len(t3) > 0 else '件'
-                                if len(t1) > 0:
-                                    description.append(f'({t1})')
-                                if len(t2) > 0:
-                                    description.append(f'({t2})')
-                                des_str = ' '.join(description)
-                                des_dict[part_id] = (des_str, unit_str)
-                                ws2.range((i, 4)).value = des_str
-                                ws2.range((i, 6)).value = unit_str
-                        ws2.range((i, 5)).value = r[2]
-                        i += 1
-
-                # 处理巨轮仓库的领料
-                ws3 = wb.sheets.add('巨轮仓库物料', after=ws2)
-                ws3.range((1, 1), (1, len(headers) + 1)).value = headers
-                c_m_3 = len(all_materials[3])
-                c_row = 1 if c_m_3 > 0 else c_m_3 + 1
-                ws3.range((1, 1), (c_row, 1)).column_width = 5
-                ws3.range((1, 2), (c_row, 2)).column_width = 10
-                ws3.range((1, 3), (c_row, 3)).column_width = 13
-                ws3.range((1, 4), (c_row, 4)).column_width = 60
-                ws3.range((1, 5), (c_row, 5)).column_width = 5
-                ws3.range((1, 6), (c_row, 6)).column_width = 5
-                if c_m_3 > 0:
-                    i = 2
-                    for r in all_materials[3]:
-                        p: Part = r[0]
-                        part_id = p.get_part_id()
-                        erp_id = r[1]
-                        ws3.range((i, 1)).value = i - 1
-                        id_cell = ws3.range((i, 2))
-                        id_cell.value = part_id
-                        id_cell.number_format = '00000000'
-                        ws3.range((i, 3)).value = erp_id
-                        info = self.__database.get_erp_info(erp_id, jl_erp=True)
-                        if info is not None:
-                            ws3.range((i, 4)).value = info[1]
-                            ws3.range((i, 6)).value = info[2]
-                        else:
-                            if part_id in des_dict:
-                                p_des, unit_str = des_dict[part_id]
-                                ws3.range((i, 4)).value = p_des
-                                ws3.range((i, 6)).value = unit_str
-                            else:
-                                description = [p.name]
-                                if p.description is not None and p.description != '':
-                                    description.append(p.description)
-                                t1 = p.get_specified_tag(self.__database, '品牌')
-                                t2 = p.get_specified_tag(self.__database, '标准')
-                                t3 = p.get_specified_tag(self.__database, '单位')
-                                unit_str = t3 if len(t3) > 0 else '件'
-                                if len(t1) > 0:
-                                    description.append(f'({t1})')
-                                if len(t2) > 0:
-                                    description.append(f'({t2})')
-                                des_str = ' '.join(description)
-                                des_dict[part_id] = (des_str, unit_str)
-                                ws3.range((i, 4)).value = des_str
-                                ws3.range((i, 6)).value = unit_str
-                        ws3.range((i, 5)).value = r[2]
-                        i += 1
-
-                # 产生的半成品
-                ws4 = wb.sheets.add('半成品', after=ws3)
-                output_items = self.selectedProcessList.get_all_item()
-                headers = ('序号', '零件号', '图示', '描述', '数量', '单位')
-                ws4.range((1, 1), (1, len(headers) + 1)).value = headers
-                c_m_4 = len(output_items)
-                c_row = 1 if c_m_4 < 1 else c_m_4 + 1
-                ws4.range((1, 1), (c_row, 1)).column_width = 5
-                ws4.range((1, 2), (c_row, 2)).column_width = 10
-                ws4.range((1, 3), (c_row, 3)).column_width = 20
-                ws4.range((1, 4), (c_row, 4)).column_width = 35
-                ws4.range((1, 5), (c_row, 5)).column_width = 8
-                ws4.range((1, 6), (c_row, 6)).column_width = 5
-                if c_m_4 > 0:
-                    ws4.range((2, 1), (c_row, 1)).row_height = 80
-                    i = 2
-                    for r in output_items:
-                        p: Part = r[0]
-                        part_id = p.get_part_id()
-                        ws4.range((i, 1)).value = i - 1
-                        id_cell = ws4.range((i, 2))
-                        id_cell.value = part_id
-                        id_cell.number_format = '00000000'
-                        img = self.__database.generate_a_image(p.get_part_id())
-                        if img is not None:
-                            img_w, img_h = Image.open(img).size
-                            img_cell = ws4.range((i, 3))
-                            cell_ratio = img_cell.width / img_cell.height
-                            img_ratio = img_w / img_h
-                            if img_ratio > cell_ratio:
-                                pic_width = img_cell.width - 2
-                                pic_height = pic_width / img_ratio
-                            else:
-                                pic_height = img_cell.height - 2
-                                pic_width = pic_height * img_ratio
-                            f = pic_height / img_h
-                            pic_top = img_cell.top + (img_cell.height - pic_height) / 2
-                            pic_left = img_cell.left + (img_cell.width - pic_width) / 2
-                            ws4.pictures.add(img, left=pic_left, top=pic_top, width=pic_width, height=pic_height,
-                                             scale=int(f), name=p.part_id)
-                        if part_id not in des_dict:
-                            description = [p.name]
-                            if p.description is not None and p.description != '':
-                                description.append(p.description)
-                            t1 = p.get_specified_tag(self.__database, '品牌')
-                            t2 = p.get_specified_tag(self.__database, '标准')
-                            t3 = p.get_specified_tag(self.__database, '单位')
-                            unit_str = t3 if len(t3) > 0 else '件'
-                            if len(t1) > 0:
-                                description.append(f'({t1})')
-                            if len(t2) > 0:
-                                description.append(f'({t2})')
-                            des_str = ' '.join(description)
-                            des_dict[part_id] = (des_str, unit_str)
-                        else:
-                            des_str, unit_str = des_dict[part_id]
-                        ws4.range((i, 4)).value = des_str
-                        ws4.range((i, 5)).value = r[1]
-                        ws4.range((i, 6)).value = unit_str
-                        i += 1
-
-                # 所有物料
-                ws5 = wb.sheets.add('全部材料', after=ws4)
-            else:
-                ws5 = wb.sheets.active
-                ws5.name = '全部材料'
-
-            if ws5 is None:
-                raise Exception('生成《全部材料》的工作表异常！')
-
-            _txt, _ok = QInputDialog.getText(self, '输入', '《全部材料》工作表标题')
-
-            headers = ('序号', '零件号', '图示', '物料描述', '数量', '可用库存', '单位', '配料策略')
-            header_cells = ws5.range((1, 1), (1, len(headers)))
-            header_cells.value = headers
-            header_cells.api.HorizontalAlignment = -4108
-            header_cells.api.Borders(9).LineStyle = 1  # 底部边框
-            header_cells.api.Borders(9).Weight = 3
-            header_cells.api.Font.Bold = True  # 字体加粗
-            c_m_5 = len(all_materials[4])
-            c_row = 1 if c_m_5 < 1 else c_m_5 + 1
-            ws5.range((1, 1), (c_row, 1)).column_width = 5
-            ws5.range((1, 2), (c_row, 2)).column_width = 10
-            ws5.range((1, 3), (c_row, 3)).column_width = 20
-            ws5.range((1, 4), (c_row, 4)).column_width = 40
-            ws5.range((1, 5), (c_row, 5)).column_width = 10
-            ws5.range((1, 6), (c_row, 6)).column_width = 10
-            ws5.range((1, 7), (c_row, 7)).column_width = 5
-            ws5.range((1, 8), (c_row, 8)).column_width = 10
-            if c_m_5 > 0:
-                ws5.range((1, 1)).row_height = 20
-                ws5.range((2, 1), (c_row, 1)).row_height = 80
-                i = 2
-                img_name = {}
-                for r in all_materials[4]:
-                    p: Part = r[0]
-                    part_id = p.get_part_id()
-                    qty = r[1]
-                    available_qty = r[2]
-                    index_cell = ws5.range((i, 1))
-                    index_cell.value = i - 1
-                    index_cell.api.HorizontalAlignment = -4108
-                    id_cell = ws5.range((i, 2))
-                    id_cell.value = part_id
-                    id_cell.number_format = '00000000'
-                    id_cell.api.HorizontalAlignment = -4108
-                    img = self.__database.generate_a_image(p.get_part_id())
-                    if img is not None:
-                        img_w, img_h = Image.open(img).size
-                        img_cell = ws5.range((i, 3))
-                        cell_ratio = img_cell.width / img_cell.height
-                        img_ratio = img_w / img_h
-                        if img_ratio > cell_ratio:
-                            pic_width = img_cell.width - 2
-                            pic_height = pic_width / img_ratio
-                        else:
-                            pic_height = img_cell.height - 2
-                            pic_width = pic_height * img_ratio
-                        f = pic_height / img_h
-                        pic_top = img_cell.top + (img_cell.height - pic_height) / 2
-                        pic_left = img_cell.left + (img_cell.width - pic_width) / 2
-                        if p.part_id in img_name:
-                            _name = f'{0}_{img_name[p.part_id] + 1}'
-                            img_name[p.part_id] += 1
-                        else:
-                            _name = p.part_id
-                            img_name[_name] = 1
-                        ws5.pictures.add(img, left=pic_left, top=pic_top, width=pic_width, height=pic_height,
-                                         scale=int(f), name=_name)
-                    qty_cell = ws5.range((i, 5))
-                    qty_cell.value = qty
-                    qty_cell.number_format = '0.00'
-                    qty_cell.api.HorizontalAlignment = -4108
-                    available_qty_cell = ws5.range((i, 6))
-                    available_qty_cell.value = available_qty
-                    available_qty_cell.number_format = '0.00'
-                    available_qty_cell.api.HorizontalAlignment = -4108
-                    if part_id in des_dict:
-                        des_str, unit_str = des_dict[part_id]
-                    else:
-                        description = [p.name]
-                        if p.description is not None and p.description != '':
-                            description.append(p.description)
-                        t1 = p.get_specified_tag(self.__database, '品牌')
-                        t2 = p.get_specified_tag(self.__database, '标准')
-                        t3 = p.get_specified_tag(self.__database, '单位')
-                        unit_str = t3 if len(t3) > 0 else '件'
-                        if len(t1) > 0:
-                            description.append(f'({t1})')
-                        if len(t2) > 0:
-                            description.append(f'({t2})')
-                        des_str = '\n'.join(description)
-                        des_dict[part_id] = (des_str, unit_str)
-                    des_cell = ws5.range((i, 4))
-                    des_cell.value = des_str
-                    des_cell.api.HorizontalAlignment = -4108
-                    unit_cell = ws5.range((i, 7))
-                    unit_cell.value = unit_str
-                    unit_cell.api.HorizontalAlignment = -4108
-                    t4 = p.get_specified_tag(self.__database, '配料策略')
-                    if len(t4) > 0:
-                        supply_type_cell = ws5.range((i, 8))
-                        supply_type_cell.value = t4
-                        supply_type_cell.api.HorizontalAlignment = -4108
-                    i += 1
-                # 页面设置
-                ws5.page_setup.print_area = f'$A$1:$H${c_row}'
-                ws5.api.PageSetup.PrintTitleRows = '$1:$1'
-                ws5.api.PageSetup.Zoom = 72
-                if _ok:
-                    ws5.api.PageSetup.CenterHeader = _txt
-                _today = datetime.datetime.today()
-                ws5.api.PageSetup.RightHeader = _today.strftime('%Y/%m/%d %H:%M:%S')
-                ws5.api.PageSetup.CenterFooter = r'第 &P 页，共 &N 页'
+                    # 页面设置
+                    ws5.page_setup.print_area = f'$A$1:$H${c_row}'
+                    ws5.api.PageSetup.PrintTitleRows = '$1:$1'
+                    ws5.api.PageSetup.Zoom = 72
+                    ws5.api.PageSetup.CenterHorizontally = True
+                    if _ok:
+                        ws5.api.PageSetup.CenterHeader = _txt
+                    _today = datetime.datetime.today()
+                    ws5.api.PageSetup.RightHeader = _today.strftime('%Y/%m/%d %H:%M:%S')
+                    ws5.api.PageSetup.CenterFooter = r'第 &P 页，共 &N 页'
+            QMessageBox.information(self, '', '完成清单的生成。')
         except Exception as ex:
             QMessageBox.warning(self, '异常', ex.__str__())
 
@@ -1276,7 +1360,7 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
         for c in children:
             p = c[1]
             p_id = p.get_part_id()
-            c_qty = qty * c[2]
+            c_qty = qty * c[3]
             # 对不同阶段的交叉(上下游关联)项目进行修正
             if p_id in self.__calculated_item:
                 r_qty = self.__calculated_item[p_id]

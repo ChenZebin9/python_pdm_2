@@ -9,8 +9,8 @@ class NEntranceDialog( QDialog, Ui_Dialog ):
     各个功能的选择入口：
     Button_1 - 产品数据管理 - NPartMainWindow
     Button_2 - 产品管理 - NProductMainWindow
-    Button_3 - 库存管理 - 将要做
-    Button_4 - 生成领料单 - NCreatePickBillDialog
+    Button_3 - 库存管理 - NAssemblyToolWindow
+    Button_4 - 小工具 -
     """
 
     def __init__(self, parent=None):

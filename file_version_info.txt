@@ -6,8 +6,8 @@ VSVersionInfo(
   ffi=FixedFileInfo(
     # filevers and prodvers should be always a tuple with four items: (1, 2, 3, 4)
     # Set not needed items to zero 0.
-    filevers=(1, 6, 1, 4),
-    prodvers=(1, 6, 1, 4),
+    filevers=(1, 6, 2, 0),
+    prodvers=(1, 6, 0, 0),
     # Contains a bitmask that specifies the valid bits 'flags'r
     mask=0x0,
     # Contains a bitmask that specifies the Boolean attributes of the file.
@@ -31,7 +31,7 @@ VSVersionInfo(
         u'040904E4',
         [StringStruct(u'CompanyName', u'GREATOO INC.'),
         StringStruct(u'FileDescription', u'OPSCN PDM, Python'),
-        StringStruct(u'FileVersion', u'1.6.1.4'),
+        StringStruct(u'FileVersion', u'1.6.2.0'),
         StringStruct(u'ProductName', u'Python版的PDM'),
         StringStruct(u'rnalName', u'PDM'),
         StringStruct(u'LegalCopyright', u'Copyright © OPSCN 2022'),

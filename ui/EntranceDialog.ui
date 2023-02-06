@@ -83,7 +83,7 @@
        </sizepolicy>
       </property>
       <property name="text">
-       <string/>
+       <string>代替Excel表物料</string>
       </property>
      </widget>
     </item>

@@ -297,6 +297,9 @@
    <property name="text">
     <string>实时统计</string>
    </property>
+   <property name="statusTip">
+    <string>勾选上，点击产品结构的节点，会进行统计。</string>
+   </property>
   </action>
   <action name="allStatisticsAction">
    <property name="checkable">
@@ -304,6 +307,9 @@
    </property>
    <property name="text">
     <string>完全</string>
+   </property>
+   <property name="statusTip">
+    <string>包括文档、图纸等非零件单元都会被统计。单元的所有层次都被搜索并统计。</string>
    </property>
   </action>
   <action name="purchaseStatisticsAction">
@@ -316,6 +322,9 @@
    <property name="text">
     <string>投料</string>
    </property>
+   <property name="statusTip">
+    <string>来源为&lt;自制&gt;或&lt;采购&gt;的零件，不再向下层搜索。</string>
+   </property>
   </action>
   <action name="assemblyStatisticsAction">
    <property name="checkable">
@@ -323,6 +332,9 @@
    </property>
    <property name="text">
     <string>装配</string>
+   </property>
+   <property name="statusTip">
+    <string>来源为&lt;装配&gt;的单元，不再向下搜索。用于生成预组装清单。</string>
    </property>
   </action>
   <action name="selectDefaultTagMenuItem">
@@ -353,6 +365,9 @@
    </property>
    <property name="text">
     <string>显示价格</string>
+   </property>
+   <property name="statusTip">
+    <string>勾选时，统计方式为&lt;投料&gt;时，&lt;自制&gt;单元若没有价格，则向下层分析。</string>
    </property>
    <property name="visible">
     <bool>true</bool>

@@ -307,7 +307,7 @@ class DoStatistics( QThread ):
 
     def set_data(self, part_id, stat_type):
         self.__part_id = part_id
-        """ [all, purchase, assembly]，只有一个是 True """
+        """ 统计方式，[完全, 投料, 装配, 是否计算金额]，前三个只有一个是 True """
         self.__stat_type = stat_type
         self.__result.clear()
         self.__stop_flag = False
