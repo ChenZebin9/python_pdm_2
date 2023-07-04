@@ -538,7 +538,7 @@ class PartInfoPanelInMainWindow(QFrame):
 
     def __open_file(self, item: QListWidgetItem):
         try:
-            file_type_tuple = ('.SLDDRW', '.DOC', '.DOCX', '.PDF', '.XLS', '.XLSX')
+            file_type_tuple = ('.SLDDRW', '.DOC', '.DOCX', '.PDF', '.XLS', '.XLSX', '.DWG', '.DXF')
             file_name = item.text()
             file_version = None
             if file_name in self.__current_file_version:
@@ -581,9 +581,9 @@ class PartInfoPanelInMainWindow(QFrame):
                             the_file.sort(reverse=True)
                             item, ok = QInputDialog.getItem(self, '选择图纸', '文件名：', the_file, 0, False)
                             if ok and item:
-                                the_ftp_timestamp = ftp.voidcmd(f'MDTM {item}')[4:].strip()  # 格式 yyyyMMddHHmmSS
                                 local_file_name = f'{self.__local_path}\\{item}'
                                 if ftp is not None:
+                                    the_ftp_timestamp = ftp.voidcmd(f'MDTM {item}')[4:].strip()  # 格式 yyyyMMddHHmmSS
                                     do_download = False
                                     if not os.path.exists(local_file_name):
                                         do_download = True
@@ -597,7 +597,6 @@ class PartInfoPanelInMainWindow(QFrame):
                                         # 将FTP的文件下载到本地
                                         file_handle = open(local_file_name, 'wb').write
                                         ftp.retrbinary(f'RETR {item}', file_handle)
-                                if ftp is not None:
                                     ftp.quit()
                                 os.startfile(local_file_name)
                             return
@@ -1323,7 +1322,7 @@ class PartTablePanel(QFrame):
 
         h_box.addWidget(QLabel('序号'))
         self.idLineEdit.setValidator(QIntValidator())
-        self.idLineEdit.setMaxLength(4)
+        self.idLineEdit.setMaxLength(5)
         self.idLineEdit.setAlignment(Qt.AlignRight)
         h_box.addWidget(self.idLineEdit)
         self.nameComboBox.addItems(['中文名称', '英文名称'])

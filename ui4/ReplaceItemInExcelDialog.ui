@@ -78,6 +78,29 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox">
+          <property name="layoutDirection">
+           <enum>Qt::LeftToRight</enum>
+          </property>
+          <property name="title">
+           <string>模板</string>
+          </property>
+          <widget class="QCheckBox" name="listMode1CheckButton">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>30</y>
+             <width>91</width>
+             <height>19</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>一</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>

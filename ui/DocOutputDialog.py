@@ -202,7 +202,7 @@ class DocOutputDialog( QDialog ):
     @staticmethod
     def create_version(the_str):
         status_flag = 'P'
-        if the_str[1] == '已审批' or the_str[1] == '已批准':
+        if the_str[1] == '已审批' or the_str[1] == '已批准' or the_str[1] == '已审核':
             status_flag = ''
         lock_status = 'E'
         if the_str[2] == '否':

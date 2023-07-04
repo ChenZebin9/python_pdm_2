@@ -257,7 +257,7 @@
     <string>Ctrl+O</string>
    </property>
    <property name="visible">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
   </action>
   <action name="showOutputListMenuItem">

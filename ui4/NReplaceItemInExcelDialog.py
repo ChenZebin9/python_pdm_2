@@ -1,7 +1,8 @@
 # coding=gbk
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QComboBox, QHeaderView, QMessageBox, QTableWidget
+from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QComboBox, QHeaderView, QMessageBox, QTableWidget, QCheckBox, \
+    QAbstractItemView
 
 from ui4.NAssemblyToolWindow import PartSelectDialog
 from Part import Part
@@ -11,6 +12,12 @@ import xlwings as xw
 
 
 class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
+    RightButtonWidth = 80
+    BottomButtonWidth = 80
+    Alphabet = ('A', 'B', 'C', 'D', 'E', 'F', 'G',
+                'H', 'I', 'J', 'K', 'L', 'M', 'N',
+                'O', 'P', 'Q', 'R', 'S', 'T',
+                'U', 'V', 'W', 'X', 'Y', 'Z')
 
     def __init__(self, parent, database: DatabaseHandler):
         super(NReplaceItemInExcelDialog, self).__init__(parent)
@@ -19,38 +26,25 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
             '序号', '名称', '描述', '数量', '类别', '品牌', '标准', '巨轮中德ERP物料编码', '巨轮智能ERP物料编码',
             '外部编码',
             '来源', '单位', '产品', '配料策略', '统计策略')
+        self.__mode_widget_group = []
+        self.__project_1_mode = {1: 0, 2: 1, 3: 2, 4: 4, 5: 6, 6: 5, 7: 9, 8: 7, 9: 10, 10: 13, 11: 3, 12: 11}
         self.setup_ui()
 
     def setup_ui(self):
         super(NReplaceItemInExcelDialog, self).setupUi(self)
+        self.__mode_widget_group = [self.listMode1CheckButton]
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setLayout(self.m_v_layout)
-        self.v_layout.setAlignment(Qt.AlignTop)
         self.b_h_layout.setAlignment(Qt.AlignRight)
-        self.insertButton.setFixedWidth(40)
-        self.removeButton.setFixedWidth(40)
-        self.searchButton.setFixedWidth(80)
-        self.closeButton.setFixedWidth(80)
+        self.insertButton.setFixedWidth(NReplaceItemInExcelDialog.RightButtonWidth)
+        self.removeButton.setFixedWidth(NReplaceItemInExcelDialog.RightButtonWidth)
+        self.searchButton.setFixedWidth(NReplaceItemInExcelDialog.BottomButtonWidth)
+        self.closeButton.setFixedWidth(NReplaceItemInExcelDialog.BottomButtonWidth)
 
         self.projectTableWidget.setColumnCount(3)
         self.projectTableWidget.setHorizontalHeaderLabels(['列数', '数据', '默认值'])
-        self.projectTableWidget.setRowCount(2)
+        self.add_column_project()
 
-        column_index = 1
-        ll = len(self.__columns)
-        for i in range(0, 2):
-            column_index_item = QTableWidgetItem(str(column_index))
-            column_index_item.setTextAlignment(Qt.AlignCenter)
-            self.projectTableWidget.setItem(i, 0, column_index_item)
-            combo = QComboBox()
-            combo.addItems(self.__columns)
-            combo.setCurrentIndex(-1)
-            combo.setStyleSheet('QComboBox{margin:3px}')
-            self.projectTableWidget.setCellWidget(i, 1, combo)
-            default_value_item = QTableWidgetItem('')
-            default_value_item.setTextAlignment(Qt.AlignCenter)
-            self.projectTableWidget.setItem(i, 2, default_value_item)
-            column_index += 1
         QTableWidget.resizeColumnsToContents(self.projectTableWidget)
         self.projectTableWidget.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
 
@@ -58,6 +52,50 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
         self.searchButton.clicked.connect(self.do_search)
         self.insertButton.clicked.connect(self.add_column_project)
         self.removeButton.clicked.connect(self.remove_column_project)
+        for w in self.__mode_widget_group:
+            the_w: QCheckBox = w
+            the_w.stateChanged.connect(self.project_mode_changed)
+
+    def project_mode_changed(self, status):
+        """
+        对应清单对应表变更响应函数
+        :param status:
+        :return:
+        """
+        the_w: QCheckBox = self.sender()
+        if status:
+            i = self.__mode_widget_group.index(the_w)
+            self.__fill_project_table(i)
+            for w in self.__mode_widget_group:
+                if w is the_w:
+                    continue
+                w.setCheckState(False)
+        self.insertButton.setEnabled(not status)
+        self.removeButton.setEnabled(not status)
+        self.projectTableWidget.setEditTriggers(
+            QAbstractItemView.NoEditTriggers if status else QAbstractItemView.AllEditTriggers)
+        for r in range(self.projectTableWidget.rowCount()):
+            w: QComboBox = self.projectTableWidget.cellWidget(r, 1)
+            w.setEnabled(not status)
+
+    def __fill_project_table(self, mode):
+        """
+        填写对应列表
+        :param mode:
+        :return:
+        """
+        p_t = {}
+        if mode == 0:
+            p_t = self.__project_1_mode
+        _l = len(p_t.keys())
+        if _l < 1:
+            return
+        self.projectTableWidget.setRowCount(0)
+        i = 0
+        for k in p_t.keys():
+            c_n = NReplaceItemInExcelDialog.Alphabet[k - 1]
+            c_i = p_t[k]
+            self.add_column_project(c1=c_n, c2=c_i)
 
     def close(self) -> bool:
         return super(NReplaceItemInExcelDialog, self).close()
@@ -69,7 +107,7 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
                 i_widget: QComboBox = self.projectTableWidget.cellWidget(i, 1)
                 if i_widget.currentIndex() >= 0:
                     i_column_item = self.projectTableWidget.item(i, 0)
-                    i_column = int(i_column_item.text())
+                    i_column = int(NReplaceItemInExcelDialog.Alphabet.index(i_column_item.text()) + 1)
                     default_value_item = self.projectTableWidget.item(i, 2)
                     default_value = default_value_item.text()
                     project_dict[i_widget.currentText()] = (i_column, default_value)
@@ -118,24 +156,25 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
                 else:
                     tag_value = neu_p.get_specified_tag(self.__database, k)
                     xw.Range((select_row_index, v)).value = tag_value
-            # QMessageBox.information(self, '', '完成替代。')
         except Exception as ex:
             QMessageBox.warning(self, '异常', str(ex))
 
-    def add_column_project(self):
+    def add_column_project(self, c1='A', c2=-1, c3=''):
         r_c = self.projectTableWidget.rowCount()
-        self.projectTableWidget.setRowCount(r_c + 1)
-        column_index_item = QTableWidgetItem('0')
+        self.projectTableWidget.insertRow(r_c)
+        column_index_item = QTableWidgetItem(c1)
         column_index_item.setTextAlignment(Qt.AlignCenter)
         self.projectTableWidget.setItem(r_c, 0, column_index_item)
         combo = QComboBox()
         combo.addItems(self.__columns)
-        combo.setCurrentIndex(-1)
+        combo.setCurrentIndex(c2)
         combo.setStyleSheet('QComboBox{margin:3px}')
         self.projectTableWidget.setCellWidget(r_c, 1, combo)
-        default_value_item = QTableWidgetItem('')
+        default_value_item = QTableWidgetItem(c3)
         default_value_item.setTextAlignment(Qt.AlignCenter)
         self.projectTableWidget.setItem(r_c, 2, default_value_item)
 
     def remove_column_project(self):
-        pass
+        rc = self.projectTableWidget.currentRow()
+        if rc >= 0:
+            self.projectTableWidget.removeRow(rc)

@@ -22,7 +22,7 @@ class ExcelHandler3( ExcelHandler ):
     """解决操作xlsx(Excel 2010)文件的问题"""
 
     def __init__(self, file_name):
-        self.__book = load_workbook( file_name )
+        self.__book = load_workbook( file_name, data_only=True )
         pass
 
     def close(self):

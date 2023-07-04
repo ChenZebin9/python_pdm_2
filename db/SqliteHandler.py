@@ -717,6 +717,7 @@ class SqliteHandler(DatabaseHandler):
         Items - [Contract - str, PartId - int, ErpId - str, Qty - float, RecordIndex - int]
         :return:
         """
+        # TODO 参考 MssqlHandler 的方式进行修改
         bill_name = data[0]
         operator = data[1]
         the_date = data[2]

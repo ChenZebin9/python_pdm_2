@@ -108,7 +108,7 @@ class Ui_MainWindow(object):
         self.refreshMenuItem = QtWidgets.QAction(MainWindow)
         self.refreshMenuItem.setObjectName("refreshMenuItem")
         self.add2OutputListMenuItem = QtWidgets.QAction(MainWindow)
-        self.add2OutputListMenuItem.setVisible(False)
+        self.add2OutputListMenuItem.setVisible(True)
         self.add2OutputListMenuItem.setObjectName("add2OutputListMenuItem")
         self.showOutputListMenuItem = QtWidgets.QAction(MainWindow)
         self.showOutputListMenuItem.setObjectName("showOutputListMenuItem")

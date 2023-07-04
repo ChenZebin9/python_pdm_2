@@ -1,13 +1,16 @@
 # coding=gbk
 import datetime
+import os.path
+
+from openpyxl import load_workbook
 
 import xlwings as xw
 from PIL import Image
-from PyQt5.QtCore import Qt, QDate
+from PyQt5.QtCore import Qt, QDate, QPoint
 from PyQt5.QtGui import QCursor, QPixmap, QColor, QPalette, QBrush
 from PyQt5.QtWidgets import QMainWindow, QTreeWidget, QFrame, QHBoxLayout, QLabel, QTableWidget, \
     QVBoxLayout, QSplitter, QTreeWidgetItem, QTableWidgetItem, QSpinBox, QInputDialog, QAbstractItemView, QMenu, \
-    QDoubleSpinBox, QFileDialog, QMessageBox, QDialog, QHeaderView, QWidget, QLineEdit
+    QDoubleSpinBox, QFileDialog, QMessageBox, QDialog, QHeaderView, QWidget, QLineEdit, QListWidget, QListWidgetItem
 
 from Part import Part
 from db.DatabaseHandler import DatabaseHandler
@@ -22,6 +25,7 @@ class QtyComWidget(QWidget):
 
     def __init__(self, qty, value, parent=None, min_value=0., max_value=99.):
         super(QtyComWidget, self).__init__(parent)
+        self.__qty = qty
         v_layout = QVBoxLayout(self)
         v_layout.setSpacing(0)
         v_layout.setContentsMargins(0, 0, 0, 0)
@@ -29,9 +33,9 @@ class QtyComWidget(QWidget):
         the_line_edit.setAlignment(Qt.AlignCenter)
         v_layout.addWidget(the_line_edit)
         self.__the_spin_box = QDoubleSpinBox(self)
-        self.__the_spin_box.setValue(value)
         self.__the_spin_box.setMinimum(min_value)
         self.__the_spin_box.setMaximum(max_value)
+        self.__the_spin_box.setValue(value)
         self.__the_spin_box.setAlignment(Qt.AlignCenter)
         v_layout.addWidget(self.__the_spin_box)
         self.setLayout(v_layout)
@@ -39,6 +43,12 @@ class QtyComWidget(QWidget):
 
     def value(self):
         return self.__the_spin_box.value()
+
+    def set_value(self, v):
+        self.__the_spin_box.setValue(v)
+
+    def get_qty(self):
+        return self.__qty
 
 
 class ProgressStructPanel(QFrame):
@@ -250,7 +260,7 @@ class MaterialTablePanel(QFrame):
                 '中德ERP物料编号', '可用库存', '更新日期', '巨轮ERP物料编号', '可用库存', '更新日期',
                 '生产现场库存', '更新日期', '配料策略')
 
-    def __init__(self, parent, database, mode=0):
+    def __init__(self, parent, database, mode=0, assigned_data=None, _dir=None):
         """
         材料显示表格
         :param parent:
@@ -261,19 +271,68 @@ class MaterialTablePanel(QFrame):
         self.__parent = parent
         self.__database: DatabaseHandler = database
         self.__mode = mode
+        # 预分配文件的目录
+        self.__dir = _dir
         self.__spin_box_dict = {}  # 对应主要单元格（1）的字典
+        # 在可用库存中，已分配的清单文件列表
+        self.assigned_list_widget = QListWidget(self)
+        # 清单文件列表的右键菜单
+        self.__menu_4_list = QMenu(parent=self.assigned_list_widget)
+        # self.__insert_file_action = self.__menu_4_list.addAction('插入')
+        # self.__delete_file_action = self.__menu_4_list.addAction('删除')
+        self.__summary_action = self.__menu_4_list.addAction('累计')
+        # 已分配材料的数据 part_id : [已分配的中德物料, 已分配的巨轮物料, 已分配的现场物料]
+        self.__assigned_material_dict = assigned_data if assigned_data is not None else {}
         # 配件清单表格
         self.materialTableWidget = QTableWidget(self)
         self.__sort_flags = {}
-        # 右键菜单
-        self.__menu_4_table = QMenu(parent=self)
+        # 材料表格的右键菜单
+        self.__menu_4_table = QMenu(parent=self.materialTableWidget)
         self.__replace_item_action = self.__menu_4_table.addAction('替换')
         self.__delete_item_action = self.__menu_4_table.addAction('删除')
+        self.__insert_item_action = self.__menu_4_table.addAction('插入')
+        self.__append_item_action = self.__menu_4_table.addAction('增加')
+        self.__refresh_item_action = self.__menu_4_table.addAction('刷新库存')
+        # 右键菜单时，鼠标所点击的行
+        self.__click_row = -1
         self.setup_ui()
+        self.init_datas()
+
+    def init_datas(self):
+        # 初始化数据
+        try:
+            self.__analysis_file(self.__dir)
+            self.__get_assigned_materials()
+        except Exception as ex:
+            QMessageBox.warning(self, '', f'初始化时异常。{ex.__str__()}')
+
+    def __analysis_file(self, _dir):
+        # 递归的分析文件夹，查找Excel文件，忽略以下横线开头的文件
+        try:
+            files = os.listdir(_dir)
+            for f in files:
+                full_path = os.path.join(_dir, f)
+                if os.path.isfile(full_path):
+                    dot_index = f.rindex('.')
+                    file_type = f[dot_index:]
+                    if file_type.upper() == '.XLSX' and (not f[0] == '_'):
+                        neu_item = QListWidgetItem(full_path)
+                        neu_item.setData(Qt.UserRole, file_type)
+                        self.assigned_list_widget.addItem(neu_item)
+                else:
+                    self.__analysis_file(full_path)
+        except Exception as ex:
+            QMessageBox.warning(self, '', f'分析{_dir}时，出错。{ex.__str__()}')
 
     def setup_ui(self):
         v_box = QVBoxLayout(self)
-        v_box.addWidget(QLabel('材料清单'))
+        t_h_box = QHBoxLayout(self)
+        if self.__mode == 0:
+            t_h_box.addWidget(QLabel('已分配材料清单文件'))
+            t_h_box.addWidget(self.assigned_list_widget)
+            self.assigned_list_widget.setFixedHeight(60)
+            v_box.addLayout(t_h_box)
+            self.assigned_list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
         v_box.addWidget(self.materialTableWidget)
         self.setLayout(v_box)
         self.set_header()
@@ -286,12 +345,226 @@ class MaterialTablePanel(QFrame):
             self.materialTableWidget.customContextMenuRequested.connect(self.__on_custom_context_menu_requested)
             self.__replace_item_action.triggered.connect(self.__replace_item)
             self.__delete_item_action.triggered.connect(self.__delete_item)
+            self.__insert_item_action.triggered.connect(lambda: self.__insert_item(self.__click_row))
+            self.__append_item_action.triggered.connect(self.__append_item)
+            self.__refresh_item_action.triggered.connect(self.__refresh_item)
 
-    def __on_custom_context_menu_requested(self, pos):
-        item = self.materialTableWidget.itemAt(pos)
-        if item is None:
+            self.assigned_list_widget.doubleClicked.connect(self.__open_assigned_file)
+            self.assigned_list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+            self.assigned_list_widget.customContextMenuRequested.connect(self.__on_custom_context_menu_requested)
+            # self.__insert_file_action.triggered.connect(self.__insert_file)
+            # self.__delete_file_action.triggered.connect(self.__delete_file)
+            self.__summary_action.triggered.connect(self.__do_material_summary)
+
+    def __on_custom_context_menu_requested(self, pos: QPoint):
+        if self.sender() is self.materialTableWidget:
+            column = self.materialTableWidget.columnAt(pos.x())
+            self.__click_row = self.materialTableWidget.rowAt(pos.y())
+            on_item = column > 0
+            self.__replace_item_action.setVisible(on_item)
+            self.__delete_item_action.setVisible(on_item)
+            self.__insert_item_action.setVisible(on_item)
+            self.__append_item_action.setVisible(not on_item)
+            self.__menu_4_table.exec_(QCursor.pos())
+        elif self.sender() is self.assigned_list_widget:
+            # on_item = self.assigned_list_widget.itemAt(pos)
+            # self.__delete_item_action.setVisible(on_item is not None)
+            self.__menu_4_list.exec_(QCursor.pos())
+
+    def __open_assigned_file(self):
+        # 打开文件
+        the_item = self.assigned_list_widget.currentItem()
+        if the_item is None:
             return
-        self.__menu_4_table.exec_(QCursor.pos())
+        os.startfile(the_item.text())
+
+    def __insert_file(self):
+        # 选择已分配材料的物料清单
+        caption = '选择物料清单'
+        f, f_type = QFileDialog.getOpenFileName(self, caption, filter='Excel Files (*.xls *.xlsx)')
+        if f == '':
+            return
+        for i in range(self.assigned_list_widget.count()):
+            f_name = self.assigned_list_widget.item(i).text()
+            if f_name == f:
+                QMessageBox.warning(self, '', '重复选择了清单文件！')
+                return
+        new_item = QListWidgetItem()
+        new_item.setText(f)
+        new_item.setData(Qt.UserRole, f_type)
+        self.assigned_list_widget.addItem(new_item)
+        self.__get_assigned_materials()
+
+    def __delete_file(self):
+        # 删除已分配材料的物料清单
+        selected_item = self.assigned_list_widget.currentItem()
+        if selected_item is not None:
+            row_index = self.assigned_list_widget.indexFromItem(selected_item).row()
+            self.assigned_list_widget.takeItem(row_index)
+            self.__get_assigned_materials()
+
+    def __get_assigned_materials(self):
+        # 读取已分配材料的数据
+        self.__assigned_material_dict.clear()
+        for i in range(self.assigned_list_widget.count()):
+            current_item = self.assigned_list_widget.item(i)
+            f_name = current_item.text()
+            try:
+                wb = load_workbook(f_name, data_only=True)
+                ws_s = wb.sheetnames
+                for s in ws_s:
+                    ws = wb[s]
+                    rr = ws.rows
+                    r_i = 0
+                    for r in ws.iter_rows():
+                        if r_i == 0:
+                            r_i += 1
+                            continue
+                        p_id_cell = r[0].value
+                        s1 = float(r[8].value)
+                        s2 = float(r[9].value)
+                        s3 = float(r[10].value)
+                        if p_id_cell in self.__assigned_material_dict:
+                            ss = self.__assigned_material_dict[p_id_cell]
+                            ss[0] += s1
+                            ss[1] += s2
+                            ss[2] += s3
+                        else:
+                            self.__assigned_material_dict[p_id_cell] = [s1, s2, s3]
+                        r_i += 1
+            except Exception as ex:
+                self.__parent.show_status_message(f'{f_name} -> 错误：{ex.__str__()}')
+                current_item.setBackground(QColor(255, 0, 0))
+
+    def __do_material_summary(self):
+        resp = QMessageBox.question(self, '', '确定要进行累计？', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if resp == QMessageBox.No:
+            return
+        # 累计已分配的物料，并输出为Excel文件
+        sum_dict = {}  # 总的累计清单
+        product_sum_dict = {}  # 基于产品的数量分布清单
+        product_column_list = []  # 产品数量分布清单的列号
+        wwb = xw.Book()
+        wws = wwb.sheets.active
+        wws.name = 'summary'
+        c = self.assigned_list_widget.count()
+        # 设置列表头
+        headers = [
+            '零件号', '名称', '型号描述', '品牌', '标准', '单位', '数量', '巨轮中德物料编码', '中德仓库库存',
+            '巨轮仓库库存', '现场库存', '类型', '配料策略', '库存不足']
+        for i in range(c):
+            current_item = self.assigned_list_widget.item(i)
+            f_name = current_item.text()
+            product_name = os.path.basename(f_name)[:-5]
+            product_column_list.append(product_name)
+        headers.extend(product_column_list)
+        wws.range((1, 1), (1, len(headers) + 1)).value = headers
+        # 读取数据
+        for i in range(c):
+            current_item = self.assigned_list_widget.item(i)
+            f_name = current_item.text()
+            product_name = os.path.basename(f_name)[:-5]
+            s_dict = {}
+            try:
+                wb = load_workbook(f_name, data_only=True)
+                ws_s = wb.sheetnames
+                for s in ws_s:
+                    ws = wb[s]
+                    rr = ws.rows
+                    r_i = 0
+                    for r in ws.iter_rows():
+                        if r_i == 0:
+                            r_i += 1
+                            continue
+                        p_id_cell = r[0].value
+                        qty = float(r[6].value)
+                        s1 = float(r[8].value)
+                        s2 = float(r[9].value)
+                        s3 = float(r[10].value)
+                        if p_id_cell in s_dict:
+                            ss = s_dict[p_id_cell]
+                            ss[0] += qty
+                            ss[1] += s1
+                            ss[2] += s2
+                            ss[3] += s3
+                        else:
+                            s_dict[p_id_cell] = [qty, s1, s2, s3]
+                        r_i += 1
+                product_sum_dict[product_name] = s_dict
+            except Exception as ex:
+                self.__parent.show_status_message(f'{f_name} -> 错误：{ex.__str__()}')
+                current_item.setBackground(QColor(255, 0, 0))
+        for k in product_sum_dict.keys():
+            dd = product_sum_dict[k]
+            for part_id in dd.keys():
+                part_qty = dd[part_id]
+                if part_id in sum_dict:
+                    ss = sum_dict[part_id]
+                    ss[0] += part_qty[0]
+                    ss[1] += part_qty[1]
+                    ss[2] += part_qty[2]
+                    ss[3] += part_qty[3]
+                    ss[4].append(f'{k};{part_qty[0]}')
+                else:
+                    ss = [part_qty[0], part_qty[1], part_qty[2], part_qty[3], [f'{k};{part_qty[0]}']]
+                    sum_dict[part_id] = ss
+        # 输出清单
+        part_id_list = list(sum_dict.keys())
+        part_id_list.sort()
+        i = 2
+        for part_id in part_id_list:
+            dd = sum_dict[part_id]
+            p: Part = Part.get_parts(self.__database, part_id=part_id)[0]
+            part_id = p.get_part_id()
+            id_cell = wws.range((i, 1))
+            id_cell.value = part_id
+            id_cell.number_format = '00000000'
+            name_cell = wws.range((i, 2))
+            name_cell.value = p.name
+            description_cell = wws.range((i, 3))
+            description_cell.value = p.description
+            t1 = p.get_specified_tag(self.__database, '品牌')
+            brand_cell = wws.range((i, 4))
+            brand_cell.value = t1
+            t2 = p.get_specified_tag(self.__database, '标准')
+            standard_cell = wws.range((i, 5))
+            standard_cell.value = t2
+            t3 = p.get_specified_tag(self.__database, '单位')
+            unit_cell = wws.range((i, 6))
+            unit_cell.value = t3
+            qty_cell = wws.range((i, 7))
+            qty_cell.value = dd[0]
+            qty_cell.number_format = '0.00'
+            t4 = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
+            zd_erp_id_cell = wws.range((i, 8))
+            zd_erp_id_cell.value = t4
+            zd_qty_cell = wws.range((i, 9))
+            zd_qty_cell.value = dd[1]
+            zd_qty_cell.number_format = '0.00'
+            jl_qty_cell = wws.range((i, 10))
+            jl_qty_cell.value = dd[2]
+            jl_qty_cell.number_format = '0.00'
+            site_qty_cell = wws.range((i, 11))
+            site_qty_cell.value = dd[3]
+            site_qty_cell.number_format = '0.00'
+            t5 = p.get_specified_tag(self.__database, '类别')
+            type_cell = wws.range((i, 12))
+            type_cell.value = t5
+            t6 = p.get_specified_tag(self.__database, '配料策略')
+            supply_type_cell = wws.range((i, 13))
+            supply_type_cell.value = t6
+            warning_cell = wws.range((i, 14))
+            warning_cell.formula = f'=SUM(I{i}:K{i})-G{i}'
+            for p_qty in dd[4]:
+                tt = p_qty.split(';')
+                product_name = tt[0]
+                product_qty = float(tt[1])
+                c = product_column_list.index(product_name) + 15
+                the_cell = wws.range((i, c))
+                the_cell.value = product_qty
+                the_cell.number_format = '0.00'
+            i += 1
+        QMessageBox.information(self, '', '输出完毕。')
 
     def __change_qty(self):
         w = self.sender()
@@ -304,6 +577,177 @@ class MaterialTablePanel(QFrame):
         else:
             id_cell.setBackground(QColor(255, 255, 255))
         id_cell.setData(Qt.UserRole, neu_data)
+        # 更新领料分配
+        remain_qty = neu_value
+        r = self.materialTableWidget.indexFromItem(id_cell).row()
+        site_storing_w = self.materialTableWidget.cellWidget(r, 11)
+        if site_storing_w is not None:
+            w: QtyComWidget = site_storing_w
+            q = w.get_qty()
+            if q >= remain_qty:
+                vv = remain_qty
+            else:
+                vv = q
+            remain_qty -= vv
+            w.set_value(vv)
+        zd_storing_w = self.materialTableWidget.cellWidget(r, 6)
+        if zd_storing_w is not None:
+            w: QtyComWidget = zd_storing_w
+            q = w.get_qty()
+            if q >= remain_qty:
+                vv = remain_qty
+            else:
+                vv = q
+            remain_qty -= vv
+            w.set_value(vv)
+        jl_storing_w = self.materialTableWidget.cellWidget(r, 9)
+        if jl_storing_w is not None:
+            w: QtyComWidget = jl_storing_w
+            q = w.get_qty()
+            if q >= remain_qty:
+                vv = remain_qty
+            else:
+                vv = q
+            remain_qty -= vv
+            w.set_value(vv)
+
+    def __insert_item(self, row):
+        # 插入（向前增加）一项
+        txt, ok = QInputDialog.getText(self, '插入项目', '零件号', QLineEdit.Normal, '多个项目，以空格隔开。')
+        if not ok:
+            return
+        tt = txt.strip().split(' ')
+        try:
+            r = row
+            for t in tt:
+                part_number = int(t)
+                p = Part.get_parts(self.__database, part_id=part_number)[0]
+                self.materialTableWidget.insertRow(r)
+                self.__fill_one_row(p, 0.0, r)
+                r += 1
+        except Exception as ex:
+            QMessageBox.warning(self, '错误', ex.__str__())
+
+    def __append_item(self):
+        # 增加（在最后增加）一项
+        row_max = self.materialTableWidget.rowCount()
+        self.__insert_item(row_max + 1)
+
+    def __refresh_item(self):
+        # 刷新数量信息
+        self.__get_assigned_materials()
+        row_count = self.materialTableWidget.rowCount()
+        for i in range(row_count):
+            p_item = self.materialTableWidget.item(i, 1)
+            r_data = p_item.data(Qt.UserRole)
+            p: Part = r_data[0]
+            # 仓储信息
+            qty_in_storing = 0.  # 仓库里的数量
+            qty_in_site = 0.  # 现场的数量
+            storing_data_s = self.__database.get_storing(part_id=p.get_part_id())
+            zd_erp_id = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
+            jl_erp_id = p.get_specified_tag(self.__database, '巨轮智能ERP物料编码')
+            w: QDoubleSpinBox = self.materialTableWidget.cellWidget(i, 3)
+            qty = w.value()
+            remain_qty = qty  # 剩余的数量
+            # 已分配的物料
+            s1 = 0.0
+            s2 = 0.0
+            s3 = 0.0
+            if p.get_part_id() in self.__assigned_material_dict:
+                ss = self.__assigned_material_dict[p.get_part_id()]
+                s1 = ss[0]  # 中德仓库
+                s2 = ss[1]  # 巨轮仓库
+                s3 = ss[2]  # 现场
+            # 现场仓储信息
+            if storing_data_s is not None:
+                s_qty = 0.
+                u_date = None
+                for r_s in storing_data_s:
+                    if r_s[1] != 'A':
+                        continue
+                    s_qty += (r_s[2] - s3)
+                    if (u_date is not None and r_s[3] > u_date) or u_date is None:
+                        u_date = r_s[3]
+                qty_in_site += s_qty
+                if u_date is not None and s_qty > 0.:
+                    if s_qty >= remain_qty:
+                        vv = remain_qty
+                    else:
+                        vv = s_qty
+                    remain_qty -= vv
+                    qty_w = QtyComWidget(s_qty, vv, parent=self.materialTableWidget, max_value=s_qty)
+                    self.materialTableWidget.setCellWidget(i, 11, qty_w)
+                    u_date_cell = QTableWidgetItem()
+                    if type(u_date) == str:
+                        u_date = datetime.datetime.fromisoformat(u_date)
+                    u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
+                    self.materialTableWidget.setItem(i, 12, u_date_cell)
+            # 中德ERP仓储信息
+            if zd_erp_id != '':
+                erp_id_cell = QTableWidgetItem()
+                erp_id_cell.setData(Qt.DisplayRole, zd_erp_id)
+                self.materialTableWidget.setItem(i, 5, erp_id_cell)
+                s_qty = 0.
+                u_date = None
+                if storing_data_s is not None:
+                    for r_s in storing_data_s:
+                        if r_s[1] != 'D' and r_s[1] != 'E':
+                            continue
+                        s_qty += (r_s[2] - s1)
+                        if (u_date is not None and r_s[3] > u_date) or u_date is None:
+                            u_date = r_s[3]
+                    qty_in_storing += s_qty
+                    if u_date is not None and s_qty > 0.:
+                        if s_qty >= remain_qty:
+                            vv = remain_qty
+                        else:
+                            vv = s_qty
+                        remain_qty -= vv
+                        qty_w = QtyComWidget(s_qty, vv, parent=self.materialTableWidget, max_value=s_qty)
+                        self.materialTableWidget.setCellWidget(i, 6, qty_w)
+                        u_date_cell = QTableWidgetItem()
+                        if type(u_date) == str:
+                            u_date = datetime.datetime.fromisoformat(u_date)
+                        u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
+                        self.materialTableWidget.setItem(i, 7, u_date_cell)
+            # 巨轮ERP仓储信息
+            if jl_erp_id != '':
+                erp_id_cell = QTableWidgetItem()
+                erp_id_cell.setData(Qt.DisplayRole, jl_erp_id)
+                self.materialTableWidget.setItem(i, 8, erp_id_cell)
+                s_qty = 0.
+                u_date = None
+                if storing_data_s is not None:
+                    for r_s in storing_data_s:
+                        if r_s[1] != 'F':
+                            continue
+                        s_qty += (r_s[2] - s2)
+                        if (u_date is not None and r_s[3] > u_date) or u_date is None:
+                            u_date = r_s[3]
+                    qty_in_storing += s_qty
+                    if u_date is not None and s_qty > 0.:
+                        if s_qty >= remain_qty:
+                            vv = remain_qty
+                        else:
+                            vv = s_qty
+                        remain_qty -= vv
+                        qty_w = QtyComWidget(s_qty, vv, parent=self.materialTableWidget, max_value=s_qty)
+                        self.materialTableWidget.setCellWidget(i, 9, qty_w)
+                        u_date_cell = QTableWidgetItem()
+                        if type(u_date) == str:
+                            u_date = datetime.datetime.fromisoformat(u_date)
+                        u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
+                        self.materialTableWidget.setItem(i, 10, u_date_cell)
+            it = self.materialTableWidget.item(i, 1)  # 用于存储数据的单元
+            # 根据数量对比，改变行的颜色
+            if qty > qty_in_storing + qty_in_site:
+                it.setBackground(QColor(255, 0, 0))
+            else:
+                it.setBackground(QColor(255, 255, 255))
+            it.setData(Qt.UserRole, (p, qty_in_storing, qty_in_site, qty))
+            self.materialTableWidget.setRowHeight(i, 66)
+        QMessageBox.information(self, '', '更新完毕！')
 
     def __delete_item(self):
         item_r = self.materialTableWidget.currentRow()
@@ -334,7 +778,7 @@ class MaterialTablePanel(QFrame):
                 p: Part = ps[0]
                 part_dict[p] = qty
         if len(identical_parts[0]) > 0:
-            dialog = PartSelectDialog(self.__parent, self.__database, part_dict)
+            dialog = PartSelectDialog(self.__parent, self.__database, part_dict, self.__assigned_material_dict)
             dialog.setWindowTitle(f'选择替代<{the_part.name}>的零件')
             resp = dialog.exec_()
             if resp != QDialog.Accepted:
@@ -422,6 +866,15 @@ class MaterialTablePanel(QFrame):
         zd_erp_id = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
         jl_erp_id = p.get_specified_tag(self.__database, '巨轮智能ERP物料编码')
         remain_qty = qty  # 剩余的数量
+        # 已分配的物料
+        s1 = 0.0
+        s2 = 0.0
+        s3 = 0.0
+        if p.get_part_id() in self.__assigned_material_dict:
+            ss = self.__assigned_material_dict[p.get_part_id()]
+            s1 = ss[0]  # 中德仓库
+            s2 = ss[1]  # 巨轮仓库
+            s3 = ss[2]  # 现场
         # 现场仓储信息
         if storing_data_s is not None:
             s_qty = 0.
@@ -429,7 +882,7 @@ class MaterialTablePanel(QFrame):
             for r_s in storing_data_s:
                 if r_s[1] != 'A':
                     continue
-                s_qty += r_s[2]
+                s_qty += (r_s[2] - s3)
                 if (u_date is not None and r_s[3] > u_date) or u_date is None:
                     u_date = r_s[3]
             qty_in_site += s_qty
@@ -457,7 +910,7 @@ class MaterialTablePanel(QFrame):
                 for r_s in storing_data_s:
                     if r_s[1] != 'D' and r_s[1] != 'E':
                         continue
-                    s_qty += r_s[2]
+                    s_qty += (r_s[2] - s1)
                     if (u_date is not None and r_s[3] > u_date) or u_date is None:
                         u_date = r_s[3]
                 qty_in_storing += s_qty
@@ -485,7 +938,7 @@ class MaterialTablePanel(QFrame):
                 for r_s in storing_data_s:
                     if r_s[1] != 'F':
                         continue
-                    s_qty += r_s[2]
+                    s_qty += (r_s[2] - s2)
                     if (u_date is not None and r_s[3] > u_date) or u_date is None:
                         u_date = r_s[3]
                 qty_in_storing += s_qty
@@ -549,6 +1002,8 @@ class MaterialTablePanel(QFrame):
         return qty_not_enough, pick_from_site, pick_from_zd_storage, pick_from_jl_storage, all_material
 
     def fill_data(self, parts_dict):
+        if self.__mode == 0:
+            self.__get_assigned_materials()
         self.materialTableWidget.clear()
         self.set_header()
         parts = list(parts_dict.keys())
@@ -566,12 +1021,13 @@ class MaterialTablePanel(QFrame):
 
 class PartSelectDialog(QDialog, BlankDialog):
 
-    def __init__(self, parent, database, _data):
+    def __init__(self, parent, database, _data, assigned_data):
         super(PartSelectDialog, self).__init__(parent)
         self.__database = database
         self.__data = _data
+        self.__assigned_data = assigned_data
         self.selected_data = None
-        self.selected_table = MaterialTablePanel(self, database, mode=1)
+        self.selected_table = MaterialTablePanel(self, database, mode=1, assigned_data=assigned_data)
         self.setup_ui()
         self.data_init(_data)
 
@@ -603,17 +1059,18 @@ class PartSelectDialog(QDialog, BlankDialog):
 
 class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
 
-    def __init__(self, parent, database, user):
+    def __init__(self, parent, database, user, _dir):
         super(NAssemblyToolWindow, self).__init__(parent)
         self.__database = database
         self.__user = user
         self.__work_as_admin = False
+        self.__dir = _dir
         self.material_list = {}
         self.__import_cache = []  # 导入数据的临时存储
         self.__calculated_item = {}  # 用于计算的生产项目，{零件号：数量}
         self.progressStructTree = ProgressStructPanel(self, database)
         self.selectedProcessList = SelectedProcessPanel(self)
-        self.materialTable = MaterialTablePanel(self, database)
+        self.materialTable = MaterialTablePanel(self, database, mode=0, _dir=_dir)
         self.setup_ui()
 
     def setup_ui(self):
@@ -898,7 +1355,7 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                 ws.name = 'bom'
                 headers = (
                     '零件号', '名称', '型号描述', '品牌', '标准', '单位', '数量', '巨轮中德物料编码', '中德仓库库存',
-                    '巨轮仓库库存', '现场库存', '配料策略', '类型')
+                    '巨轮仓库库存', '现场库存', '类型', '配料策略', '库存不足')
                 ws.range((1, 1), (1, len(headers) + 1)).value = headers
                 i = 2
                 for r in all_materials[4]:
@@ -944,6 +1401,8 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                     t6 = p.get_specified_tag(self.__database, '配料策略')
                     supply_type_cell = ws.range((i, 13))
                     supply_type_cell.value = t6
+                    warning_cell = ws.range((i, 14))
+                    warning_cell.formula = f'=SUM(I{i}:K{i})-G{i}'
                     i += 1
             else:
                 if bom_type_index == 2:
