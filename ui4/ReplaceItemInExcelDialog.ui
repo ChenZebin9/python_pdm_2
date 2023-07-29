@@ -86,18 +86,44 @@
           <property name="title">
            <string>模板</string>
           </property>
-          <widget class="QCheckBox" name="listMode1CheckButton">
+          <widget class="QWidget" name="layoutWidget">
            <property name="geometry">
             <rect>
-             <x>0</x>
-             <y>30</y>
-             <width>91</width>
-             <height>19</height>
+             <x>10</x>
+             <y>20</y>
+             <width>37</width>
+             <height>46</height>
             </rect>
            </property>
-           <property name="text">
-            <string>一</string>
-           </property>
+           <layout class="QVBoxLayout" name="g_v_layout">
+            <item>
+             <widget class="QCheckBox" name="listMode1CheckButton">
+              <property name="text">
+               <string>一</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="listMode2CheckButton">
+              <property name="text">
+               <string>二</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
           </widget>
          </widget>
         </item>

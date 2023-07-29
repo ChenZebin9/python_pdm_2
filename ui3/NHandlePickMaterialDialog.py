@@ -1,4 +1,5 @@
 # coding=gbk
+from datetime import datetime
 
 from PyQt5.QtCore import (Qt, QDate, QItemSelectionModel, QModelIndex)
 from PyQt5.QtGui import (QStandardItemModel, QStandardItem, QCursor)
@@ -118,7 +119,8 @@ class NHandlePickMaterialDialog(QDialog, Ui_Dialog):
             # 零件的描述
             one_row_in_table.append(QStandardItem(description.strip()))
             # 操作的日期
-            one_row_in_table.append(QStandardItem(r[4].strftime('%Y/%m/%d')))
+            tt = datetime.strptime(r[4], "%Y-%m-%d %H:%M:%S") if type(r[4]) == str else r[4]
+            one_row_in_table.append(QStandardItem(tt.strftime('%Y/%m/%d')))
             # 数量
             qty_item = QStandardItem(r[5])
             qty_item.setData(float(r[5]), Qt.DisplayRole)

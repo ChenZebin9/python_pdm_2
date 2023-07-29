@@ -1,27 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="增加了修改Excel文件清单的工件。">
+    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="修改成Material Tab之前。">
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Com.py" beforeDir="false" afterPath="$PROJECT_DIR$/Com.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Entry.py" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UiFrame.py" beforeDir="false" afterPath="$PROJECT_DIR$/UiFrame.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/MssqlHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/MssqlHandler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/SqliteHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/SqliteHandler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/database_filler_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/database_filler_2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/jl_erp.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/jl_erp.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dlls/EpdmLib.dll" beforeDir="false" afterPath="$PROJECT_DIR$/dlls/EpdmLib.dll" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/excel/ExcelHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/excel/ExcelHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/file_version_info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/file_version_info.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pdm_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/pdm_config.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rt_config.db" beforeDir="false" afterPath="$PROJECT_DIR$/rt_config.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/DocOutputDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/DocOutputDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/PartMainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui/PartMainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/ErpItemSelector.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/ErpItemSelector.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/ErpItemSelector.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/ErpItemSelector.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/NImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NImportSettingDialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/NErpItemSelector.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NErpItemSelector.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui3/NHandlePickMaterialDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NHandlePickMaterialDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui4/AssemblyToolWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/AssemblyToolWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui4/AssemblyToolWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/AssemblyToolWindow.ui" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui4/NReplaceItemInExcelDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/NReplaceItemInExcelDialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui4/ReplaceItemInExcelDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/ReplaceItemInExcelDialog.py" afterDir="false" />
@@ -425,7 +417,14 @@
       <option name="project" value="LOCAL" />
       <updated>1675660128771</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="修改成Material Tab之前。">
+      <created>1688480058491</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1688480058492</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -474,7 +473,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="比较完美版的设计了。" />
     <MESSAGE value="增加了一个part_tag_view的视图。" />
     <MESSAGE value="初步完成Native PDM的操作。" />
     <MESSAGE value="实现了基本的查询功能。" />
@@ -499,7 +497,15 @@
     <MESSAGE value="最新保存。" />
     <MESSAGE value="优化了、改正了读取并更新FTP文件的功能。&#10;改进了输出材料清单的功能。" />
     <MESSAGE value="增加了修改Excel文件清单的工件。" />
-    <option name="LAST_COMMIT_MESSAGE" value="增加了修改Excel文件清单的工件。" />
+    <MESSAGE value="修改成Material Tab之前。" />
+    <option name="LAST_COMMIT_MESSAGE" value="修改成Material Tab之前。" />
+  </component>
+  <component name="XDebuggerManager">
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="p.part_id" language="Python" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="masterDetails">
     <states>

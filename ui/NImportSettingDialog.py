@@ -1,9 +1,10 @@
-from ui.ImportSettingDialog import *
-from PyQt5.QtWidgets import (QDialog, QTableWidgetItem, QComboBox, QTableWidget, QMessageBox)
-from PyQt5.QtGui import QIntValidator
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIntValidator
+from PyQt5.QtWidgets import (QDialog, QTableWidgetItem, QComboBox, QTableWidget)
+
 from Part import (Part, Tag)
 from excel import ExcelHandler
+from ui.ImportSettingDialog import *
 
 
 class NImportSettingDialog( QDialog, Ui_Dialog ):
@@ -152,7 +153,8 @@ class NImportSettingDialog( QDialog, Ui_Dialog ):
                         cell_data = self.__excel_data[column_header][i][1]
                         temp_record.append( cell_data )
                 self.__result.append( temp_record )
-            self.__parent.fill_import_cache( self.__result )
+            the_sheet_name = self.sheetComboBox.currentText()
+            self.__parent.fill_import_cache( self.__result, sheet_name=the_sheet_name )
         self.close()
 
     def __check_if_in_row_control(self, row_nr):

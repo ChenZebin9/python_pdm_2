@@ -358,6 +358,7 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
                                         QMessageBox.Yes)
             if resp == QMessageBox.Yes:
                 os.startfile(to_save_file)
+            self.done(0)
         except Exception as ex:
             if except_type == 0:
                 resp = QMessageBox.question(self, '处理异常', str(ex),
@@ -365,10 +366,14 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
                                             QMessageBox.No)
                 if resp == QMessageBox.Yes:
                     self.__special_mark[record_index] = 0
+                else:
+                    self.done(-1)
             elif except_type == 1:
                 resp = QMessageBox.question(self, '数量异常', str(ex), QMessageBox.Ok | QMessageBox.No, QMessageBox.No)
                 if resp == QMessageBox.Yes:
                     self.__special_mark[record_index] = 0
+                else:
+                    self.done(-1)
             else:
                 raise ex
         # finally:
@@ -378,9 +383,9 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
     def __do_close(self):
         if self.__jl_erp_database is not None:
             self.__jl_erp_database.close()
-        self.close()
+        self.done(-1)
 
-    def fill_import_cache(self, data):
+    def fill_import_cache(self, data, sheet_name=None):
         self.__one_import_data = data.copy()
 
     def is_zd_erp(self):

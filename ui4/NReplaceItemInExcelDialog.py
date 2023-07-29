@@ -28,11 +28,13 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
             '来源', '单位', '产品', '配料策略', '统计策略')
         self.__mode_widget_group = []
         self.__project_1_mode = {1: 0, 2: 1, 3: 2, 4: 4, 5: 6, 6: 5, 7: 9, 8: 7, 9: 10, 10: 13, 11: 3, 12: 11}
+        self.__project_2_mode = {1: 0, 2: 1, 3: 2, 4: 5, 5: 6, 6: 11, 7: 3, 8: 7, 12: 4, 13: 13}
         self.setup_ui()
 
     def setup_ui(self):
         super(NReplaceItemInExcelDialog, self).setupUi(self)
-        self.__mode_widget_group = [self.listMode1CheckButton]
+        self.groupBox.setLayout(self.g_v_layout)
+        self.__mode_widget_group = [self.listMode1CheckButton, self.listMode2CheckButton]
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setLayout(self.m_v_layout)
         self.b_h_layout.setAlignment(Qt.AlignRight)
@@ -87,6 +89,8 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
         p_t = {}
         if mode == 0:
             p_t = self.__project_1_mode
+        elif mode == 1:
+            p_t = self.__project_2_mode
         _l = len(p_t.keys())
         if _l < 1:
             return
@@ -157,7 +161,7 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
                     tag_value = neu_p.get_specified_tag(self.__database, k)
                     xw.Range((select_row_index, v)).value = tag_value
         except Exception as ex:
-            QMessageBox.warning(self, '异常', str(ex))
+            QMessageBox.warning(self, '搜索时异常', str(ex))
 
     def add_column_project(self, c1='A', c2=-1, c3=''):
         r_c = self.projectTableWidget.rowCount()

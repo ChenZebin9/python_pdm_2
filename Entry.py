@@ -87,7 +87,7 @@ if __name__ == '__main__':
     """ app = QApplication(sys.argv) 要放置在最前面，否则会出现许多可怪的问题。 """
     app = QApplication(sys.argv)
 
-    version = '1.6.2.13'
+    version = '1.6.2.18'
 
     config = configparser.ConfigParser()
     if not config.read('pdm_config.ini', encoding='GBK'):
@@ -202,12 +202,15 @@ if __name__ == '__main__':
 
         user_name = config.get('Offline', 'userName')
         assigned_material_dir = config.get('MaterialSupply', 'assigned_dir')
+        purchase_plan_dir = config.get('MaterialSupply','purchase_plan_dir')
+        product_list = config.get('MaterialSupply', 'product_list')
         if mode == 0:
             database = MssqlHandler(*database_setting[1:])
         else:
             database_file = config.get('Offline', 'database_file')
             database = SqliteHandler(database_file)
-        theDialog = NAssemblyToolWindow(parent=None, database=database, user=user_name, _dir=assigned_material_dir)
+        theDialog = NAssemblyToolWindow(parent=None, database=database, user=user_name, dir=assigned_material_dir,
+                                        product=product_list, plan=purchase_plan_dir)
         theDialog.setWindowIcon(icon)
         theDialog.show()
         sys.exit(app.exec_())
@@ -238,12 +241,9 @@ if __name__ == '__main__':
 1.4.0.2 2022.01.08 改变了截图的方式，采用clr的方法。
 1.4.2.5 2022.07.08 改正了子项目排序的问题。
 1.4.3.5 2022.07.09 标签采用后台更新。子项目增加了代替的功能。
-
 1.6.2.4 2023.03.08 更正了领料，导入和导出的问题。
-
 1.6.2.7 2023.04.26 由于Epdm升级至2019版而导致奔溃的临时修改。临时版本！将登录库改为Greatoo_Ops，但工作目录仍未D:\\Greatoo_JJ。
 1.6.2.8 2023.04.27 完全转至Greatoo_Ops库的工作模式。
-
 1.6.2.11 2023.06.16 增加了双击DWG文件时的FTP关联。
-1.6.2.12 2023.07.03 增加了生产配料管理模块的手工操作功能。
+1.6.2.16 2023.07.15 增加了生产配料管理模块，生产前预分配的功能。改善了配件在库，但已分配的功能。
 """

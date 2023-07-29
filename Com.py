@@ -6,10 +6,26 @@ import clr
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QPlainTextEdit
+import win32file
 
 import Com
 
 local_config_file = ''
+
+
+def is_used(file_name) -> bool:
+    # 查看文件是否被占用
+    try:
+        vHandle = win32file.CreateFile(file_name, win32file.GENERIC_READ, 0, None,
+                                       win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, None)
+        return int(vHandle) == win32file.INVALID_HANDLE_VALUE
+    except:
+        return True
+    finally:
+        try:
+            win32file.CloseHandle(vHandle)
+        except:
+            pass
 
 
 def dict_2_str(the_dict):

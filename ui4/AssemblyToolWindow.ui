@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>919</width>
-     <height>26</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -28,6 +28,7 @@
      <string>文件</string>
     </property>
     <addaction name="separator"/>
+    <addaction name="readProductListAction"/>
     <addaction name="adminRightAction"/>
     <addaction name="separator"/>
     <addaction name="quitAction"/>
@@ -191,6 +192,11 @@
   <action name="modifyStockAction">
    <property name="text">
     <string>修改库存</string>
+   </property>
+  </action>
+  <action name="readProductListAction">
+   <property name="text">
+    <string>打开产品清单</string>
    </property>
   </action>
  </widget>
