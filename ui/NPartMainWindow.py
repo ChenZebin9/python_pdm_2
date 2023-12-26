@@ -23,7 +23,7 @@ import datetime
 class NPartMainWindow(QMainWindow, Ui_MainWindow):
 
     def __init__(self, parent=None, database=None, username=None, work_folder=None, pdm_vault=None, mode=None,
-                 local_folder=None, ):
+                 local_folder=None, host='191.1.6.103'):
         super(NPartMainWindow, self).__init__(parent)
         self.__database = database
         self.__username = username
@@ -47,7 +47,8 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
         # 一些Panel组件
         self.tagTreePanel = TagViewPanel(self, database=database)
         self.partInfoPanel = PartInfoPanelInMainWindow(self, work_folder=self.__work_folder,
-                                                       database=self.__database, is_offline=self.__is_offline)
+                                                       database=self.__database, is_offline=self.__is_offline,
+                                                       host=host)
         self.partInfoPanel.set_vault(pdm_vault)
         # 能否进行列表编辑的标记
         self.edit_child_mode = False
@@ -576,14 +577,14 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
         else:
             print('no list')
         if self.__doc_output_dialog is None:
-            self.__doc_output_dialog = DocOutputDialog(self, self.__pdm_vault, self.__sw_app)
+            self.__doc_output_dialog = DocOutputDialog(self, self.__pdm_vault, self.__sw_app, self.__work_folder)
         if not self.__doc_output_dialog.isVisible():
             self.__doc_output_dialog.show()
         self.__doc_output_dialog.add_doc_list(all_parts)
 
     def __show_output_list_dialog(self):
         if self.__doc_output_dialog is None:
-            self.__doc_output_dialog = DocOutputDialog(self, self.__pdm_vault, self.__sw_app)
+            self.__doc_output_dialog = DocOutputDialog(self, self.__pdm_vault, self.__sw_app, self.__work_folder)
         if self.__doc_output_dialog.isVisible():
             return
         self.__doc_output_dialog.show()
@@ -594,7 +595,7 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
     def __import_part_list(self):
         DataTransport.import_data_4_parts_list(self, title='No name', database=self.__database)
 
-    def fill_import_cache(self, data_s):
+    def fill_import_cache(self, data_s, sheet_name=None):
         self.__import_cache.clear()
         self.__import_cache.extend(data_s)
 

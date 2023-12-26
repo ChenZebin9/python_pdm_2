@@ -13,6 +13,35 @@ from db.jl_erp import JL_ERP_Database
 
 class MssqlHandler(DatabaseHandler):
 
+    def update_jo_erp_foundation_info(self, _data):
+        """
+        更新钜欧的ERP基础物料数据
+        :param _data: [(erp_id, description, _unit)]
+        :return: 处理的统计结果
+        """
+        insert_c = 0
+        update_c = 0
+        no_c = 0
+        for r in _data:
+            erp_id = r[0]
+            description = r[1]
+            _unit = r[2]
+            self.__c.execute(f'SELECT * FROM [JJPart].[JoErp] WHERE [ErpId]=\'{erp_id}\'')
+            rs = self.__c.fetchall()
+            if len(rs) > 0:
+                if description != rs[0][1]:
+                    self.__c.execute(
+                        f'UPDATE [JJPart].[JoErp] SET [Description]=\'{description}\' WHERE [ErpId]=\'{erp_id}\'')
+                    update_c += 1
+                else:
+                    no_c += 1
+            else:
+                self.__c.execute(
+                    f'INSERT INTO [JJPart].[JoErp] VALUES (\'{erp_id}\', \'{description}\', \'{_unit}\')')
+                insert_c += 1
+        self.__conn.commit()
+        return f'新增{insert_c}个，更新{update_c}个，未处理{no_c}个。'
+
     def get_identical_description(self, filter_text):
         """
         根据所给的字符，获取同质单元的描述
@@ -1203,7 +1232,10 @@ class MssqlHandler(DatabaseHandler):
                    't9.[id]=pt9.[tag_id] AND t9.[parent_id]=2406 ON p.[PartID]=pt9.[part_id]'),
             2958: ('t10.[tag_name] AS storing ',
                    '[JJCom].[Tag] AS t10 INNER JOIN [JJCom].[PartTag] AS pt10 ON '
-                   't10.[id]=pt10.[tag_id] AND t10.[parent_id]=2958 ON p.[PartID]=pt10.[part_id]')
+                   't10.[id]=pt10.[tag_id] AND t10.[parent_id]=2958 ON p.[PartID]=pt10.[part_id]'),
+            4339: ('t11.[tag_name] AS jo_erp_code',
+                   '[JJCom].[Tag] AS t11 INNER JOIN [JJCom].[PartTag] AS pt11 ON '
+                   't11.[id]=pt11.[tag_id] AND t11.[parent_id]=4339 ON p.[PartID]=pt11.[part_id]')
         }
         the_display_columns = []
         from_tag_tables = []
@@ -1252,17 +1284,17 @@ class MssqlHandler(DatabaseHandler):
         # 去除可能出现的重复
         result = {}
         for t in temp:
-            id = t[0]
-            if id in result:
-                original_info = result[id]
+            _id = t[0]
+            if _id in result:
+                original_info = result[_id]
                 c = len(original_info)
                 for i in range(1, c):
                     c_i = t[i]
                     o_i = original_info[i]
                     original_info[i] = MssqlHandler.__combi(o_i, c_i)
-                result[id] = original_info
+                result[_id] = original_info
             else:
-                result[id] = list(t)
+                result[_id] = list(t)
         return result
 
     def get_tag_id(self, name, parent_name=None):
@@ -1297,23 +1329,23 @@ class MssqlHandler(DatabaseHandler):
     def get_tags(self, tag_id=None, name=None, parent_id=None):
         if tag_id is None and name is None and parent_id is None:
             # 找出没有父标签的标签
-            sql = 'SELECT * FROM JJCom.Tag WHERE parent_id is NULL AND id > 0 ORDER BY id'
+            sql = 'SELECT * FROM [JJCom].[Tag] WHERE [parent_id] is NULL AND [id] > 0 ORDER BY [sort_index]'
         else:
-            sql = 'SELECT * FROM JJCom.Tag WHERE'
+            sql = 'SELECT * FROM [JJCom].[Tag] WHERE'
             factor = False
             if tag_id is not None:
-                sql = '{1} id={0}'.format(tag_id, sql)
+                sql = '{1} [id]={0}'.format(tag_id, sql)
                 factor = True
             if name is not None:
                 if factor:
                     sql += ' AND'
-                sql = '{1} tag_name LIKE \'%{0}%\''.format(name, sql)
+                sql = '{1} [tag_name] LIKE \'%{0}%\''.format(name, sql)
                 factor = True
             if parent_id is not None:
                 if factor:
                     sql += ' AND'
-                sql = '{1} parent_id={0}'.format(parent_id, sql)
-            sql += ' ORDER BY sort_index, id'
+                sql = '{1} [parent_id]={0}'.format(parent_id, sql)
+            sql += ' ORDER BY [sort_index], [id]'
         self.__c.execute(sql)
         return self.__c.fetchall()
 

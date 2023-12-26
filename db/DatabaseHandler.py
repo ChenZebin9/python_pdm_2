@@ -9,6 +9,7 @@ class DatabaseHandler( metaclass=ABCMeta ):
         获取数据库的类型名称
         :return: str; MSSQL 或 SQLite
         """
+        pass
 
     @abstractmethod
     def get_parts(self, part_id=None, name=None, english_name=None, description=None):
@@ -214,6 +215,15 @@ class DatabaseHandler( metaclass=ABCMeta ):
     def update_zd_erp_foundation_info(self, _data):
         """
         更新中德的ERP基础物料数据
+        :param _data: [(erp_id, description, _unit)]
+        :return: 处理的统计结果
+        """
+        pass
+
+    @abstractmethod
+    def update_jo_erp_foundation_info(self, _data):
+        """
+        更新钜欧的ERP基础物料数据
         :param _data: [(erp_id, description, _unit)]
         :return: 处理的统计结果
         """

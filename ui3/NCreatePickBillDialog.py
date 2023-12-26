@@ -369,7 +369,7 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
                 else:
                     self.done(-1)
             elif except_type == 1:
-                resp = QMessageBox.question(self, '数量异常', str(ex), QMessageBox.Ok | QMessageBox.No, QMessageBox.No)
+                resp = QMessageBox.question(self, '数量异常', str(ex), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if resp == QMessageBox.Yes:
                     self.__special_mark[record_index] = 0
                 else:

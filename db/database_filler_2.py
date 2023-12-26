@@ -321,6 +321,14 @@ for r in rs:
     t_c.execute( sql, CN( r ) )
 print( '完成 JJPart_ZdErp' )
 
+# JJPart_JoErp
+c.execute( 'SELECT * FROM [JJPart].[JoErp]' )
+rs = c.fetchall()
+for r in rs:
+    sql = f'INSERT INTO [JJPart_JoErp] VALUES (?,?,?)'
+    t_c.execute( sql, CN( r ) )
+print( '完成 JJPart_JoErp' )
+
 # JJPart_JlErp
 unit_list = (
     "付", "套", "件", "个", "片", "块", "台", "条", "支", "粒", "公斤", "米",

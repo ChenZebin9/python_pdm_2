@@ -9,11 +9,12 @@ ECHO **** Finish Create.
 SET TEMP_PATH = D:\setup_rom\python_temp\PDM_2
 SET EXE_PATH = D:\setup_rom\python_pdm_2\PDM_2
 
-COPY D:\setup_rom\python_temp\PDM_2\PDM_2.exe D:\setup_rom\python_pdm_2\PDM_2
+COPY D:\setup_rom\python_temp\PDM_2\PDM_2.exe D:\setup_rom\python_apps\PDM_2
 ECHO Delete Cache
 RD /s %CD%\build
 ECHO **** Finish Delete.
 EXIT
+ECHO End of Update
 
 ECHO Copy other components
 XCOPY %CD%\dlls D:\setup_rom\python_pdm_2\PDM_2\dlls /D/E/-Y

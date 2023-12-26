@@ -87,7 +87,7 @@ if __name__ == '__main__':
     """ app = QApplication(sys.argv) 要放置在最前面，否则会出现许多可怪的问题。 """
     app = QApplication(sys.argv)
 
-    version = '1.6.2.18'
+    version = '1.6.3.4'
 
     config = configparser.ConfigParser()
     if not config.read('pdm_config.ini', encoding='GBK'):
@@ -104,6 +104,7 @@ if __name__ == '__main__':
             mode = 0
         else:
             mode = 1
+    database_setting = Get_mssql_config(config, lock_mode=mode)
 
     icon = QIcon()
     icon.addPixmap(QPixmap('OPS_ING_MMI.ico'), QIcon.Normal, QIcon.Off)
@@ -125,24 +126,23 @@ if __name__ == '__main__':
         database_handler: DatabaseHandler = None
 
         try:
+            import clr
+
+            clr.FindAssembly('dlls/EpdmLib.dll')
+            clr.AddReference('dlls/EpdmLib')
+            from EpdmLib import *
+
             local_folder = config.get('Offline', 'local_folder')
             work_folder = None
             user_name = None
             vault = None
-            solidWorks_app = None
+            solidWorks_app = SolidWorksApi()
             to_offline = False
 
             if mode == 0:
                 try:
-                    import clr
-
-                    clr.FindAssembly('dlls/EpdmLib.dll')
-                    clr.AddReference('dlls/EpdmLib')
-                    from EpdmLib import *
-
                     vault_name = config.get('Online', 'vault')
                     vault = EpdmLib(vault_name)
-                    solidWorks_app = SolidWorksApi()
                     user_name = vault.GetUserName()
                     work_folder = vault.GetRootFolder()
                     database_handler = MssqlHandler(*database_setting[1:])
@@ -165,7 +165,7 @@ if __name__ == '__main__':
                     database_handler = MssqlHandler(*database_setting[1:])
             myWin = NPartMainWindow(database=database_handler, username=user_name,
                                     work_folder=work_folder, pdm_vault=vault, mode=mode,
-                                    local_folder=local_folder)
+                                    local_folder=local_folder, host=database_setting[1])
             myWin.setWindowIcon(icon)
             myWin.add_config(solidWorks_app, init_config.db_name)
             myWin.show()
@@ -202,15 +202,18 @@ if __name__ == '__main__':
 
         user_name = config.get('Offline', 'userName')
         assigned_material_dir = config.get('MaterialSupply', 'assigned_dir')
-        purchase_plan_dir = config.get('MaterialSupply','purchase_plan_dir')
+        purchase_plan_dir = config.get('MaterialSupply', 'purchase_plan_dir')
         product_list = config.get('MaterialSupply', 'product_list')
+        work_position = config.get('PositionDefine', 'available_pos')
+        ref_position = config.get('PositionDefine', 'ref_pos')
         if mode == 0:
             database = MssqlHandler(*database_setting[1:])
         else:
             database_file = config.get('Offline', 'database_file')
             database = SqliteHandler(database_file)
         theDialog = NAssemblyToolWindow(parent=None, database=database, user=user_name, dir=assigned_material_dir,
-                                        product=product_list, plan=purchase_plan_dir)
+                                        product=product_list, plan=purchase_plan_dir, position=work_position,
+                                        ref_storing=ref_position)
         theDialog.setWindowIcon(icon)
         theDialog.show()
         sys.exit(app.exec_())
@@ -246,4 +249,6 @@ if __name__ == '__main__':
 1.6.2.8 2023.04.27 完全转至Greatoo_Ops库的工作模式。
 1.6.2.11 2023.06.16 增加了双击DWG文件时的FTP关联。
 1.6.2.16 2023.07.15 增加了生产配料管理模块，生产前预分配的功能。改善了配件在库，但已分配的功能。
+
+1.6.3.0 2023.07.29 更新为主要以钜欧仓库进行配料管理。
 """

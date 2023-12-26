@@ -12,6 +12,34 @@ from db.DatabaseHandler import *
 
 class SqliteHandler(DatabaseHandler):
 
+    def update_jo_erp_foundation_info(self, _data):
+        """
+        更新钜欧的ERP基础物料数据
+        :param _data: [(erp_id, description, _unit)]
+        :return: 处理的统计结果
+        """
+        insert_c = 0
+        update_c = 0
+        no_c = 0
+        for r in _data:
+            erp_id = r[0]
+            description = r[1]
+            _unit = r[2]
+            self.__c.execute(f'SELECT * FROM [JJPart_JoErp] WHERE [ErpId]=\'{erp_id}\'')
+            rs = self.__c.fetchall()
+            if len(rs) > 0:
+                if description != rs[0][1]:
+                    self.__c.execute(
+                        f'UPDATE [JJPart_JoErp] SET [Description]=\'{description}\' WHERE [ErpId]=\'{erp_id}\'')
+                    update_c += 1
+                else:
+                    no_c += 1
+            else:
+                self.__c.execute(f'INSERT INTO [JJPart_JoErp] VALUES (\'{erp_id}\', \'{description}\', \'{_unit}\')')
+                insert_c += 1
+        self.__conn.commit()
+        return f'新增{insert_c}个，更新{update_c}个，未处理{no_c}个。'
+
     def edit_part_to_identical_group(self, fun_id, part_id, grade=6, add_action=True):
         """
         一个零件对于同质组的操作，加入或移除
@@ -433,7 +461,10 @@ class SqliteHandler(DatabaseHandler):
                    't9.[id]=pt9.[tag_id] AND t9.[parent_id]=2406) ON p.[PartID]=pt9.[part_id]'),
             2958: ('t10.[tag_name] AS storing ',
                    '([JJCom_Tag] AS t10 INNER JOIN [JJCom_PartTag] AS pt10 ON '
-                   't10.[id]=pt10.[tag_id] AND t10.[parent_id]=2958) ON p.[PartID]=pt10.[part_id]')
+                   't10.[id]=pt10.[tag_id] AND t10.[parent_id]=2958) ON p.[PartID]=pt10.[part_id]'),
+            4339: ('t11.[tag_name] AS jo_erp_code',
+                   '([JJCom_Tag] AS t11 INNER JOIN [JJCom_PartTag] AS pt11 ON '
+                   't11.[id]=pt11.[tag_id] AND t11.[parent_id]=4339) ON p.[PartID]=pt11.[part_id]')
         }
         the_display_columns = []
         from_tag_tables = []
@@ -1116,7 +1147,7 @@ class SqliteHandler(DatabaseHandler):
     def get_tags(self, tag_id=None, name=None, parent_id=None):
         if tag_id is None and name is None and parent_id is None:
             # 找出没有父标签的标签
-            sql = 'SELECT * FROM [JJCom_Tag] WHERE [parent_id] IS NULL AND [id] > 0 ORDER BY [id]'
+            sql = 'SELECT * FROM [JJCom_Tag] WHERE [parent_id] IS NULL AND [id] > 0 ORDER BY [sort_index]'
         else:
             sql = 'SELECT * FROM [JJCom_Tag] WHERE'
             factor = False

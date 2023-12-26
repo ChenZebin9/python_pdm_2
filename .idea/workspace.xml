@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="修改成Material Tab之前。">
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+    <list default="true" id="16ac7f1f-b2a3-469f-b6d6-dcbceb47caf5" name="Default" comment="转变为钜欧的工作环境。">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Com.py" beforeDir="false" afterPath="$PROJECT_DIR$/Com.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Entry.py" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Entry.spec" beforeDir="false" afterPath="$PROJECT_DIR$/Entry.spec" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UiFrame.py" beforeDir="false" afterPath="$PROJECT_DIR$/UiFrame.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/DatabaseHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/DatabaseHandler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/MssqlHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/MssqlHandler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/SqliteHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/SqliteHandler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db/database_filler_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/db/database_filler_2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dlls/EpdmLib.dll" beforeDir="false" afterPath="$PROJECT_DIR$/dlls/EpdmLib.dll" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/file_version_info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/file_version_info.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pdm_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/pdm_config.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyinstaller_setup.bat" beforeDir="false" afterPath="$PROJECT_DIR$/pyinstaller_setup.bat" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rt_config.db" beforeDir="false" afterPath="$PROJECT_DIR$/rt_config.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/NImportSettingDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NImportSettingDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/DocOutputDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/DocOutputDialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/NPartMainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NPartMainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/NSetDefaultTagDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/NSetDefaultTagDialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NCreatePickBillDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui3/NHandlePickMaterialDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui3/NHandlePickMaterialDialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui4/AssemblyToolWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/AssemblyToolWindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui4/AssemblyToolWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/AssemblyToolWindow.ui" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/NAssemblyToolWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui4/NReplaceItemInExcelDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/NReplaceItemInExcelDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui4/ReplaceItemInExcelDialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/ReplaceItemInExcelDialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui4/ReplaceItemInExcelDialog.ui" beforeDir="false" afterPath="$PROJECT_DIR$/ui4/ReplaceItemInExcelDialog.ui" afterDir="false" />
     </list>
     <list id="c94801ca-76b8-4067-801c-611b98218bd5" name="no change" comment="" />
     <list id="f6384629-2289-462f-ba66-139d2ac8a6b4" name="在变基之前未提交的更改 [Default]" comment="" />
@@ -71,6 +75,9 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="ProjectErrors" />
+  </component>
   <component name="ProjectId" id="1PQ3zzPYQCnCcZwQKmq69BBTrH5" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <ConfirmationsSetting value="1" id="Add" />
@@ -83,7 +90,7 @@
   &quot;keyToString&quot;: {
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/BaiduSyncdisk/OneDrive/Program/Python/python_pdm_2&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/BaiduSyncdisk/OneDrive/Program/Python/python_pdm_2/dlls&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;preferences.externalTools&quot;
   }
 }</component>
@@ -92,6 +99,7 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\BaiduSyncdisk\OneDrive\Program\Python\python_pdm_2\dlls" />
       <recent name="D:\微云同步助手\360311890\OneDrive\Program\Python\python_pdm_2" />
       <recent name="E:\OneDrive\OneDrive\Program\Python\python_pdm_2\db" />
       <recent name="D:\Documents\OneDrive\Program\Python\python_pdm_2" />
@@ -424,7 +432,14 @@
       <option name="project" value="LOCAL" />
       <updated>1688480058492</updated>
     </task>
-    <option name="localTasksCounter" value="27" />
+    <task id="LOCAL-00027" summary="转变为钜欧的工作环境。">
+      <created>1690616899537</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1690616899537</updated>
+    </task>
+    <option name="localTasksCounter" value="28" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -473,7 +488,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="增加了一个part_tag_view的视图。" />
     <MESSAGE value="初步完成Native PDM的操作。" />
     <MESSAGE value="实现了基本的查询功能。" />
     <MESSAGE value="实现了技术文档的输出功能。&#10;能进行后台的输出，而不是主程序卡顿。" />
@@ -498,12 +512,13 @@
     <MESSAGE value="优化了、改正了读取并更新FTP文件的功能。&#10;改进了输出材料清单的功能。" />
     <MESSAGE value="增加了修改Excel文件清单的工件。" />
     <MESSAGE value="修改成Material Tab之前。" />
-    <option name="LAST_COMMIT_MESSAGE" value="修改成Material Tab之前。" />
+    <MESSAGE value="转变为钜欧的工作环境。" />
+    <option name="LAST_COMMIT_MESSAGE" value="转变为钜欧的工作环境。" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
       <configuration name="PythonConfigurationType">
-        <watch expression="p.part_id" language="Python" />
+        <watch expression="f" />
       </configuration>
     </watches-manager>
   </component>

@@ -165,14 +165,14 @@ class PartInfoPanel(QFrame):
             key_item = self.tagTableWidget.item(i, 0)
             the_key = key_item.text()
             tag_dict[the_key] = value_text
-        return self.part_id, self.nameLineEdit.text().strip(), self.englishNameLineEdit.text().strip(),\
+        return self.part_id, self.nameLineEdit.text().strip(), self.englishNameLineEdit.text().strip(), \
                self.descriptionLineEdit.text().strip(), self.commentTextEdit.toPlainText().strip(), tag_dict
 
 
 # noinspection PyUnresolvedReferences
 class PartInfoPanelInMainWindow(QFrame):
 
-    def __init__(self, parent=None, work_folder=None, database=None, is_offline=False, mode=-1):
+    def __init__(self, parent=None, work_folder=None, database=None, is_offline=False, mode=-1, host='191.1.6.103'):
         # 当前被选定的 part
         self.__current_part = None
         self.__work_folder = work_folder
@@ -183,6 +183,7 @@ class PartInfoPanelInMainWindow(QFrame):
         self.__current_select_tag = None
         self.__mode = mode
         self.__no_ftp = False  # 不使用FTP的模式
+        self.__host = host
         # 本地文件的存放路径，当为 None 时，表示不访问本地图纸。
         self.__local_path = None
         super().__init__(parent)
@@ -537,6 +538,7 @@ class PartInfoPanelInMainWindow(QFrame):
             QMessageBox.warning(self.__parent, '移除文件链接时出错', str(ex))
 
     def __open_file(self, item: QListWidgetItem):
+        ftp = None
         try:
             file_type_tuple = ('.SLDDRW', '.DOC', '.DOCX', '.PDF', '.XLS', '.XLSX', '.DWG', '.DXF')
             file_name = item.text()
@@ -551,23 +553,50 @@ class PartInfoPanelInMainWindow(QFrame):
                     the_file = []
                     # 通过FTP查找文件
                     version_alarm = file_version is None
-                    ftp = None
-                    if not self.__no_ftp:
-                        ftp = FTP()
-                        ftp.connect(host='191.1.6.103', port=21, timeout=5.0)
-                        ftp.login(user='ftp_reader', passwd='5678')
-                        ftp.encoding = 'GB2312'
-                        ftp.cwd('/pdm')
-                        all_files = ftp.nlst('.')
-                    else:
-                        all_files = os.listdir(self.__local_path)
-                    for f in all_files:
-                        if f.startswith(part_num) and os.path.splitext(f)[1].upper() == '.PDF':
-                            the_file.append(f)
-                            one_file_name = os.path.splitext(f)[0]
-                            if file_version is not None:
-                                if one_file_name > file_version:
-                                    version_alarm = False
+                    second_check = False
+                    while True:
+                        if (not self.__no_ftp) and (not second_check):
+                            ftp = FTP()
+                            ftp.connect(host=self.__host, port=21, timeout=5.0)
+                            ftp.login(user='ftp_reader', passwd='5678')
+                            ftp.encoding = 'GB2312'
+                            ftp.cwd('/pdm')
+                            all_files = ftp.nlst('.')
+                            files_from_ftp = True
+                        else:
+                            all_files = os.listdir(self.__local_path)
+                            files_from_ftp = False
+                        for f in all_files:
+                            if f.startswith(part_num) and os.path.splitext(f)[1].upper() == '.PDF':
+                                the_file.append(f)
+                                one_file_name = os.path.splitext(f)[0]
+                                if file_version is not None:
+                                    if one_file_name > file_version:
+                                        version_alarm = False
+                        if len(the_file) < 1 and files_from_ftp:
+                            # 对本地PDF文件进行再次查找
+                            second_check = True
+                        elif len(the_file) > 0:
+                            break
+                        elif second_check and len(the_file) < 1:
+                            # 本地的PDF文件也查不到
+                            break
+                    if second_check and (len(the_file) > 0) and (not files_from_ftp) and (not self.__no_ftp):
+                        # ftp 查不到，但在本地文件夹存在
+                        resp = QMessageBox.question(self.__parent, '询问',
+                                                    'FTP服务器中无法找到，但本地文件夹却有。是否上传本地文件？',
+                                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                        if resp == QMessageBox.Yes:
+                            ftp.login('ftp_user', passwd='1234')
+                            ftp.encoding = 'GB2312'
+                            ftp.cwd('/pdm')
+                            # 上传文件
+                            for f in the_file:
+                                full_path = '{0}\\{1}'.format(self.__local_path, f)
+                                with open(full_path, 'rb') as _file:
+                                    ftp.storbinary(f'STOR {f}', _file)
+                            _l = len(the_file)
+                            self.__parent.set_status_bar_text(f'上传{part_num}了的{_l}个文件。')
                     # 进行本地PDF文件的查找
                     open_pdf = True
                     check_last_version = version_alarm and len(the_file) > 0
@@ -610,6 +639,9 @@ class PartInfoPanelInMainWindow(QFrame):
             self.__no_ftp = True
         except Exception as e:
             QMessageBox.critical(self.__parent, '打开时出错', str(e), QMessageBox.Ok)
+        finally:
+            if ftp is not None:
+                ftp.close()
 
     def set_vault(self, vault):
         self.__vault = vault
@@ -1589,11 +1621,12 @@ class PartTablePanel(QFrame):
                     self.partList.setItem(index, column_index + 2, record_date_item)
                     del record_date_item
                     unit_price_item = QTableWidgetItem()
-                    the_price = None
+                    s_the_price = ''
                     unit_price = addition_storage_data[index][3]
                     if unit_price is not None:
                         the_price = float(unit_price)
-                    unit_price_item.setData(Qt.DisplayRole, the_price)
+                        s_the_price = '%.2f'.format(the_price)
+                    unit_price_item.setData(Qt.DisplayRole, s_the_price)
                     self.partList.setItem(index, column_index + 3, unit_price_item)
                     del unit_price_item
             index += 1
@@ -1683,7 +1716,8 @@ class PartTablePanel(QFrame):
                     self.partList.setItem(index, column_index, position_item)
                     del position_item
                     qty_item = QTableWidgetItem()
-                    qty_item.setData(Qt.DisplayRole, p.qty)
+                    qty_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignRight)
+                    qty_item.setData(Qt.DisplayRole, "{:,.1f}".format(p.qty))
                     self.partList.setItem(index, column_index + 1, qty_item)
                     del qty_item
                     record_date_item = QTableWidgetItem()
@@ -1693,10 +1727,12 @@ class PartTablePanel(QFrame):
                     self.partList.setItem(index, column_index + 2, record_date_item)
                     del record_date_item
                     unit_price_item = QTableWidgetItem()
-                    the_price = None
+                    unit_price_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    s_the_price = ''
                     if p.unit_price is not None:
                         the_price = float(p.unit_price)
-                    unit_price_item.setData(Qt.DisplayRole, the_price)
+                        s_the_price = "{:,.2f}".format(the_price)
+                    unit_price_item.setData(Qt.DisplayRole, s_the_price)
                     self.partList.setItem(index, column_index + 3, unit_price_item)
                     del unit_price_item
                     column_index += 4

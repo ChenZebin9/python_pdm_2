@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['Entry.py'],
-             pathex=['D:\\weiyun\\OneDrive\\Program\\Python\\python_pdm_2'],
+             pathex=['D:\\BaiduSyncdisk\\OneDrive\\Program\\Python\\python_pdm_2'],
              binaries=[],
              datas=[],
              hiddenimports=[],

@@ -73,11 +73,13 @@
      <property name="title">
       <string>导入仓储数据</string>
      </property>
+     <addaction name="importJoStoringAction"/>
      <addaction name="importZdStoringAction"/>
      <addaction name="importJlStoringAction"/>
      <addaction name="separator"/>
      <addaction name="importSiteStoringAction"/>
     </widget>
+    <addaction name="importJoFoundationDataAction"/>
     <addaction name="importZdFoundationDataAction"/>
     <addaction name="separator"/>
     <addaction name="menu_6"/>
@@ -197,6 +199,22 @@
   <action name="readProductListAction">
    <property name="text">
     <string>打开产品清单</string>
+   </property>
+  </action>
+  <action name="importJoStoringAction">
+   <property name="text">
+    <string>钜欧仓库...</string>
+   </property>
+   <property name="iconText">
+    <string>钜欧仓库可用库存</string>
+   </property>
+   <property name="toolTip">
+    <string>钜欧仓库可用库存</string>
+   </property>
+  </action>
+  <action name="importJoFoundationDataAction">
+   <property name="text">
+    <string>导入钜欧物料基础数据…</string>
    </property>
   </action>
  </widget>

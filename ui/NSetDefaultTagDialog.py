@@ -6,7 +6,7 @@ import sqlite3
 
 class NSetDefaultDialog(QDialog, Ui_Dialog):
 
-    __select_resource = [1, 15, 16, 266, 1288, 2064]
+    __select_resource = [1, 15, 16, 266, 1288, 2064, 4339]
 
     def __init__(self, parent=None, database=None, config_file=None):
         self.__parent = parent
