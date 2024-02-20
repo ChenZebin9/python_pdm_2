@@ -58,6 +58,7 @@
      <addaction name="pickupFromZdAction"/>
      <addaction name="pickupFromJlAction"/>
      <addaction name="pickupFromSiteAction"/>
+     <addaction name="pickupFromJoAction"/>
     </widget>
     <addaction name="calculationMaterialAction"/>
     <addaction name="calculateThrListAction"/>
@@ -84,6 +85,8 @@
     <addaction name="separator"/>
     <addaction name="menu_6"/>
     <addaction name="modifyStockAction"/>
+    <addaction name="separator"/>
+    <addaction name="createAssignedListAction"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
@@ -215,6 +218,26 @@
   <action name="importJoFoundationDataAction">
    <property name="text">
     <string>导入钜欧物料基础数据…</string>
+   </property>
+  </action>
+  <action name="pickupFromJoAction">
+   <property name="text">
+    <string>钜欧...</string>
+   </property>
+  </action>
+  <action name="assignMaterialSiteAction">
+   <property name="text">
+    <string>现场</string>
+   </property>
+  </action>
+  <action name="assignMaterialJoStoringAction">
+   <property name="text">
+    <string>钜欧仓库</string>
+   </property>
+  </action>
+  <action name="createAssignedListAction">
+   <property name="text">
+    <string>生成预分配清单...</string>
    </property>
   </action>
  </widget>

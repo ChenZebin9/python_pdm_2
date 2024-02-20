@@ -13,6 +13,39 @@ from db.jl_erp import JL_ERP_Database
 
 class MssqlHandler(DatabaseHandler):
 
+    def suppress_part(self, part_id):
+        """
+        抑制零件，即将零件设置为未启用状态
+        :param part_id:
+        :return:
+        """
+        sql = f'UPDATE [JJPart].[Part] SET [StatusType]=0 WHERE [PartID]={part_id}'
+        self.__c.execute(sql)
+
+    def roll_back(self):
+        if self.__conn is not None:
+            self.__conn.rollback()
+
+    def link_part_image(self, part_id, ref_part_id) -> int:
+        """
+        将两个零件的图形，互为链接
+        :param part_id: 要沿用其它零件的图形的ID
+        :param ref_part_id: 要被沿用图形的零件
+        :return: 被引用的零件号
+        """
+        # 查找该零件是否是引用
+        self.__c.execute(f'SELECT [RefPartId] FROM [JJPart].[PartRefThumbnail] WHERE [PartId]={ref_part_id}')
+        rs = self.__c.fetchall()
+        if len(rs) > 0:
+            self.__c.execute(f'INSERT INTO [JJPart].[PartRefThumbnail] VALUES ({part_id}, {rs[0][0]})')
+            return rs[0][0]
+        self.__c.execute(f'SELECT [PartId], [Version] FROM [JJPart].[PartThumbnail] WHERE [PartId]={ref_part_id}')
+        rs = self.__c.fetchall()
+        if len(rs) < 1:
+            raise Exception(f'{ref_part_id}不存在缩略图。')
+        self.__c.execute(f'INSERT INTO [JJPart].[PartRefThumbnail] VALUES ({part_id}, {ref_part_id})')
+        return ref_part_id
+
     def update_jo_erp_foundation_info(self, _data):
         """
         更新钜欧的ERP基础物料数据
@@ -257,14 +290,16 @@ class MssqlHandler(DatabaseHandler):
         self.__conn.commit()
 
     def update_part_storing(self, part_id, qty, storage_position, _date, unit_price):
-        sql = f'SELECT [Qty] FROM [JJStorage].[Storing] WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
+        sql = f'SELECT [Qty] FROM [JJStorage].[Storing] ' \
+              f'WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
         self.__c.execute(sql)
         r_s = self.__c.fetchall()
         if len(r_s) < 1:
             sql = f'INSERT INTO [JJStorage].[Storing] VALUES ' \
                   f'({part_id}, \'{storage_position}\', {qty}, \'{_date}\', {unit_price})'
         else:
-            sql = f'UPDATE [JJStorage].[Storing] SET [Qty]={qty}, [LastRecordDate]=\'{_date}\', UnitPrice={unit_price} ' \
+            sql = f'UPDATE [JJStorage].[Storing] SET [Qty]={qty}, [LastRecordDate]=\'{_date}\', ' \
+                  f'UnitPrice={unit_price} ' \
                   f'WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
         self.__c.execute(sql)
         self.__conn.commit()
@@ -351,9 +386,20 @@ class MssqlHandler(DatabaseHandler):
         return r[0]
 
     def clean_part_thumbnail(self, part_id):
+        search_ref = f'SELECT [PartId] FROM [JJPart].[PartRefThumbnail] WHERE [RefPartId]={part_id}'
+        self.__c.execute(search_ref)
+        rs = self.__c.fetchall()
+        if len(rs) > 0:
+            pp = []
+            for r in rs:
+                pp.append(str(r[0]))
+            pp_str = ','.join(pp)
+            raise Exception(f'{part_id} 的缩略图被 {pp_str} 所引用，无法清除。')
+        delete_link = f'DELETE FROM [JJPart].[PartRefThumbnail] WHERE [PartId]={part_id}'
+        self.__c.execute(delete_link)
         delete_sql = f'DELETE FROM [JJPart].[PartThumbnail] WHERE [PartId]={part_id}'
         self.__c.execute(delete_sql)
-        self.__conn.commit()
+        # self.__conn.commit()
 
     def set_part_thumbnail(self, part_id, image_data):
         """
@@ -611,7 +657,6 @@ class MssqlHandler(DatabaseHandler):
                 self.__conn.commit()
 
     def set_part_id_2_prepared(self, part_id):
-        # TODO 有可能
         sql = f'UPDATE [JJPart].[Part] SET [StatusType]=10 WHERE [PartID]={part_id}'
         self.__c.execute(sql)
         self.__conn.commit()
@@ -709,9 +754,13 @@ class MssqlHandler(DatabaseHandler):
                             for r in rs:
                                 if r[0] == 'A':
                                     rr.append(r)
-                        else:
+                        elif actual_storage == 'D' or actual_storage == 'E':
                             for r in rs:
                                 if r[0] == 'D' or r[0] == 'E':
+                                    rr.append(r)
+                        else:
+                            for r in rs:
+                                if r[0] == 'J':
                                     rr.append(r)
                         for r in rr:
                             qty_sum += r[1]
@@ -1033,11 +1082,17 @@ class MssqlHandler(DatabaseHandler):
         else:
             return r_s
 
-    def get_erp_info(self, erp_code, jl_erp=False):
-        if jl_erp and self.__jl_erp_database is None:
+    def get_erp_info(self, erp_code, which_erp=0):
+        """
+        通过物料编码，获取物料信息
+        :param which_erp: 0 - 中德，1 - 巨轮，2 - 钜欧
+        :param erp_code: 物料编码，一个“00.00.00.0000”格式的字符串
+        :return: [物料编码，物料描述，单位] or None
+        """
+        if which_erp == 1 and self.__jl_erp_database is None:
             self.__jl_erp_database = JL_ERP_Database()
-        if not jl_erp:
-            table_name = '[JJPart].[ZdErp]'
+        if which_erp == 0 or which_erp == 2:
+            table_name = '[JJPart].[ZdErp]' if which_erp == 0 else '[JJPart].[JoErp]'
             column_name = 'ErpId'
             sql = f'SELECT * FROM {table_name} WHERE {column_name}=\'{erp_code}\''
             self.__c.execute(sql)
@@ -1388,12 +1443,19 @@ class MssqlHandler(DatabaseHandler):
         return result
 
     def get_thumbnail_2_part(self, part_id, ver=None):
-        sql = 'SELECT Thumbnail, Version FROM JJPart.PartThumbnail ' \
-              'WHERE PartId={0} ORDER BY Version DESC'.format(part_id)
+        sql = 'SELECT [Thumbnail], [Version] FROM [JJPart].[PartThumbnail] ' \
+              'WHERE [PartId]={0} ORDER BY [Version] DESC'.format(part_id)
         self.__c.execute(sql)
         rs = self.__c.fetchall()
         if len(rs) < 1:
-            return None
+            # 查看是否有参考的图片
+            sql = 'SELECT p.[Thumbnail], p.[Version] FROM [JJPart].[PartThumbnail] AS p INNER JOIN ' \
+                  '[JJPart].[PartRefThumbnail] AS r ON p.[PartId]=r.[RefPartId] WHERE r.[PartId]={0} ' \
+                  'ORDER BY p.[Version] DESC'.format(part_id)
+            self.__c.execute(sql)
+            rs = self.__c.fetchall()
+            if len(rs) < 1:
+                return None
         return rs[0][0]
 
     def get_children(self, part_id):

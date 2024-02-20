@@ -19,16 +19,16 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
                 'O', 'P', 'Q', 'R', 'S', 'T',
                 'U', 'V', 'W', 'X', 'Y', 'Z')
 
-    def __init__(self, parent, database: DatabaseHandler):
+    def __init__(self, parent, database: DatabaseHandler, is_zd=False):
         super(NReplaceItemInExcelDialog, self).__init__(parent)
         self.__database: DatabaseHandler = database
         self.__columns = (
-            '序号', '名称', '描述', '数量', '类别', '品牌', '标准', '巨轮中德ERP物料编码', '巨轮智能ERP物料编码',
-            '外部编码',
-            '来源', '单位', '产品', '配料策略', '统计策略')
+            '序号', '名称', '描述', '数量', '类别', '品牌', '标准', '钜欧ERP物料编码', '巨轮中德ERP物料编码',
+            '巨轮智能ERP物料编码', '外部编码', '来源', '单位', '产品', '配料策略', '统计策略')
         self.__mode_widget_group = []
         self.__project_1_mode = {1: 0, 2: 1, 3: 2, 4: 4, 5: 6, 6: 5, 7: 9, 8: 7, 9: 10, 10: 13, 11: 3, 12: 11}
         self.__project_2_mode = {1: 0, 2: 1, 3: 2, 4: 5, 5: 6, 6: 11, 7: 3, 8: 7, 12: 4, 13: 13}
+        self.__is_zd = is_zd
         self.setup_ui()
 
     def setup_ui(self):
@@ -139,7 +139,7 @@ class NReplaceItemInExcelDialog(QDialog, Ui_Dialog):
                     p: Part = ps[0]
                     part_dict[p] = part_qty
             part_id_format = '{:08d}'.format(part_id)
-            dialog = PartSelectDialog(self, self.__database, part_dict)
+            dialog = PartSelectDialog(self, self.__database, part_dict, is_zd=self.__is_zd)
             dialog.setWindowTitle(f'选择替代 <{part_id_format}> 的零件')
             resp = dialog.exec_()
             if resp != QDialog.Accepted:

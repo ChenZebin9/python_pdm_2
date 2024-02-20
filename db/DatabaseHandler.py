@@ -239,10 +239,10 @@ class DatabaseHandler( metaclass=ABCMeta ):
         pass
 
     @abstractmethod
-    def get_erp_info(self, erp_code, jl_erp=False):
+    def get_erp_info(self, erp_code, which_erp=0):
         """
         通过物料编码，获取物料信息
-        :param jl_erp: 是不是巨轮智能的ERP编号
+        :param which_erp: 0 - 中德，1 - 巨轮，2 - 钜欧
         :param erp_code: 物料编码，一个“00.00.00.0000”格式的字符串
         :return: [物料编码，物料描述，单位] or None
         """
@@ -550,6 +550,33 @@ class DatabaseHandler( metaclass=ABCMeta ):
         :param fun_id:
         :param part_id:
         :param add_action: True - 加入，False - 移除
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def link_part_image(self, part_id, ref_part_id) -> int:
+        """
+        将两个零件的图形，互为链接
+        :param part_id: 要沿用其它零件的图形的ID
+        :param ref_part_id: 要被沿用图形的零件
+        :return: 真正被引用的图形对应的零件号
+        """
+        pass
+
+    @abstractmethod
+    def roll_back(self):
+        """
+        回滚
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def suppress_part(self, part_id):
+        """
+        抑制零件，即将零件设置为未启用状态
+        :param part_id:
         :return:
         """
         pass

@@ -12,6 +12,38 @@ from db.DatabaseHandler import *
 
 class SqliteHandler(DatabaseHandler):
 
+    def suppress_part(self, part_id):
+        """
+        抑制零件，即将零件设置为未启用状态
+        :param part_id:
+        :return:
+        """
+        sql = f'UPDATE [JJPart_Part] SET [StatusType]=0 WHERE [PartID]={part_id}'
+        self.__c.execute(sql)
+
+    def link_part_image(self, part_id, ref_part_id) -> int:
+        """
+        将两个零件的图形，互为链接
+        :param part_id: 要沿用其它零件的图形的ID
+        :param ref_part_id: 要被沿用图形的零件
+        :return: 被引用的零件号
+        """
+        # 查找该零件是否是引用
+        self.__c.execute(f'SELECT [RefPartId] FROM [JJPart_PartRefThumbnail] WHERE [PartId]={ref_part_id}')
+        rs = self.__c.fetchall()
+        if len(rs) > 0:
+            self.__c.execute(f'INSERT INTO [JJPart_PartRefThumbnail] VALUES ({part_id}, {rs[0][0]})')
+            return rs[0][0]
+        self.__c.execute(f'SELECT [PartId], [Version] FROM [JJPart_PartThumbnail] WHERE [PartId]={ref_part_id}')
+        rs = self.__c.fetchall()
+        if len(rs) < 1:
+            raise Exception(f'{ref_part_id}不存在缩略图。')
+        self.__c.execute(f'INSERT INTO [JJPart_PartRefThumbnail] VALUES ({part_id}, {ref_part_id})')
+        return ref_part_id
+
+    def roll_back(self):
+        self.__conn.rollback()
+
     def update_jo_erp_foundation_info(self, _data):
         """
         更新钜欧的ERP基础物料数据
@@ -242,15 +274,17 @@ class SqliteHandler(DatabaseHandler):
         self.__conn.commit()
 
     def update_part_storing(self, part_id, qty, storage_position, _date, unit_price):
-        sql = f'SELECT [Qty] FROM [JJStorage_Storing] WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
+        sql = f'SELECT [Qty] FROM [JJStorage_Storing] ' \
+              f'WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
         self.__c.execute(sql)
         r_s = self.__c.fetchall()
         if len(r_s) < 1:
             sql = f'INSERT INTO [JJStorage_Storing] VALUES ' \
                   f'({part_id}, \'{storage_position}\', {qty}, \'{_date}\', {unit_price})'
         else:
-            sql = f'UPDATE [JJStorage_Storing] SET [Qty]={qty}, [LastRecordDate]=\'{_date}\', UnitPrice={unit_price} ' \
-                  f'WHERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
+            sql = f'UPDATE [JJStorage_Storing] SET [Qty]={qty}, [LastRecordDate]=\'{_date}\', ' \
+                  f'UnitPrice={unit_price} ' \
+                  f'HERE [PartId]={part_id} AND [Position]=\'{storage_position}\''
         self.__c.execute(sql)
         self.__conn.commit()
 
@@ -327,7 +361,7 @@ class SqliteHandler(DatabaseHandler):
               'r.[DoneQty], r.[Comment], r.[Id] AS [RecordId] FROM [JJStorage_SupplyOperationRecord] AS r ' \
               'INNER JOIN [JJStorage_KbnSupplyItem] AS i ON r.[LinkItem]=i.[ItemId] ' \
               'WHERE r.[Process]=14'
-        sql += f' AND r.[DoingDate]>=\'{begin_date}\' AND r.[DoingDate]<=\'{end_date}\''
+        sql += f' AND strftime(\'%Y/%m/%d\', r.[DoingDate]) BETWEEN \'{begin_date}\' AND \'{end_date}\''
         self.__c.execute(sql)
         rs = self.__c.fetchall()
         if len(rs) < 1:
@@ -335,7 +369,84 @@ class SqliteHandler(DatabaseHandler):
         return rs
 
     def create_put_back_material_record(self, bill_name, operator, when, data):
-        pass
+        """
+        创建退料的操作数据
+        :param when: 日期
+        :param bill_name: 单号
+        :param operator: 操作者
+        :param data: 数据 [退料所倚靠的单号]
+        :return:
+        """
+        # 创建退料单
+        try:
+            sql = f'INSERT INTO [JJStorage_OperationBill] VALUES (\'{bill_name}\', \'{operator}\', \'{when}\', ' \
+                  f'\'退料单\', 0)'
+            self.__c.execute(sql)
+            # 创建退料单的项目
+            sql = 'SELECT MAX([Id]) FROM [JJStorage_SupplyOperationRecord]'
+            self.__c.execute(sql)
+            r = self.__c.fetchone()
+            next_record_id = r[0] + 1
+            for d in data:
+                sql = f'SELECT [LinkItem], [DoneQty], [Comment] FROM [JJStorage_SupplyOperationRecord] WHERE [Id]={d}'
+                self.__c.execute(sql)
+                r = self.__c.fetchone()
+                other_data_dict = Com.str_2_dict(r[2])
+                other_data_dict['RollBack'] = 'Y'
+                # 更新原有的纪录
+                new_comment = Com.dict_2_str(other_data_dict)
+                sql = f'UPDATE [JJStorage_SupplyOperationRecord] SET [Comment]=\'{new_comment}\' WHERE [Id]={d}'
+                self.__c.execute(sql)
+                to_update_storing_qty = True
+                if 'FromStorage' in other_data_dict.keys():
+                    the_storage = other_data_dict['FromStorage']
+                    if 'X' in the_storage:
+                        to_update_storing_qty = False
+                if to_update_storing_qty:
+                    # 创建新的数据
+                    other_data_dict.pop('RollBack')
+                    other_data_dict['OriginalRecord'] = f'{d}'
+                    price = 0.0
+                    price_need_update = False
+                    if 'Price' in other_data_dict:
+                        price_need_update = True
+                        price = float(other_data_dict['Price'])
+                        price = -price
+                        other_data_dict['Price'] = '%.2f' % price
+                    new_comment = Com.dict_2_str(other_data_dict)
+                    qty = float(-r[1])
+                    sql = f'INSERT INTO [JJStorage_SupplyOperationRecord] VALUES ({next_record_id}, 1, \'{when}\', ' \
+                          f'\'{operator}\', 14, {r[0]}, {qty}, \'{bill_name}\', {qty}, \'{new_comment}\')'
+                    self.__c.execute(sql)
+                    # 更新仓储信息
+                    sql = f'SELECT [PartId] FROM [JJStorage_KbnSupplyItem] WHERE [ItemId]={r[0]}'
+                    self.__c.execute(sql)
+                    r = self.__c.fetchone()
+                    p_id = r[0]
+                    position = other_data_dict['FromStorage']
+                    # 获取库存信息
+                    get_storing = f'SELECT [Qty], [UnitPrice] FROM [JJStorage_Storing] ' \
+                                  f'WHERE [PartId]={p_id} AND [Position]=\'{position}\''
+                    self.__c.execute(get_storing)
+                    r = self.__c.fetchone()
+                    if r is None:
+                        return
+                    qty_info = float(r[0])
+                    unit_price = float(r[1])
+                    if price_need_update:
+                        updated_price = (qty_info * unit_price + price) / (qty_info + qty)
+                    else:
+                        updated_price = unit_price
+                    # 更新仓库库存
+                    update_storing = f'UPDATE [JJStorage_Storing] ' \
+                                     f'SET [Qty]={qty_info - qty}, [LastRecordDate]=\'{when}\', [UnitPrice]={updated_price} ' \
+                                     f'WHERE [PartId]={p_id} AND [Position]=\'{position}\''
+                    self.__c.execute(update_storing)
+                    next_record_id += 1
+            self.__conn.commit()
+        except Exception as ex:
+            self.__conn.rollback()
+            raise ex
 
     def cancel_material_requirement(self, item_id, cancel_qty, change_doing=False):
         sql = f'SELECT [DoneQty], [DoingQty] FROM [JJStorage_KbnSupplyItem] WHERE [ItemId]={item_id}'
@@ -377,9 +488,20 @@ class SqliteHandler(DatabaseHandler):
         self.__conn.commit()
 
     def clean_part_thumbnail(self, part_id):
+        search_ref = f'SELECT [PartId] FROM [JJPart_PartRefThumbnail] WHERE [RefPartId]={part_id}'
+        self.__c.execute(search_ref)
+        rs = self.__c.fetchall()
+        if len(rs) > 0:
+            pp = []
+            for r in rs:
+                pp.append(str(r[0]))
+            pp_str = ','.join(pp)
+            raise Exception(f'{part_id} 的缩略图被 {pp_str} 所引用，无法清除。')
+        delete_link = f'DELETE FROM [JJPart_PartRefThumbnail] WHERE [PartId]={part_id}'
+        self.__c.execute(delete_link)
         delete_sql = f'DELETE FROM [JJPart_PartThumbnail] WHERE [PartId]={part_id}'
         self.__c.execute(delete_sql)
-        self.__conn.commit()
+        # self.__conn.commit()
 
     def get_last_supply_record_link(self, this_id):
         select_sql = f'SELECT [LastId] FROM [JJStorage_SupplyRecordLink] WHERE [ThisId]={this_id}'
@@ -748,7 +870,6 @@ class SqliteHandler(DatabaseHandler):
         Items - [Contract - str, PartId - int, ErpId - str, Qty - float, RecordIndex - int]
         :return:
         """
-        # TODO 参考 MssqlHandler 的方式进行修改
         bill_name = data[0]
         operator = data[1]
         the_date = data[2]
@@ -1000,9 +1121,20 @@ class SqliteHandler(DatabaseHandler):
         else:
             return r_s
 
-    def get_erp_info(self, erp_code, jl_erp=False):
-        table_name = 'JJPart_ZdErp' if not jl_erp else 'JJPart_JlErp'
-        column_name = 'ErpId' if not jl_erp else 'ErpCode'
+    def get_erp_info(self, erp_code, which_erp=0):
+        """
+        通过物料编码，获取物料信息
+        :param which_erp: 0 - 中德，1 - 巨轮，2 - 钜欧
+        :param erp_code: 物料编码，一个“00.00.00.0000”格式的字符串
+        :return: [物料编码，物料描述，单位] or None
+        """
+        if which_erp == 0:
+            table_name = 'JJPart_ZdErp'
+        elif which_erp == 1:
+            table_name = 'JJPart_JlErp'
+        else:
+            table_name = 'JJPart_JoErp'
+        column_name = 'ErpId' if which_erp != 1 else 'ErpCode'
         sql = f'SELECT * FROM [{table_name}] WHERE [{column_name}]=\'{erp_code}\''
         self.__c.execute(sql)
         r_s = self.__c.fetchall()
@@ -1220,7 +1352,14 @@ class SqliteHandler(DatabaseHandler):
         self.__c.execute(sql)
         rs = self.__c.fetchall()
         if len(rs) < 1:
-            return None
+            # 查看是否有参考的图片
+            sql = 'SELECT p.[Thumbnail], p.[Version] FROM [JJPart_PartThumbnail] AS p INNER JOIN ' \
+                  '[JJPart_PartRefThumbnail] AS r ON p.[PartId]=r.[RefPartId] WHERE r.[PartId]={0} ' \
+                  'ORDER BY p.[Version] DESC'.format(part_id)
+            self.__c.execute(sql)
+            rs = self.__c.fetchall()
+            if len(rs) < 1:
+                return None
         return rs[0][0]
 
     def get_children(self, part_id):

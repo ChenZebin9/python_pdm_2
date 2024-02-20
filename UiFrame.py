@@ -20,6 +20,7 @@ import Com
 from Part import Part, DoStatistics, Tag
 from db.DatabaseHandler import DatabaseHandler
 from ui.MyTreeWidget import MyTreeWidget2
+from DataTransport import *
 
 
 class PartInfoPanel(QFrame):
@@ -221,6 +222,7 @@ class PartInfoPanelInMainWindow(QFrame):
         """ 图形显示的右键菜单 """
         self.__menu_4_image_label = QMenu(parent=self.imageLabel)
         self.__capture_image = self.__menu_4_image_label.addAction('截图')
+        self.__ref_image = self.__menu_4_image_label.addAction('沿用')
         self.__clean_image = self.__menu_4_image_label.addAction('清除')
         self.__export_image = self.__menu_4_image_label.addAction('导出')
         self.imageLabel.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -228,6 +230,7 @@ class PartInfoPanelInMainWindow(QFrame):
         self.__capture_image.triggered.connect(self.__do_image_capture)
         self.__clean_image.triggered.connect(self.__do_image_clean)
         self.__export_image.triggered.connect(self.__do_image_export)
+        self.__ref_image.triggered.connect(self.__use_existed_image)
 
         """ 链接文件的右键菜单 """
         self.__current_file_item = None
@@ -280,6 +283,34 @@ class PartInfoPanelInMainWindow(QFrame):
         self.partInfo.tagListWidget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.partInfo.tagListWidget.customContextMenuRequested.connect(self.__on_custom_context_menu_requested)
 
+    def __use_existed_image(self):
+        """
+        沿用已存在的图片
+        :return:
+        """
+        try:
+            current_part_id = self.__current_part.get_part_id()
+            used_part_id, ok = QInputDialog.getInt(self.__parent, '输入', '要沿用的零件号')
+            if not ok:
+                return
+            img_data = self.__database.get_thumbnail_2_part(current_part_id)
+            do_change = False
+            if img_data is not None:
+                resp = QMessageBox.question(self.__parent, '确认', '原零件已经有图形了，是否进行设置？',
+                                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if resp == QMessageBox.Yes:
+                    self.__database.clean_part_thumbnail(current_part_id)
+                    do_change = True
+            else:
+                do_change = True
+            if do_change:
+                ref_part_id = self.__database.link_part_image(current_part_id, used_part_id)
+                self.__database.save_change()
+                QMessageBox.information(self.__parent, '', f'最终参考了{ref_part_id}零件的图形。')
+        except Exception as ex:
+            QMessageBox.warning(self.__parent, '沿用图形时异常', ex.__str__())
+            self.__database.roll_back()
+
     def __do_image_capture(self):
         """ 进行屏幕的框选截图 """
         # 将主窗口最小化
@@ -306,8 +337,13 @@ class PartInfoPanelInMainWindow(QFrame):
                                     QMessageBox.No)
         if resp == QMessageBox.No:
             return
-        self.__database.clean_part_thumbnail(self.__current_part.get_part_id())
-        self.imageLabel.clear()
+        try:
+            self.__database.clean_part_thumbnail(self.__current_part.get_part_id())
+            self.imageLabel.clear()
+            self.__database.save_change()
+        except Exception as ex:
+            QMessageBox.warning(self.__parent, '清除缩略图时异常', ex.__str__())
+            self.__database.roll_back()
 
     def __do_image_export(self):
         if not self.__part_image_set:
@@ -315,7 +351,7 @@ class PartInfoPanelInMainWindow(QFrame):
             return
         the_image = self.imageLabel.pixmap()
         image_2_export = the_image.scaled(300, 300, Qt.KeepAspectRatio, Qt.FastTransformation)
-        t = QFileDialog.getSaveFileName(self.__parent, '保存图片', '', 'BMP(*.bmp)')
+        t = QFileDialog.getSaveFileName(self.__parent, '保存图片', f'{self.__current_part.part_id}.bmp', 'BMP(*.bmp)')
         filename = t[0]
         if filename is not None and len(filename) > 0:
             image_2_export.save(filename, format='BMP')
@@ -703,6 +739,7 @@ class ChildrenTablePanel(QFrame):
         self.__ready_2_replace_r_id = -1
         self.childrenTableWidget = QTableWidget(self)
         self.addItemButton = QPushButton(self)
+        self.importItemsButton = QPushButton(self)
         self.replaceItemButton = QPushButton(self)
         self.deleteItemButton = QPushButton(self)
         self.sortItemButton = QPushButton(self)
@@ -717,11 +754,13 @@ class ChildrenTablePanel(QFrame):
 
     def __init_ui(self):
         self.addItemButton.setText('添加')
+        self.importItemsButton.setText('导入')
         self.replaceItemButton.setText('替代')
         self.deleteItemButton.setText('删除')
         self.sortItemButton.setText('排序')
         self.saveAllItemsButton.setText('保存')
         self.addItemButton.setEnabled(False)
+        self.importItemsButton.setEnabled(False)
         self.replaceItemButton.setEnabled(False)
         self.deleteItemButton.setEnabled(False)
         self.sortItemButton.setEnabled(False)
@@ -733,6 +772,7 @@ class ChildrenTablePanel(QFrame):
         v_box.setAlignment(Qt.AlignTop)
         if self.__mode == 0:  # 表示是子项目清单
             v_box.addWidget(self.addItemButton)
+            v_box.addWidget(self.importItemsButton)
             v_box.addWidget(self.replaceItemButton)
             v_box.addWidget(self.deleteItemButton)
             v_box.addWidget(self.sortItemButton)
@@ -740,6 +780,7 @@ class ChildrenTablePanel(QFrame):
             v_box.addWidget(self.editModeCheckBox)
         else:
             self.addItemButton.setVisible(False)
+            self.importItemsButton.setVisible(False)
             self.replaceItemButton.setVisible(False)
             self.deleteItemButton.setVisible(False)
             self.sortItemButton.setVisible(False)
@@ -754,6 +795,7 @@ class ChildrenTablePanel(QFrame):
         # 按键的动作响应
         self.go2ItemButton.clicked.connect(self.__go_2_part)
         self.addItemButton.clicked.connect(self.__add_2_part_list)
+        self.importItemsButton.clicked.connect(self.__import_parts_2_list)
         self.replaceItemButton.clicked.connect(self.__replace_item)
         self.deleteItemButton.clicked.connect(self.__remove_from_part_list)
         self.sortItemButton.clicked.connect(self.__sort_part_list)
@@ -820,6 +862,7 @@ class ChildrenTablePanel(QFrame):
                 # 填入一行的数据
                 index_item = QTableWidgetItem()
                 index_item.setData(Qt.DisplayRole, next_index)
+                index_item.setTextAlignment(Qt.AlignCenter)
                 id_item = QTableWidgetItem(p.part_id)
                 id_item.setFlags(id_item.flags() & ~Qt.ItemIsEditable)
                 name_item = QTableWidgetItem(p.name)
@@ -831,10 +874,10 @@ class ChildrenTablePanel(QFrame):
                 comment_item = QTableWidgetItem()
                 qty_1_item = QTableWidgetItem()
                 qty_1_item.setData(Qt.DisplayRole, 1.0)
-                qty_1_item.setTextAlignment(Qt.AlignHCenter)
+                qty_1_item.setTextAlignment(Qt.AlignCenter)
                 qty_2_item = QTableWidgetItem()
                 qty_2_item.setData(Qt.DisplayRole, 1.0)
-                qty_2_item.setTextAlignment(Qt.AlignHCenter)
+                qty_2_item.setTextAlignment(Qt.AlignCenter)
                 self.childrenTableWidget.setItem(target_row, 0, index_item)
                 self.childrenTableWidget.setItem(target_row, 1, id_item)
                 self.childrenTableWidget.setItem(target_row, 2, name_item)
@@ -849,6 +892,85 @@ class ChildrenTablePanel(QFrame):
         QTableWidget.resizeRowsToContents(self.childrenTableWidget)
         self.__parent.set_status_bar_text(f'添加了{next_index}子项目。')
         self.__update_data_silence = False
+
+    def __import_parts_2_list(self):
+        """
+        批量导入子项目
+        :return:
+        """
+        DataTransport.import_children_2_parts_list(self, title='选择清单文件', database=self.__database)
+
+    def fill_import_cache(self, _data, sheet_name) -> None:
+        """
+        处理要批量导入的子项目
+        :param _data:
+        :param sheet_name:
+        :return:
+        """
+        if len(_data) < 1:
+            return
+        self.__update_data_silence = True
+        try:
+            target_row = self.childrenTableWidget.rowCount()
+            if target_row > 0:
+                jj: QTableWidgetItem = self.childrenTableWidget.item(0, 0)
+                jj_text = jj.text()
+                next_index = int(jj_text)
+                for i in range(1, target_row):
+                    jj: QTableWidgetItem = self.childrenTableWidget.item(i, 0)
+                    jj_text = jj.text()
+                    pre_next_index = int(jj_text)
+                    if next_index < pre_next_index:
+                        next_index = pre_next_index
+                next_index += 10
+            else:
+                next_index = 10
+            c = 0
+            for a_row in _data:
+                try:
+                    the_id = a_row[0]
+                    qty = a_row[1]
+                    comment = a_row[2]
+                    p = Part.get_parts(self.__database, part_id=the_id)[0]
+                    p.get_tags(self.__database)
+                    self.childrenTableWidget.insertRow(target_row)
+                    # 填入一行的数据
+                    index_item = QTableWidgetItem()
+                    index_item.setData(Qt.DisplayRole, next_index)
+                    index_item.setTextAlignment(Qt.AlignCenter)
+                    id_item = QTableWidgetItem(p.part_id)
+                    id_item.setFlags(id_item.flags() & ~Qt.ItemIsEditable)
+                    name_item = QTableWidgetItem(p.name)
+                    name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)
+                    status_item = QTableWidgetItem(p.status)
+                    status_item.setFlags(status_item.flags() & ~Qt.ItemIsEditable)
+                    description_item = QTableWidgetItem(p.description)
+                    description_item.setFlags(description_item.flags() & ~Qt.ItemIsEditable)
+                    comment_item = QTableWidgetItem(comment)
+                    qty_1_item = QTableWidgetItem()
+                    qty_1_item.setData(Qt.DisplayRole, qty)
+                    qty_1_item.setTextAlignment(Qt.AlignCenter)
+                    qty_2_item = QTableWidgetItem()
+                    qty_2_item.setData(Qt.DisplayRole, qty)
+                    qty_2_item.setTextAlignment(Qt.AlignCenter)
+                    self.childrenTableWidget.setItem(target_row, 0, index_item)
+                    self.childrenTableWidget.setItem(target_row, 1, id_item)
+                    self.childrenTableWidget.setItem(target_row, 2, name_item)
+                    self.childrenTableWidget.setItem(target_row, 3, description_item)
+                    self.childrenTableWidget.setItem(target_row, 4, qty_1_item)
+                    self.childrenTableWidget.setItem(target_row, 5, qty_2_item)
+                    self.childrenTableWidget.setItem(target_row, 6, status_item)
+                    self.childrenTableWidget.setItem(target_row, 7, comment_item)
+                    target_row += 1
+                    next_index += 1
+                    c += 1
+                except Exception as ex:
+                    self.__parent.set_status_bar_text(f'异常：{ex.__str__()}')
+            QTableWidget.resizeColumnsToContents(self.childrenTableWidget)
+            QTableWidget.resizeRowsToContents(self.childrenTableWidget)
+            QMessageBox.information(self, '导入完成', f'添加了{c}个子项目。')
+        finally:
+            self.__update_data_silence = False
 
     def __replace_item(self):
         if self.__ready_2_replace_r_id > 0:
@@ -875,6 +997,7 @@ class ChildrenTablePanel(QFrame):
                 self.deleteItemButton.setText('删除')
                 self.__ready_2_replace_r_id = -1
                 self.addItemButton.setEnabled(True)
+                self.importItemsButton.setEnabled(True)
                 self.sortItemButton.setEnabled(True)
                 self.saveAllItemsButton.setEnabled(True)
                 self.go2ItemButton.setEnabled(True)
@@ -896,6 +1019,7 @@ class ChildrenTablePanel(QFrame):
                         self.replaceItemButton.setText('执行替代')
                         self.deleteItemButton.setText('取消替代')
                         self.addItemButton.setEnabled(False)
+                        self.importItemsButton.setEnabled(False)
                         self.sortItemButton.setEnabled(False)
                         self.saveAllItemsButton.setEnabled(False)
                         self.go2ItemButton.setEnabled(False)
@@ -921,6 +1045,7 @@ class ChildrenTablePanel(QFrame):
             self.deleteItemButton.setText('删除')
             self.__ready_2_replace_r_id = -1
             self.addItemButton.setEnabled(True)
+            self.importItemsButton.setEnabled(True)
             self.sortItemButton.setEnabled(True)
             self.saveAllItemsButton.setEnabled(True)
             self.go2ItemButton.setEnabled(True)
@@ -999,6 +1124,7 @@ class ChildrenTablePanel(QFrame):
         # 编辑模式的相应函数
         self.__parent.set_children_list_edit_mode(is_edit_mode)
         self.addItemButton.setEnabled(is_edit_mode)
+        self.importItemsButton.setEnabled(is_edit_mode)
         self.replaceItemButton.setEnabled(is_edit_mode)
         self.deleteItemButton.setEnabled(is_edit_mode)
         self.sortItemButton.setEnabled(is_edit_mode)
@@ -1072,6 +1198,7 @@ class ChildrenTablePanel(QFrame):
             index_item.setData(Qt.DisplayRole, r[0])
             p = r[1]
             id_item = QTableWidgetItem(p.part_id)
+            id_item.setTextAlignment(Qt.AlignCenter)
             # 保存 PartRelationID
             id_item.setData(Qt.UserRole, r[4])
             name_item = QTableWidgetItem(p.name)
@@ -1080,11 +1207,11 @@ class ChildrenTablePanel(QFrame):
             comment_item = QTableWidgetItem(p.comment)
             qty_1_item = QTableWidgetItem()
             qty_1_item.setData(Qt.DisplayRole, r[2])
-            qty_1_item.setTextAlignment(Qt.AlignHCenter)
+            qty_1_item.setTextAlignment(Qt.AlignCenter)
             qty_2_item = QTableWidgetItem()
             qty_2_item.setData(Qt.DisplayRole, r[3])
             qty_2_item.setData(Qt.UserRole, r[4])
-            qty_2_item.setTextAlignment(Qt.AlignHCenter)
+            qty_2_item.setTextAlignment(Qt.AlignCenter)
             self.childrenTableWidget.setItem(index, 0, index_item)
             self.childrenTableWidget.setItem(index, 1, id_item)
             self.childrenTableWidget.setItem(index, 2, name_item)
@@ -1765,7 +1892,6 @@ class PartTablePanel(QFrame):
         self.__sort_flags[column_index] = sort_flags
 
     def __fill_one_cell(self, row_index, column_index, data):
-        # TODO 改成list的模式
         cc = column_index
         for d in data:
             item = QTableWidgetItem(d)
@@ -1938,7 +2064,12 @@ class PartStructurePanel(QFrame):
             cc.addChildren(nodes)
         self.__structureTree.resizeColumnToContents(0)
 
-    def __select_part(self):
+    def __select_part(self, do_action=False):
+        """
+        选择零件时的操作
+        :param do_action: 强制执行
+        :return:
+        """
         item = self.__structureTree.currentItem()
         if item is None:
             return
@@ -1946,7 +2077,7 @@ class PartStructurePanel(QFrame):
         if self.__parent is not None:
             self.__parent.do_when_part_list_select(p.get_part_id())
             stat_setting = self.__parent.get_statistics_setting()
-            if stat_setting[0]:
+            if stat_setting[0] or do_action:
                 # 启动一次统计
                 if self.statistics_thread.isRunning():
                     self.__stop_above_thread_signal.emit()
@@ -1955,6 +2086,13 @@ class PartStructurePanel(QFrame):
                 self.__parent.set_status_bar_text('开始统计。')
                 self.statistics_thread.set_data(p.get_part_id(), stat_setting[1:])
                 self.statistics_thread.start()
+
+    def do_one_statistics_action(self):
+        """
+        强制进行一次统计
+        :return:
+        """
+        self.__select_part(do_action=True)
 
 
 class CostInfoPanel(QFrame):

@@ -78,7 +78,7 @@ class QtyComWidget(QWidget):
         """
         传递详细的物料预分配信息
         :param data_list:
-        :param _index: 1 - 中德，2 - 巨轮，3 - 现场
+        :param _index: 1 - 中德，2 - 巨轮，3 - 现场，4 - 钜欧
         :return:
         """
         tt = []
@@ -317,14 +317,14 @@ class MaterialTablePanel(QFrame):
     """
     2023-12-26 改为依次以现场、钜欧、中德仓储为配料参考
     """
-    # __header = ('图示', '零件号', '描述', '数量', '单位',
-    #             '中德ERP物料编号', '可用库存', '更新日期', '巨轮ERP物料编号', '可用库存', '更新日期',
-    #             '生产现场库存', '更新日期', '配料策略', '采购计划')
     __header = ('图示', '零件号', '描述', '数量', '单位',
-                '钜欧ERP物料编号', '可用库存', '更新日期', '中德ERP物料编号', '可用库存', '更新日期',
+                '中德ERP物料编号', '可用库存', '更新日期', '巨轮ERP物料编号', '可用库存', '更新日期',
                 '生产现场库存', '更新日期', '配料策略', '采购计划')
+    __header_2 = ('图示', '零件号', '描述', '数量', '单位',
+                  '钜欧ERP物料编号', '可用库存', '更新日期', '中德ERP物料编号', '可用库存', '更新日期',
+                  '生产现场库存', '更新日期', '配料策略', '采购计划')
 
-    def __init__(self, parent, database, mode=0, assigned_data=None):
+    def __init__(self, parent, database, mode=0, assigned_data=None, is_zd=None):
         """
         材料显示表格
         :param parent:
@@ -354,6 +354,8 @@ class MaterialTablePanel(QFrame):
         self.pick_up_list_file = ''
         # 清单没保存的标记
         self.table_need_save = False
+        # 代表中德合同的标志
+        self.is_zd = is_zd
         self.setup_ui()
 
     def setup_ui(self):
@@ -385,7 +387,6 @@ class MaterialTablePanel(QFrame):
             self.__append_item_action.setVisible((not on_item) and not self.in_pick_up_mode)
             self.__menu_4_table.exec_(QCursor.pos())
 
-    # noinspection PyTypeChecker
     def __change_qty_2(self):
         """
         代替 __change_qty，以钜欧为优先配料参考，2023-12-26
@@ -425,7 +426,7 @@ class MaterialTablePanel(QFrame):
             remain_qty -= vv
             w.set_value(vv)
         zd_storing_w = self.materialTableWidget.cellWidget(r, 9)
-        if jl_storing_w is not None:
+        if zd_storing_w is not None:
             w: QtyComWidget = zd_storing_w
             q = w.get_qty()
             if q >= remain_qty:
@@ -505,6 +506,7 @@ class MaterialTablePanel(QFrame):
             QTableWidget.resizeColumnsToContents(self.materialTableWidget)
         except Exception as ex:
             QMessageBox.warning(self, '错误', ex.__str__())
+            raise ex
 
     def fill_pick_datas(self, pick_datas):
         # 用领料数据进行填充
@@ -541,18 +543,24 @@ class MaterialTablePanel(QFrame):
             storing_data_s = self.__database.get_storing(part_id=p.get_part_id())
             zd_erp_id = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
             jl_erp_id = p.get_specified_tag(self.__database, '巨轮智能ERP物料编码')
+            jo_erp_id = p.get_specified_tag(self.__database, '钜欧ERP物料编码')
             w: NoWheelPinBox = self.materialTableWidget.cellWidget(i, 3)
             qty = w.value()
             remain_qty = qty  # 剩余的数量
             # 已分配的物料
-            s1 = 0.0
-            s2 = 0.0
-            s3 = 0.0
+            s1 = 0.0  # 第一仓库
+            s2 = 0.0  # 第二仓库
+            s3 = 0.0  # 现场
             if p.get_part_id() in parent_w.assigned_material_dict:
                 ss = parent_w.assigned_material_dict[p.get_part_id()]
-                s1 = ss[0]  # 中德仓库
-                s2 = ss[1]  # 巨轮仓库
-                s3 = ss[2]  # 现场
+                if self.is_zd:
+                    s1 = ss[0]  # 中德仓库
+                    s2 = ss[1]  # 巨轮仓库
+                    s3 = ss[2]  # 现场
+                else:
+                    s1 = ss[3]
+                    s2 = ss[0]
+                    s3 = ss[2]
             # 现场仓储信息
             if storing_data_s is not None:
                 s_qty = 0.
@@ -581,16 +589,16 @@ class MaterialTablePanel(QFrame):
                         u_date = datetime.datetime.fromisoformat(u_date)
                     u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
                     self.materialTableWidget.setItem(i, 12, u_date_cell)
-            # 中德ERP仓储信息
-            if zd_erp_id != '':
+            # 第一仓库仓储信息
+            if (zd_erp_id != '' and self.is_zd) or (jo_erp_id != '' and (not self.is_zd)):
                 erp_id_cell = QTableWidgetItem()
-                erp_id_cell.setData(Qt.DisplayRole, zd_erp_id)
+                erp_id_cell.setData(Qt.DisplayRole, zd_erp_id if self.is_zd else jo_erp_id)
                 self.materialTableWidget.setItem(i, 5, erp_id_cell)
                 s_qty = 0.
                 u_date = None
                 if storing_data_s is not None:
                     for r_s in storing_data_s:
-                        if r_s[1] != 'D' and r_s[1] != 'E':
+                        if (self.is_zd and r_s[1] != 'D' and r_s[1] != 'E') or ((not self.is_zd) and r_s[1] != 'J'):
                             continue
                         s_qty += r_s[2]
                         if (u_date is not None and r_s[3] > u_date) or u_date is None:
@@ -614,15 +622,15 @@ class MaterialTablePanel(QFrame):
                         u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
                         self.materialTableWidget.setItem(i, 7, u_date_cell)
             # 巨轮ERP仓储信息
-            if jl_erp_id != '':
+            if (jl_erp_id != '' and self.is_zd) or (zd_erp_id != '' and (not self.is_zd)):
                 erp_id_cell = QTableWidgetItem()
-                erp_id_cell.setData(Qt.DisplayRole, jl_erp_id)
+                erp_id_cell.setData(Qt.DisplayRole, jl_erp_id if self.is_zd else zd_erp_id)
                 self.materialTableWidget.setItem(i, 8, erp_id_cell)
                 s_qty = 0.
                 u_date = None
                 if storing_data_s is not None:
                     for r_s in storing_data_s:
-                        if r_s[1] != 'F':
+                        if (r_s[1] != 'F' and self.is_zd) or ((not self.is_zd) and r_s[1] != 'D' and r_s[1] != 'E'):
                             continue
                         s_qty += r_s[2]
                         if (u_date is not None and r_s[3] > u_date) or u_date is None:
@@ -718,212 +726,10 @@ class MaterialTablePanel(QFrame):
         self.__sort_flags[column_index] = ~sort_flags
 
     def set_header(self):
-        self.materialTableWidget.setColumnCount(len(MaterialTablePanel.__header))
-        self.materialTableWidget.setHorizontalHeaderLabels(MaterialTablePanel.__header)
-
-    def __fill_one_row_2(self, p: Part, qty, row_index, pick_datas=None):
-        """
-        代替__fill_one_row，增加一行，2023-12-26
-        :param p:
-        :param qty:
-        :param row_index:
-        :param pick_datas: (钜欧已分配， 中德已分配， 现场已分配)
-        :return:
-        """
-        i = row_index
-        original_item = self.materialTableWidget.item(row_index, 2)
-        if original_item is not None:
-            # 删除原有信息
-            self.materialTableWidget.insertRow(i)
-            self.materialTableWidget.removeRow(i + 1)
-        # 图示
-        img_data = self.__database.get_thumbnail_2_part(p.get_part_id())
-        if img_data is not None:
-            img = QPixmap()
-            img.loadFromData(img_data)
-            n_img = img.scaled(64, 64, aspectRatioMode=Qt.KeepAspectRatio)
-            img_label_w = QLabel()
-            img_label_w.setPixmap(n_img)
-            img_label_w.setAlignment(Qt.AlignCenter)
-            self.materialTableWidget.setCellWidget(i, 0, img_label_w)
-        # 零件号
-        part_id_cell = QTableWidgetItem()
-        part_id_cell.setData(Qt.DisplayRole, p.part_id)
-        self.materialTableWidget.setItem(i, 1, part_id_cell)
-        # 已分配物料的详细信息
-        a_dict = self.__parent.detail_assigned_dict if self.__mode == 0 else {}
-        part_a_detail_list = a_dict[p.get_part_id()] if p.get_part_id() in a_dict else None
-        # 描述
-        t_des_data = [p.name]
-        if p.description is not None and p.description != '':
-            t_des_data.append(p.description)
-        b = p.get_specified_tag(self.__database, '品牌')
-        s = p.get_specified_tag(self.__database, '标准')
-        if b is not None and b != '':
-            t_des_data.append(b)
-        if s is not None and s != '':
-            t_des_data.append(s)
-        des_cell = QTableWidgetItem()
-        des_cell.setData(Qt.DisplayRole, '\n'.join(t_des_data))
-        self.materialTableWidget.setItem(i, 2, des_cell)
-        # 数量
-        qty_cell_w = NoWheelPinBox()
-        qty_cell_w.setMaximum(9999.0)
-        qty_cell_w.setValue(qty)
-        qty_cell_w.setAlignment(Qt.AlignRight)
-        self.materialTableWidget.setCellWidget(i, 3, qty_cell_w)
-        if self.__mode == 0:
-            qty_cell_w.valueChanged.connect(self.__change_qty)
-            self.__spin_box_dict[qty_cell_w] = part_id_cell
-        # 单位
-        u = p.get_specified_tag(self.__database, '单位')
-        if u != '':
-            unit_cell = QTableWidgetItem()
-            unit_cell.setData(Qt.DisplayRole, u)
-            unit_cell.setTextAlignment(Qt.AlignCenter)
-            self.materialTableWidget.setItem(i, 4, unit_cell)
-        # 仓储信息
-        qty_in_storing = 0.  # 仓库里的数量
-        qty_in_site = 0.  # 现场的数量
-        storing_data_s = self.__database.get_storing(part_id=p.get_part_id())
-        zd_erp_id = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
-        jo_erp_id = p.get_specified_tag(self.__database, '钜欧ERP物料编码')
-        remain_qty = qty  # 剩余的数量
-        # 已分配的物料
-        s1 = 0.0
-        s2 = 0.0
-        s3 = 0.0
-        a_dict = self.__parent.assigned_material_dict if self.__mode == 0 else self.__local_assigned_data
-        if (a_dict is not None) and (p.get_part_id() in a_dict):
-            ss = a_dict[p.get_part_id()]
-            s1 = ss[0]  # 钜欧仓库
-            s2 = ss[1]  # 中德仓库
-            s3 = ss[2]  # 现场
-        # 现场仓储信息
-        if storing_data_s is not None:
-            s_qty = 0.
-            u_date = None
-            for r_s in storing_data_s:
-                if r_s[1] != 'A':
-                    continue
-                s_qty += r_s[2]
-                if (u_date is not None and r_s[3] > u_date) or u_date is None:
-                    u_date = r_s[3]
-            s_o_qty = s_qty
-            s_qty -= s3
-            qty_in_site += s_qty
-            if u_date is not None and s_o_qty > 0.:
-                if pick_datas is not None:
-                    vv = pick_datas[2]
-                else:
-                    if s_qty >= remain_qty:
-                        vv = remain_qty
-                    else:
-                        vv = s_qty
-                    remain_qty -= vv
-                qty_w = QtyComWidget(s_qty + s3, vv, parent=self.materialTableWidget, max_value=s_qty, a_qty=s3)
-                if part_a_detail_list is not None:
-                    qty_w.set_assigned_detail_data(part_a_detail_list, 3)
-                self.materialTableWidget.setCellWidget(i, 11, qty_w)
-                u_date_cell = QTableWidgetItem()
-                if type(u_date) == str:
-                    u_date = datetime.datetime.fromisoformat(u_date)
-                u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
-                self.materialTableWidget.setItem(i, 12, u_date_cell)
-        # 钜欧仓储信息
-        if jo_erp_id != '':
-            erp_id_cell = QTableWidgetItem()
-            erp_id_cell.setData(Qt.DisplayRole, jl_erp_id)
-            self.materialTableWidget.setItem(i, 8, erp_id_cell)
-            s_qty = 0.
-            u_date = None
-            if storing_data_s is not None:
-                for r_s in storing_data_s:
-                    if r_s[1] != 'J':
-                        continue
-                    s_qty += r_s[2]
-                    if (u_date is not None and r_s[3] > u_date) or u_date is None:
-                        u_date = r_s[3]
-                s_o_qty = s_qty
-                s_qty -= s2
-                qty_in_storing += s_qty
-                if u_date is not None and s_o_qty > 0.:
-                    if pick_datas is not None:
-                        vv = pick_datas[1]
-                    else:
-                        if s_qty >= remain_qty:
-                            vv = remain_qty
-                        else:
-                            vv = s_qty
-                        remain_qty -= vv
-                    qty_w = QtyComWidget(s_qty + s2, vv, parent=self.materialTableWidget, max_value=s_qty,
-                                         a_qty=s2)
-                    if part_a_detail_list is not None:
-                        qty_w.set_assigned_detail_data(part_a_detail_list, 2)
-                    self.materialTableWidget.setCellWidget(i, 9, qty_w)
-                    u_date_cell = QTableWidgetItem()
-                    if type(u_date) == str:
-                        u_date = datetime.datetime.fromisoformat(u_date)
-                    u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
-                    self.materialTableWidget.setItem(i, 10, u_date_cell)
-        # 中德ERP仓储信息
-        if zd_erp_id != '':
-            erp_id_cell = QTableWidgetItem()
-            erp_id_cell.setData(Qt.DisplayRole, zd_erp_id)
-            self.materialTableWidget.setItem(i, 5, erp_id_cell)
-            s_qty = 0.
-            u_date = None
-            if storing_data_s is not None:
-                for r_s in storing_data_s:
-                    if r_s[1] != 'D' and r_s[1] != 'E':
-                        continue
-                    s_qty += r_s[2]
-                    if (u_date is not None and r_s[3] > u_date) or u_date is None:
-                        u_date = r_s[3]
-                s_o_qty = s_qty
-                s_qty -= s1
-                qty_in_storing += s_qty
-                if u_date is not None and s_o_qty > 0.:
-                    if pick_datas is not None:
-                        vv = pick_datas[0]
-                    else:
-                        if s_qty >= remain_qty:
-                            vv = remain_qty
-                        else:
-                            vv = s_qty
-                        remain_qty -= vv
-                    qty_w = QtyComWidget(s_qty + s1, vv, parent=self.materialTableWidget, max_value=s_qty, a_qty=s1)
-                    if part_a_detail_list is not None:
-                        qty_w.set_assigned_detail_data(part_a_detail_list, 1)
-                    self.materialTableWidget.setCellWidget(i, 6, qty_w)
-                    u_date_cell = QTableWidgetItem()
-                    if type(u_date) == str:
-                        u_date = datetime.datetime.fromisoformat(u_date)
-                    u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
-                    self.materialTableWidget.setItem(i, 7, u_date_cell)
-        # 配料策略
-        supply_type = p.get_specified_tag(self.__database, '配料策略')
-        if supply_type != '':
-            supply_type_cell = QTableWidgetItem()
-            supply_type_cell.setData(Qt.DisplayRole, supply_type)
-            self.materialTableWidget.setItem(i, 13, supply_type_cell)
-        # 采购计划
-        plan_p: dict = self.__parent.purchase_plan
-        if plan_p is not None:
-            if zd_erp_id in plan_p:
-                pd = plan_p[zd_erp_id]
-                pd_i = []
-                for pd_j in pd:
-                    pd_i.append(f'{pd_j[0]} {pd_j[1]:.2f} {pd_j[2]:.2f}')
-                plan_cell = QTableWidgetItem()
-                plan_cell.setData(Qt.DisplayRole, '\n'.join(pd_i))
-                self.materialTableWidget.setItem(i, 14, plan_cell)
-        # 根据数量对比，改变行的颜色
-        if qty > qty_in_storing + qty_in_site:
-            part_id_cell.setBackground(QColor(255, 0, 0))
-        # 用于存储数据的单元
-        part_id_cell.setData(Qt.UserRole, (p, qty_in_storing, qty_in_site, qty))
-        self.materialTableWidget.setRowHeight(i, 66)
+        the_header = MaterialTablePanel.__header_2 if (self.is_zd is None) or (
+            not self.is_zd) else MaterialTablePanel.__header
+        self.materialTableWidget.setColumnCount(len(the_header))
+        self.materialTableWidget.setHorizontalHeaderLabels(the_header)
 
     def __fill_one_row(self, p: Part, qty, row_index, pick_datas=None):
         """
@@ -931,9 +737,20 @@ class MaterialTablePanel(QFrame):
         :param p:
         :param qty:
         :param row_index:
-        :param pick_datas: (中德已分配， 巨轮已分配， 现场已分配)
+        :param pick_datas: (第一仓库已分配， 第二仓库已分配， 现场已分配)
         :return:
         """
+        if self.is_zd is None:
+            resp = QMessageBox.question(self.__parent, '询问', '现在操作的是巨轮中德的合同吗？',
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if resp == QMessageBox.Yes:
+                self.is_zd = True
+            else:
+                self.is_zd = False
+            self.__parent.set_zd_flag(self.is_zd)
+            # if not self.is_zd:
+            #     self.__fill_one_row_2(p, qty, row_index, pick_datas)
+            #     return
         i = row_index
         original_item = self.materialTableWidget.item(row_index, 2)
         if original_item is not None:
@@ -992,17 +809,23 @@ class MaterialTablePanel(QFrame):
         storing_data_s = self.__database.get_storing(part_id=p.get_part_id())
         zd_erp_id = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
         jl_erp_id = p.get_specified_tag(self.__database, '巨轮智能ERP物料编码')
+        jo_erp_id = p.get_specified_tag(self.__database, '钜欧ERP物料编码')
         remain_qty = qty  # 剩余的数量
         # 已分配的物料
-        s1 = 0.0
-        s2 = 0.0
-        s3 = 0.0
+        s1 = 0.0  # 第一仓库
+        s2 = 0.0  # 第二仓库
+        s3 = 0.0  # 现场
         a_dict = self.__parent.assigned_material_dict if self.__mode == 0 else self.__local_assigned_data
         if (a_dict is not None) and (p.get_part_id() in a_dict):
             ss = a_dict[p.get_part_id()]
-            s1 = ss[0]  # 中德仓库
-            s2 = ss[1]  # 巨轮仓库
-            s3 = ss[2]  # 现场
+            if self.is_zd:
+                s1 = ss[0]  # 中德仓库
+                s2 = ss[1]  # 巨轮仓库
+                s3 = ss[2]  # 现场
+            else:
+                s1 = ss[3]
+                s2 = ss[0]
+                s3 = ss[2]
         # 现场仓储信息
         if storing_data_s is not None:
             s_qty = 0.
@@ -1034,16 +857,16 @@ class MaterialTablePanel(QFrame):
                     u_date = datetime.datetime.fromisoformat(u_date)
                 u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
                 self.materialTableWidget.setItem(i, 12, u_date_cell)
-        # 中德ERP仓储信息
-        if zd_erp_id != '':
+        # 第一仓库仓储信息
+        if (zd_erp_id != '' and self.is_zd) or (jo_erp_id != '' and (not self.is_zd)):
             erp_id_cell = QTableWidgetItem()
-            erp_id_cell.setData(Qt.DisplayRole, zd_erp_id)
+            erp_id_cell.setData(Qt.DisplayRole, zd_erp_id if self.is_zd else jo_erp_id)
             self.materialTableWidget.setItem(i, 5, erp_id_cell)
             s_qty = 0.
             u_date = None
             if storing_data_s is not None:
                 for r_s in storing_data_s:
-                    if r_s[1] != 'D' and r_s[1] != 'E':
+                    if (self.is_zd and r_s[1] != 'D' and r_s[1] != 'E') or ((not self.is_zd) and r_s[1] != 'J'):
                         continue
                     s_qty += r_s[2]
                     if (u_date is not None and r_s[3] > u_date) or u_date is None:
@@ -1062,23 +885,23 @@ class MaterialTablePanel(QFrame):
                         remain_qty -= vv
                     qty_w = QtyComWidget(s_qty + s1, vv, parent=self.materialTableWidget, max_value=s_qty, a_qty=s1)
                     if part_a_detail_list is not None:
-                        qty_w.set_assigned_detail_data(part_a_detail_list, 1)
+                        qty_w.set_assigned_detail_data(part_a_detail_list, 1 if self.is_zd else 4)
                     self.materialTableWidget.setCellWidget(i, 6, qty_w)
                     u_date_cell = QTableWidgetItem()
                     if type(u_date) == str:
                         u_date = datetime.datetime.fromisoformat(u_date)
                     u_date_cell.setData(Qt.DisplayRole, u_date.strftime('%Y/%m/%d'))
                     self.materialTableWidget.setItem(i, 7, u_date_cell)
-        # 巨轮ERP仓储信息
-        if jl_erp_id != '':
+        # 第二仓库仓储信息
+        if (jl_erp_id != '' and self.is_zd) or (zd_erp_id != '' and (not self.is_zd)):
             erp_id_cell = QTableWidgetItem()
-            erp_id_cell.setData(Qt.DisplayRole, jl_erp_id)
+            erp_id_cell.setData(Qt.DisplayRole, jl_erp_id if self.is_zd else zd_erp_id)
             self.materialTableWidget.setItem(i, 8, erp_id_cell)
             s_qty = 0.
             u_date = None
             if storing_data_s is not None:
                 for r_s in storing_data_s:
-                    if r_s[1] != 'F':
+                    if (r_s[1] != 'F' and self.is_zd) or ((not self.is_zd) and r_s[1] != 'D' and r_s[1] != 'E'):
                         continue
                     s_qty += r_s[2]
                     if (u_date is not None and r_s[3] > u_date) or u_date is None:
@@ -1097,7 +920,7 @@ class MaterialTablePanel(QFrame):
                         remain_qty -= vv
                     qty_w = QtyComWidget(s_qty + s2, vv, parent=self.materialTableWidget, max_value=s_qty, a_qty=s2)
                     if part_a_detail_list is not None:
-                        qty_w.set_assigned_detail_data(part_a_detail_list, 2)
+                        qty_w.set_assigned_detail_data(part_a_detail_list, 2 if self.is_zd else 1)
                     self.materialTableWidget.setCellWidget(i, 9, qty_w)
                     u_date_cell = QTableWidgetItem()
                     if type(u_date) == str:
@@ -1117,7 +940,15 @@ class MaterialTablePanel(QFrame):
                 pd = plan_p[zd_erp_id]
                 pd_i = []
                 for pd_j in pd:
-                    pd_i.append(f'{pd_j[0]} {pd_j[1]:.2f} {pd_j[2]:.2f}')
+                    bill_nr: str = pd_j[0]
+                    if self.is_zd:
+                        if bill_nr.find('ZD') >= 0 or len(bill_nr) < 1:
+                            # 只添加中德合同或没有采购合同的采购计划
+                            pd_i.append(f'{bill_nr} {pd_j[1]:.2f} {pd_j[2]:.2f}')
+                    else:
+                        if bill_nr.find('JO') >= 0 or len(bill_nr) < 1:
+                            # 只添加钜欧合同或没有采购合同的采购计划
+                            pd_i.append(f'{bill_nr} {pd_j[1]:.2f} {pd_j[2]:.2f}')
                 plan_cell = QTableWidgetItem()
                 plan_cell.setData(Qt.DisplayRole, '\n'.join(pd_i))
                 self.materialTableWidget.setItem(i, 14, plan_cell)
@@ -1132,10 +963,12 @@ class MaterialTablePanel(QFrame):
         """
         获取当前的清单
         :return: [数量不够的物料，从现场领料的物料清单，从中德仓库领料的物料清单，从巨轮仓库领料的物料清单，所有物料]
+                 [数量不够的物料，从现场领料的物料清单，从钜欧仓库领料的物料清单，从中德仓库领料的物料清单，所有物料]
         """
         pick_from_site = []  # 拿现场的物料 (part, erp_id, qty)
         pick_from_zd_storage = []  # 拿中德仓库的物料
         pick_from_jl_storage = []  # 拿巨轮机器人仓库的物料
+        pick_from_jo_storage = []  # 拿钜欧仓库的物料
         all_material = []  # 所有物料 (part, qty, available_qty)
         qty_not_enough = 0
         row_c = self.materialTableWidget.rowCount()
@@ -1152,14 +985,26 @@ class MaterialTablePanel(QFrame):
             if w is not None and w.value() > 0.:
                 pick_from_site.append((dd[0], '', w.value()))
             w = self.materialTableWidget.cellWidget(i, 6)
-            if w is not None and w.value() > 0.:
-                zd_erp_id = self.materialTableWidget.item(i, 5).data(Qt.DisplayRole)
-                pick_from_zd_storage.append((dd[0], zd_erp_id, w.value()))
-            w = self.materialTableWidget.cellWidget(i, 9)
-            if w is not None and w.value() > 0.:
-                jl_erp_id = self.materialTableWidget.item(i, 8).data(Qt.DisplayRole)
-                pick_from_jl_storage.append((dd[0], jl_erp_id, w.value()))
-        return qty_not_enough, pick_from_site, pick_from_zd_storage, pick_from_jl_storage, all_material
+            if self.is_zd:
+                if w is not None and w.value() > 0.:
+                    zd_erp_id = self.materialTableWidget.item(i, 5).data(Qt.DisplayRole)
+                    pick_from_zd_storage.append((dd[0], zd_erp_id, w.value()))
+                w = self.materialTableWidget.cellWidget(i, 9)
+                if w is not None and w.value() > 0.:
+                    jl_erp_id = self.materialTableWidget.item(i, 8).data(Qt.DisplayRole)
+                    pick_from_jl_storage.append((dd[0], jl_erp_id, w.value()))
+            else:
+                if w is not None and w.value() > 0.:
+                    jo_erp_id = self.materialTableWidget.item(i, 5).data(Qt.DisplayRole)
+                    pick_from_jo_storage.append((dd[0], jo_erp_id, w.value()))
+                w = self.materialTableWidget.cellWidget(i, 9)
+                if w is not None and w.value() > 0.:
+                    zd_erp_id = self.materialTableWidget.item(i, 8).data(Qt.DisplayRole)
+                    pick_from_zd_storage.append((dd[0], zd_erp_id, w.value()))
+        if self.is_zd:
+            return qty_not_enough, pick_from_site, pick_from_zd_storage, pick_from_jl_storage, all_material
+        else:
+            return qty_not_enough, pick_from_site, pick_from_jo_storage, pick_from_zd_storage, all_material
 
     def fill_data(self, parts_dict):
         if self.__mode == 0:
@@ -1182,14 +1027,16 @@ class MaterialTablePanel(QFrame):
 
 class PartSelectDialog(QDialog, BlankDialog):
 
-    def __init__(self, parent, database, _data, assigned_data=None, purchase_plan=None):
+    def __init__(self, parent, database, _data, assigned_data=None, purchase_plan=None, is_zd=False):
         super(PartSelectDialog, self).__init__(parent)
         self.__database = database
         self.__data = _data
         self.__assigned_data = assigned_data
         self.purchase_plan = purchase_plan
         self.selected_data = None
+        self.is_zd = is_zd
         self.selected_table = MaterialTablePanel(self, database, mode=1, assigned_data=assigned_data)
+        self.selected_table.is_zd = self.is_zd
         self.setup_ui()
         self.data_init(_data)
 
@@ -1218,6 +1065,16 @@ class PartSelectDialog(QDialog, BlankDialog):
         self.selected_data = (d_data[0], qty)
         self.done(QDialog.Accepted)
 
+    def set_zd_flag(self, is_zd):
+        """
+        设置是否为中德生产订单的flags，并更新所有tab的标志
+        :param is_zd:
+        :return:
+        """
+        self.is_zd = is_zd
+        self.selected_table.is_zd = is_zd
+        self.selected_table.set_header()
+
 
 class GetPurchasePlan(QThread):
     finish_signal = pyqtSignal(int, str)  # 完成信号
@@ -1233,9 +1090,11 @@ class GetPurchasePlan(QThread):
 
     def run(self) -> None:
         # 获取采购技术数据
+        f = None
         try:
-            self.purchase_plan.clear()
             files = os.listdir(self.__dir)
+            self.purchase_plan.clear()
+            bill_code_dict = {}
             for f in files:
                 dot_index = f.rindex('.')
                 file_type = f[dot_index:]
@@ -1244,7 +1103,6 @@ class GetPurchasePlan(QThread):
                 full_path = os.path.join(self.__dir, f)
                 wb = load_workbook(full_path, read_only=True, data_only=True)
                 ws_s = wb.sheetnames
-                bill_code_dict = {}
                 # 收集数据，去除采购计划中，重复的数据
                 for s in ws_s:
                     ws = wb[s]
@@ -1273,37 +1131,42 @@ class GetPurchasePlan(QThread):
                         else:
                             bill_code_dict[bill_code] = (produce_bill, req_qty, pur_qty, income_qty)
                         r_i += 1
-                # 分析数据
-                for k in bill_code_dict.keys():
-                    d_data = bill_code_dict[k]
-                    erp_id = k[-13:]
-                    produce_bill = d_data[0]
-                    req_qty = d_data[1]
-                    pur_qty = d_data[2]
-                    income_qty = d_data[3]
-                    if income_qty >= req_qty and income_qty >= pur_qty:
-                        continue
-                    need_pur_qty = req_qty - max(pur_qty, income_qty)
-                    pur_qty = pur_qty - income_qty
-                    if erp_id in self.purchase_plan:
-                        ll = self.purchase_plan[erp_id]
-                        if produce_bill in ll:
-                            dd = ll[produce_bill]
-                            ll[produce_bill] = (dd[0] + need_pur_qty, dd[1] + pur_qty)
-                        else:
-                            ll[produce_bill] = (need_pur_qty, pur_qty)
+            # 分析数据
+            # 此时的 temp_plan_data，数据结构为：
+            # --> {ERP物料编码: {生产订单号: (已投料数量, 已采购数量)}} 注意，两重dict，便于计算。
+            temp_plan_data = {}
+            for k in bill_code_dict.keys():
+                d_data = bill_code_dict[k]
+                erp_id = k[-13:]
+                produce_bill = d_data[0]
+                req_qty = d_data[1]
+                pur_qty = d_data[2]
+                income_qty = d_data[3]
+                if income_qty >= req_qty and income_qty >= pur_qty:
+                    continue
+                need_pur_qty = req_qty - max(pur_qty, income_qty)
+                pur_qty = pur_qty - income_qty
+                if erp_id in temp_plan_data:
+                    ll = temp_plan_data[erp_id]
+                    if produce_bill in ll:
+                        dd = ll[produce_bill]
+                        ll[produce_bill] = (dd[0] + need_pur_qty, dd[1] + pur_qty)
                     else:
-                        self.purchase_plan[erp_id] = {produce_bill: (need_pur_qty, pur_qty)}
-                for k in self.purchase_plan.keys():
-                    dd = self.purchase_plan[k]
-                    nd = []
-                    for d in dd.keys():
-                        ndd = dd[d]
-                        nd.append((d, ndd[0], ndd[1]))
-                    self.purchase_plan[k] = nd
+                        ll[produce_bill] = (need_pur_qty, pur_qty)
+                else:
+                    temp_plan_data[erp_id] = {produce_bill: (need_pur_qty, pur_qty)}
+            # 此时的 purchase_plan，数据结构为：
+            # --> {ERP物料编码：[生产订单号, 已投料数量, 已采购数量]} 注意，原有的dict，变成了list
+            for k in temp_plan_data.keys():
+                dd = temp_plan_data[k]
+                nd = []
+                for d in dd.keys():
+                    ndd = dd[d]
+                    nd.append((d, ndd[0], ndd[1]))
+                self.purchase_plan[k] = nd
             self.finish_signal.emit(len(self.purchase_plan), 'Done.')
         except Exception as ex:
-            self.finish_signal.emit(-1, f'分析采购计划时异常 -> {ex.__str__()}')
+            self.finish_signal.emit(-1, f'分析文件{f}采购计划时，异常 -> {ex.__str__()}')
 
 
 # noinspection PyUnresolvedReferences
@@ -1312,6 +1175,8 @@ class MaterialTab(QWidget):
     def __init__(self, parent, database, **other):
         super(MaterialTab, self).__init__(parent)
         self.__dir = other['_dir'] if '_dir' in other else None
+        # 判断是中德合同，还是钜欧合同
+        self.is_zd = other['_is_zd'] if '_is_zd' in other else None
         self.__database = database
         self.__parent = parent
         # 在可用库存中，已分配的清单文件列表
@@ -1322,7 +1187,7 @@ class MaterialTab(QWidget):
         self.__menu_4_list = QMenu(parent=self.assigned_list_widget)
         self.__pick_up_action = self.__menu_4_list.addAction('领料')
         self.__summary_action = self.__menu_4_list.addAction('累计')
-        # 已分配材料的数据 part_id : [已分配的中德物料, 已分配的巨轮物料, 已分配的现场物料]
+        # 已分配材料的数据 part_id : [已分配的中德物料, 已分配的巨轮物料, 已分配的现场物料，已分配的钜欧物料]
         self.assigned_material_dict = other['assigned_data'] if 'assigned_data' in other else {}
         # 中德物料采购计划文件
         self.purchase_plan_dir = other['plan'] if 'plan' in other else None
@@ -1483,9 +1348,20 @@ class MaterialTab(QWidget):
         tab_name, ok = QInputDialog.getText(self.__parent, '输入', '新页的名称', QLineEdit.Normal, f'页{tab_count}')
         if not ok:
             return
-        neu_tab = MaterialTablePanel(self, self.__database, mode=0)
+        neu_tab = MaterialTablePanel(self, self.__database, mode=0, is_zd=self.is_zd)
         self.__w_list.append(neu_tab)
         self.__tab_widget.addTab(neu_tab, tab_name)
+
+    def set_zd_flag(self, is_zd):
+        """
+        设置是否为中德生产订单的flags，并更新所有tab的标志
+        :param is_zd:
+        :return:
+        """
+        self.is_zd = is_zd
+        for t in self.__w_list:
+            t.is_zd = is_zd
+            t.set_header()
 
     def __remove_tab(self):
         """
@@ -1498,7 +1374,7 @@ class MaterialTab(QWidget):
             w = self.__w_list[current_tab_index]
             self.__w_list.remove(w)
 
-    def get_current_material_table(self) -> MaterialTablePanel:
+    def get_current_material_table(self) -> (MaterialTablePanel, str):
         """
         获取当前被激活的数据表格
         :return:
@@ -1525,7 +1401,8 @@ class MaterialTab(QWidget):
             self.__parent.show_status_message(message)
         else:
             self.purchase_plan = self.__a_thread.purchase_plan
-            self.__parent.show_status_message(f'采购计划获取完成，共获取{count}个有效记录。')
+            neu_count = len(self.purchase_plan)
+            self.__parent.show_status_message(f'采购计划获取完成，共获取{neu_count}个有效记录。')
         self.purchase_plan_done = True
 
     def __on_custom_context_menu_requested(self, pos: QPoint):
@@ -1723,7 +1600,7 @@ class MaterialTab(QWidget):
     def fill_data(self, material_data, table_index=None) -> int:
         if len(self.__w_list) < 1:
             QMessageBox.warning(None, '', '没有已激活的标签页。')
-            return
+            return -1
         self.current_material_4_pick_up = None
         # 填充某个表格的材料数据
         t_index = table_index
@@ -1735,7 +1612,8 @@ class MaterialTab(QWidget):
 
     def set_tab_name(self, name, table_index):
         # 设置某个标签页的名称
-        self.__tab_widget.setTabText(table_index, name)
+        if table_index is not None and table_index >= 0:
+            self.__tab_widget.setTabText(table_index, name)
 
     def __pick_up_assigned_material(self):
         self.__pause_tab_change_handler = True
@@ -1748,12 +1626,15 @@ class MaterialTab(QWidget):
                     return
             the_item = self.assigned_list_widget.currentItem()
             self.current_material_4_pick_up = the_item.text()
+            s_i = self.current_material_4_pick_up.rfind('\\')
+            # 判断是不是中德合同
+            self.set_zd_flag(self.current_material_4_pick_up.rfind('ZD', s_i + 1) >= 0)
             self.get_assigned_materials(ignore_files=[the_item.text()])
             wb = load_workbook(the_item.text())
             ws_s = wb.sheetnames
             temp_material_table_list = []
             for s in ws_s:
-                a_material_table = MaterialTablePanel(self, self.__database, mode=0)
+                a_material_table = MaterialTablePanel(self, self.__database, mode=0, is_zd=self.is_zd)
                 a_material_table.in_pick_up_mode = True
                 a_material_table.pick_up_list_file = self.current_material_4_pick_up
                 ws = wb[s]
@@ -1767,11 +1648,11 @@ class MaterialTab(QWidget):
                     if p_id is None:
                         break
                     p_qty = float(r[6].value)  # 需求数
-                    s1 = float(r[8].value)  # 中德仓库分配
-                    s2 = float(r[9].value)  # 巨轮仓库分配
+                    s1 = float(r[8].value)  # 第一仓库分配
+                    s2 = float(r[9].value)  # 第二仓库分配
                     s3 = float(r[10].value)  # 现场物料分配
-                    p1 = float(r[14].value)  # 中德仓库已领料
-                    p2 = float(r[15].value)  # 巨轮仓库已领料
+                    p1 = float(r[14].value)  # 第一仓库已领料
+                    p2 = float(r[15].value)  # 第二仓库已领料
                     p3 = float(r[16].value)  # 现场已领料
                     r_p_qty = p_qty - p1 - p2 - p3
                     if r_p_qty <= 0.0:
@@ -1791,12 +1672,13 @@ class MaterialTab(QWidget):
                 self.__tab_widget.addTab(t[0], t[1])
         except Exception as ex:
             QMessageBox.warning(self.__parent, '计算已分配清单时异常', ex.__str__(), QMessageBox.Yes)
+            raise ex
         finally:
             self.__pause_tab_change_handler = False
 
     def get_assigned_materials(self, ignore_files=None):
         """
-        # 读取已分配材料的数据
+        # 读取已分配材料的数据，形成的数据 {part_id: [中德, 巨轮, 现场, 钜欧]}
         :param ignore_files: 要忽略的数据文件的列表
         :return:
         """
@@ -1817,6 +1699,8 @@ class MaterialTab(QWidget):
         for i in range(self.assigned_list_widget.count()):
             current_item = self.assigned_list_widget.item(i)
             f_name = current_item.text()
+            t_index = f_name.rfind('\\')
+            is_zd = f_name.find('ZD', t_index + 1) >= 0
             tf = os.path.basename(f_name)
             dot_index = tf.rindex('.')
             product_bill = tf[:dot_index]
@@ -1835,21 +1719,35 @@ class MaterialTab(QWidget):
                         p_id_cell = r[0].value
                         if p_id_cell is None:
                             break
-                        s1 = float(r[8].value)
-                        s2 = float(r[9].value)
-                        s3 = float(r[10].value)
+                        s1 = float(r[8].value)  # 第一仓库
+                        s2 = float(r[9].value)  # 第二仓库
+                        s3 = float(r[10].value)  # 现场
                         if p_id_cell in self.detail_assigned_dict:
                             ll: list = self.detail_assigned_dict[p_id_cell]
-                            ll.append((product_bill, s, s1, s2, s3))
+                            if is_zd:
+                                ll.append((product_bill, s, s1, s2, s3, 0.0))
+                            else:
+                                ll.append((product_bill, s, s2, 0.0, s3, s1))
                         else:
-                            self.detail_assigned_dict[p_id_cell] = [(product_bill, s, s1, s2, s3)]
+                            if is_zd:
+                                self.detail_assigned_dict[p_id_cell] = [(product_bill, s, s1, s2, s3, 0.0)]
+                            else:
+                                self.detail_assigned_dict[p_id_cell] = [(product_bill, s, s2, 0.0, s3, s1)]
                         if p_id_cell in self.assigned_material_dict:
                             ss = self.assigned_material_dict[p_id_cell]
-                            ss[0] += s1
-                            ss[1] += s2
-                            ss[2] += s3
+                            if is_zd:
+                                ss[0] += s1
+                                ss[1] += s2
+                                ss[2] += s3
+                            else:
+                                ss[0] += s2
+                                ss[2] += s3
+                                ss[3] += s1
                         else:
-                            self.assigned_material_dict[p_id_cell] = [s1, s2, s3]
+                            if is_zd:
+                                self.assigned_material_dict[p_id_cell] = [s1, s2, s3, 0.0]
+                            else:
+                                self.assigned_material_dict[p_id_cell] = [s2, 0.0, s3, s1]
                         r_i += 1
             except Exception as ex:
                 self.__parent.show_status_message(f'{f_name} -> 错误：{ex.__str__()}')
@@ -1915,6 +1813,7 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
         self.pickupFromJlAction.triggered.connect(lambda: self.pick_up_items(_type=2))
         self.pickupFromZdAction.triggered.connect(lambda: self.pick_up_items(_type=1))
         self.pickupFromSiteAction.triggered.connect(lambda: self.pick_up_items(_type=3))
+        self.pickupFromJoAction.triggered.connect(lambda: self.pick_up_items(_type=4))
         self.calculateThrListAction.triggered.connect(self.__calculate_material_thr_list)
         self.adminRightAction.triggered.connect(self.__handle_admin_right)
         self.modifyStockAction.triggered.connect(self.__modify_part_stock)
@@ -1930,6 +1829,14 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
             os.startfile(self.__product_plan_file)
         except Exception as ex:
             QMessageBox.warning(self, '打开产品清单时异常', ex.__str__())
+
+    def __pre_assigned_material(self, _type):
+        """
+        对所示清单，进行物料预分配
+        :param _type:
+        :return:
+        """
+        pass
 
     def __import_zd_foundation_data_handler(self):
         """
@@ -2103,7 +2010,7 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
     def pick_up_items(self, _type):
         """
         生成领料单
-        :param _type: 1=中德，2=巨轮，3=现场
+        :param _type: 1=中德，2=巨轮，3=现场，4=钜欧
         :return:
         """
         try:
@@ -2111,15 +2018,29 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                 t_file = self.materialTab.current_material_4_pick_up
                 if is_used(t_file):
                     raise Exception(f'{t_file}被占用，无法操作。')
+            if self.materialTab.is_zd is None:
+                raise Exception(f'无法确定是生产订单所属公司，暂时无法进行领料操作。')
+            if _type == 2 and (not self.materialTab.is_zd):
+                raise Exception(f'钜欧生产订单，无法在巨轮仓库领料。')
+            if _type == 4 and self.materialTab.is_zd:
+                raise Exception(f'中德生产订单，无法在钜欧仓库领料。')
             # 生产领料对话框
             material_table, table_txt = self.materialTab.get_current_material_table()
             all_materials = material_table.get_all_material()
-            if _type == 1 and len(all_materials[2]) < 1:
-                QMessageBox.warning(self, '中断操作', '没有从中德仓库领用的物料。')
-                return
-            if _type == 2 and len(all_materials[3]) < 1:
-                QMessageBox.warning(self, '中断操作', '没有从巨轮仓库领用的物料。')
-                return
+            if self.materialTab.is_zd:
+                if _type == 1 and len(all_materials[2]) < 1:
+                    QMessageBox.warning(self, '中断操作', '没有从中德仓库领用的物料。')
+                    return
+                if _type == 2 and len(all_materials[3]) < 1:
+                    QMessageBox.warning(self, '中断操作', '没有从巨轮仓库领用的物料。')
+                    return
+            else:
+                if _type == 4 and len(all_materials[2]) < 1:
+                    QMessageBox.warning(self, '中断操作', '没有从钜欧仓库领用的物料。')
+                    return
+                if _type == 1 and len(all_materials[3]) < 1:
+                    QMessageBox.warning(self, '中断操作', '没有从中德仓库领用的物料。')
+                    return
             if _type == 3 and len(all_materials[1]) < 1:
                 QMessageBox.warning(self, '中断操作', '没有从生产现场领用的物料。')
                 return
@@ -2138,8 +2059,17 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                 the_config_dict['仓库'] = 'A'
                 handle_material = all_materials[1]
             else:
-                the_config_dict['仓库'] = 'D' if _type == 1 else 'F'
-                handle_material = all_materials[_type + 1]
+                if self.materialTab.is_zd:
+                    the_config_dict['仓库'] = 'D' if _type == 1 else 'F'
+                    handle_material = all_materials[_type + 1]
+                else:
+                    if _type == 1:
+                        the_config_dict['仓库'] = 'D'
+                        handle_material = all_materials[3]
+                    else:
+                        # _type == 4
+                        the_config_dict['仓库'] = 'J'
+                        handle_material = all_materials[2]
             if self.__user is not None and len(self.__user) > 0:
                 the_config_dict['操作者'] = self.__user
             today_bill = QDate.currentDate().toString('yyMMdd')
@@ -2155,7 +2085,13 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                 des_str = None
                 unit_str = None
                 if _type != 3:
-                    info = self.__database.get_erp_info(erp_id, jl_erp=_type == 2)
+                    if _type == 1:
+                        _erp = 0
+                    elif _type == 2:
+                        _erp = 1
+                    else:
+                        _erp = 2
+                    info = self.__database.get_erp_info(erp_id, which_erp=_erp)
                     if info is not None:
                         des_str = info[1]
                         unit_str = info[2]
@@ -2204,6 +2140,7 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
 
     def generate_bom(self):
         try:
+            is_zd = self.materialTab.is_zd
             materialTable, table_txt = self.materialTab.get_current_material_table()
             all_materials = materialTable.get_all_material()
             bom_type_list = ('统计清单', '装配记录清单', '所有清单')
@@ -2243,7 +2180,10 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                 headers = (
                     '零件号', '名称', '型号描述', '品牌', '标准', '单位', '数量', '巨轮中德物料编码', '中德仓库库存',
                     '巨轮仓库库存', '现场库存', '类型', '配料策略', '库存不足', 'P1', 'P2', 'P3', 'R')
-                ws.range((1, 1), (1, len(headers) + 1)).value = headers
+                headers_2 = (
+                    '零件号', '名称', '型号描述', '品牌', '标准', '单位', '数量', '钜欧云控物料编码', '钜欧仓库库存',
+                    '中德仓库库存', '现场库存', '类型', '配料策略', '库存不足', 'P1', 'P2', 'P3', 'R')
+                ws.range((1, 1), (1, len(headers) + 1)).value = headers if is_zd else headers_2
                 i = 2
                 for r in all_materials[4]:
                     p: Part = r[0]
@@ -2270,15 +2210,26 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                     qty_cell = ws.range((i, 7))
                     qty_cell.value = r[1]
                     qty_cell.number_format = '0.00'
-                    t4 = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
-                    zd_erp_id_cell = ws.range((i, 8))
-                    zd_erp_id_cell.value = t4
-                    zd_qty_cell = ws.range((i, 9))
-                    zd_qty_cell.value = qty_zd
-                    zd_qty_cell.number_format = '0.00'
-                    jl_qty_cell = ws.range((i, 10))
-                    jl_qty_cell.value = qty_jl
-                    jl_qty_cell.number_format = '0.00'
+                    if is_zd:
+                        t4 = p.get_specified_tag(self.__database, '巨轮中德ERP物料编码')
+                        zd_erp_id_cell = ws.range((i, 8))
+                        zd_erp_id_cell.value = t4
+                        zd_qty_cell = ws.range((i, 9))
+                        zd_qty_cell.value = qty_zd
+                        zd_qty_cell.number_format = '0.00'
+                        jl_qty_cell = ws.range((i, 10))
+                        jl_qty_cell.value = qty_jl
+                        jl_qty_cell.number_format = '0.00'
+                    else:
+                        t4 = p.get_specified_tag(self.__database, '钜欧ERP物料编码')
+                        jo_erp_id_cell = ws.range((i, 8))
+                        jo_erp_id_cell.value = t4
+                        jo_qty_cell = ws.range((i, 9))
+                        jo_qty_cell.value = qty_zd
+                        jo_qty_cell.number_format = '0.00'
+                        zd_qty_cell = ws.range((i, 10))
+                        zd_qty_cell.value = qty_jl
+                        zd_qty_cell.number_format = '0.00'
                     site_qty_cell = ws.range((i, 11))
                     site_qty_cell.value = qty_site
                     site_qty_cell.number_format = '0.00'
@@ -2372,8 +2323,11 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                             ws1.range((i, 6)).value = unit_str
                             i += 1
 
-                    # 处理中德仓库的领料
-                    ws2 = wb.sheets.add('中德仓库物料', after=ws1)
+                    # 处理第一仓库的领料
+                    if is_zd:
+                        ws2 = wb.sheets.add('中德仓库物料', after=ws1)
+                    else:
+                        ws2 = wb.sheets.add('钜欧仓库物料', after=ws1)
                     headers = ('序号', '零件号', 'ERP物料编号', '物料描述', '数量', '单位')
                     ws2.range((1, 1), (1, len(headers) + 1)).value = headers
                     c_m_2 = len(all_materials[2])
@@ -2395,7 +2349,8 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                             id_cell.value = part_id
                             id_cell.number_format = '00000000'
                             ws2.range((i, 3)).value = erp_id
-                            info = self.__database.get_erp_info(erp_id)
+                            the_erp_type = 0 if is_zd else 2
+                            info = self.__database.get_erp_info(erp_id, which_erp=the_erp_type)
                             if info is not None:
                                 ws2.range((i, 4)).value = info[1]
                                 ws2.range((i, 6)).value = info[2]
@@ -2423,8 +2378,11 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                             ws2.range((i, 5)).value = r[2]
                             i += 1
 
-                    # 处理巨轮仓库的领料
-                    ws3 = wb.sheets.add('巨轮仓库物料', after=ws2)
+                    # 处理第二仓库的领料
+                    if is_zd:
+                        ws3 = wb.sheets.add('巨轮仓库物料', after=ws2)
+                    else:
+                        ws3 = wb.sheets.add('中德仓库物料', after=ws2)
                     ws3.range((1, 1), (1, len(headers) + 1)).value = headers
                     c_m_3 = len(all_materials[3])
                     c_row = 1 if c_m_3 > 0 else c_m_3 + 1
@@ -2445,7 +2403,8 @@ class NAssemblyToolWindow(QMainWindow, Ui_MainWindow):
                             id_cell.value = part_id
                             id_cell.number_format = '00000000'
                             ws3.range((i, 3)).value = erp_id
-                            info = self.__database.get_erp_info(erp_id, jl_erp=True)
+                            the_erp_type = 1 if is_zd else 0
+                            info = self.__database.get_erp_info(erp_id, which_erp=the_erp_type)
                             if info is not None:
                                 ws3.range((i, 4)).value = info[1]
                                 ws3.range((i, 6)).value = info[2]

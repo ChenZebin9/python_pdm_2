@@ -1,7 +1,7 @@
 # coding=gbk
 from datetime import datetime
 
-from PyQt5.QtCore import (Qt, QDate, QItemSelectionModel, QModelIndex)
+from PyQt5.QtCore import (Qt, QDate, QItemSelectionModel, QModelIndex, QDateTime)
 from PyQt5.QtGui import (QStandardItemModel, QStandardItem, QCursor)
 from PyQt5.QtWidgets import (QDialog, QAbstractItemView, QMenu, QMessageBox)
 
@@ -32,6 +32,9 @@ class NHandlePickMaterialDialog(QDialog, Ui_Dialog):
         self.__selected_indexes = None
         self.__material_2_be_handled = []
 
+        # 是否进行更新的Flag
+        self.__update_flag = True
+
     def setup_ui(self):
         self.setWindowTitle('退料')
         self.setLayout(self.v_1_layout)
@@ -46,15 +49,21 @@ class NHandlePickMaterialDialog(QDialog, Ui_Dialog):
         self.materialTableView.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.materialTableView.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
+        self.endDateEdit.setDisplayFormat('yyyy/MM/dd')
+        self.beginDateEdit.setDisplayFormat('yyyy/MM/dd')
+
         # 设置右键菜单
         self.__roll_back_material_action.triggered.connect(self.__do_roll_back)
         self.materialTableView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.materialTableView.customContextMenuRequested.connect(self.__on_custom_context_menu_requested)
 
     def init_data(self):
+        self.__update_flag = False
         today = QDate.currentDate()
+        begin_day = today.addDays(-15)
         self.endDateEdit.setDate(today)
-        self.beginDateEdit.setDate(today.addDays(-15))
+        self.beginDateEdit.setDate(begin_day)
+        self.__update_flag = True
         self.__update_material_list()
         self.materialTableView.setFocus()
 
@@ -77,27 +86,33 @@ class NHandlePickMaterialDialog(QDialog, Ui_Dialog):
         进行实质上的退库工作
         :return:
         """
-        resp = QMessageBox.question(self, '询问', '是否要将选定的数据进行退料处理？',
-                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if resp == QMessageBox.No:
-            return
-        today = QDate.currentDate()
-        bill_name = 'P{0}'.format(today.toString('yyMMdd'))
-        bill_name = self.__database.get_available_supply_operation_bill(bill_name)
-        self.__database.create_put_back_material_record(
-            bill_name, self.__operator, today.toString('yyyy-MM-dd'), self.__material_2_be_handled)
-        QMessageBox.information(self, '', '完成退料的操作。', QMessageBox.Yes)
-        c = int(len(self.__selected_indexes) / 10)
-        for i in range(c):
-            first_index: QModelIndex = self.__selected_indexes[i * 10]
-            self.__material_data.removeRow(first_index.row())
+        try:
+            resp = QMessageBox.question(self, '询问', '是否要将选定的数据进行退料处理？',
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if resp == QMessageBox.No:
+                return
+            now = QDateTime.currentDateTime()
+            bill_name = 'P{0}'.format(now.toString('yyMMdd'))
+            bill_name = self.__database.get_available_supply_operation_bill(bill_name)
+            self.__database.create_put_back_material_record(
+                bill_name, self.__operator, now.toString('yyyy-MM-dd hh:mm:ss'), self.__material_2_be_handled)
+            QMessageBox.information(self, '', '完成退料的操作。', QMessageBox.Yes)
+            c = int(len(self.__selected_indexes) / 10)
+            for i in range(c):
+                first_index: QModelIndex = self.__selected_indexes[i * 10]
+                self.__material_data.removeRow(first_index.row())
+        except Exception as ex:
+            QMessageBox.warning(self, '退料时出错', ex.__str__())
 
     def __update_material_list(self):
+        if not self.__update_flag:
+            return
         pick_records = self.__database.get_pick_material_record(self.beginDateEdit.text(), self.endDateEdit.text())
         self.__material_data.clear()
         self.__material_data.setHorizontalHeaderLabels(
             ['单号', '项目号', '零件号', '描述', '日期', '数量', '合同号', '仓位', '金额', '记录号'])
         if pick_records is None:
+            QMessageBox.information(self.__parent, '', '本时间段，没有出入库记录！')
             return
         for r in pick_records:
             other_data_s = str_2_dict(r[6])
@@ -123,6 +138,7 @@ class NHandlePickMaterialDialog(QDialog, Ui_Dialog):
             one_row_in_table.append(QStandardItem(tt.strftime('%Y/%m/%d')))
             # 数量
             qty_item = QStandardItem(r[5])
+            qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             qty_item.setData(float(r[5]), Qt.DisplayRole)
             one_row_in_table.append(qty_item)
             # 其它数据：合同号、仓位、金额
@@ -138,8 +154,9 @@ class NHandlePickMaterialDialog(QDialog, Ui_Dialog):
                 one_row_in_table.append(QStandardItem(''))
             if 'Price' in other_data_s:
                 price_item = QStandardItem(other_data_s['Price'])
+                price_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 float_price = float(other_data_s['Price'])
-                price_item.setData(float_price, Qt.DisplayRole)
+                price_item.setData('{0:.2f}'.format(float_price), Qt.DisplayRole)
             else:
                 price_item = QStandardItem('')
             one_row_in_table.append(price_item)
@@ -148,7 +165,12 @@ class NHandlePickMaterialDialog(QDialog, Ui_Dialog):
             one_row_in_table.append(record_id_item)
             if r[2] <= 1:
                 # 使用了虚拟零件，用ERP的描述进行代替
-                info = self.__database.get_erp_info(erp_code, jl_erp=(actual_storage == 'F'))
+                code = 2
+                if actual_storage == 'F':
+                    code = 1
+                elif actual_storage == 'E' or actual_storage == 'D':
+                    code = 0
+                info = self.__database.get_erp_info(erp_code, which_erp=code)
                 if info is not None:
                     item: QStandardItem = one_row_in_table[3]
                     item.setText(info[1])

@@ -64,6 +64,7 @@ class DocOutputDialog(QDialog):
             color = QColor(144, 238, 144)
         else:
             color = QColor(255, 0, 0)
+            # QMessageBox.warning(self, 'Error', error)
             print(error)
         ww.setBackground(QBrush(color))
         self.docTable.scrollToItem(i)
@@ -376,7 +377,7 @@ class DoOutput(QThread):
                         err_txt = self.__app.SaveToPdf(task[4], task[3], False)
                     else:
                         shutil.copy(task[3], task[4])
-                    if len(err_txt) > 0:
+                    if err_txt is not None and len(err_txt) > 0:
                         raise Exception(err_txt)
                     self.one_task_done_signal.emit(task[0], task[1], True, '')
                 except Exception as e:

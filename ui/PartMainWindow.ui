@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>26</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="operationMenu">
@@ -28,6 +28,7 @@
      <string>操作</string>
     </property>
     <addaction name="actionCreatePart"/>
+    <addaction name="actionSuppressPart"/>
     <addaction name="separator"/>
     <addaction name="add2OutputListMenuItem"/>
     <addaction name="showOutputListMenuItem"/>
@@ -62,6 +63,7 @@
     <addaction name="portSettingMenu"/>
     <addaction name="separator"/>
     <addaction name="add2TreeViewMenuItem"/>
+    <addaction name="doStatisticsAction"/>
     <addaction name="statisticsInTimeAction"/>
     <addaction name="menu"/>
     <addaction name="showPriceAction"/>
@@ -380,6 +382,9 @@
    <property name="text">
     <string>显示仓储数据</string>
    </property>
+   <property name="shortcut">
+    <string>Shift+S</string>
+   </property>
   </action>
   <action name="startRequirementAction">
    <property name="text">
@@ -494,6 +499,19 @@
    </property>
    <property name="visible">
     <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionSuppressPart">
+   <property name="text">
+    <string>抑制单元</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
+   </property>
+  </action>
+  <action name="doStatisticsAction">
+   <property name="text">
+    <string>统计</string>
    </property>
   </action>
  </widget>

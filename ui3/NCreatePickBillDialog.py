@@ -335,8 +335,10 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
                 department_name = '巨轮OPS项目部'
             elif self.__from_storage == 'A':
                 department_name = 'OPS生产现场'
-            else:
+            elif self.__from_storage == 'D' or self.__from_storage == 'E':
                 department_name = '中德OPS项目部'
+            else:
+                department_name = '钜欧OPS项目部'
             pdf_creator = PdfLib.CreatePickBill(data_4_paper, department_name,
                                                 self.__operatorLineEdit.text(),
                                                 self.__timeSelector.text(), self.__billNrLineEdit.text())
@@ -388,12 +390,20 @@ class NCreatePickBillDialog(QDialog, Ui_Dialog):
     def fill_import_cache(self, data, sheet_name=None):
         self.__one_import_data = data.copy()
 
-    def is_zd_erp(self):
+    def in_which_storage(self) -> int:
         """
         是否进行中德ERP的操作？
-        :return: TRUE or FALSE
+        :return: 0 - 钜欧，1 - 中德，2 - 巨轮，3 - 现场
         """
-        return self.__from_storage != 'F'
+        if self.__from_storage == 'J':
+            return 0
+        elif self.__from_storage == 'E' or self.__from_storage == 'D':
+            return 1
+        elif self.__from_storage == 'F':
+            return 2
+        elif self.__from_storage == 'A':
+            return 3
+        return -1
 
 
 def run_function(the_database_setting):

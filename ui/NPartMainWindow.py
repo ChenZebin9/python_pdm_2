@@ -147,9 +147,9 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
 
         # 基础性的功能
         self.actionCreatePart.triggered.connect(self.__create_part)
+        self.actionSuppressPart.triggered.connect(self.__suppress_part)
 
-        # 这种方式关闭时出现异常，暂时屏蔽
-        self.exitMenuItem.triggered.connect(self.close)
+        self.exitMenuItem.triggered.connect(self.close)  # 这种方式关闭时出现异常，暂时屏蔽
         self.resetDocksMenuItem.triggered.connect(self.__reset_dock)
         self.add2TreeViewMenuItem.triggered.connect(self.__add_2_structure_view)
         self.importPartListMenuItem.triggered.connect(self.__import_part_list)
@@ -170,6 +170,7 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
         self.allStatisticsAction.triggered.connect(self.__set_statistics_setting_as_combo)
         self.purchaseStatisticsAction.triggered.connect(self.__set_statistics_setting_as_combo)
         self.assemblyStatisticsAction.triggered.connect(self.__set_statistics_setting_as_combo)
+        self.doStatisticsAction.triggered.connect(self.__do_statistics)
 
         # 关于一些权限的设定
         self.showPriceAction.setVisible(True)
@@ -191,6 +192,13 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
 
         # 其它一些产品技术文档的功能
         self.actionLocalPdfFirst.triggered.connect(self.__set_use_local_pdf_flag)
+
+    def __do_statistics(self):
+        """
+        进行一次统计
+        :return:
+        """
+        self.partStructurePanel.do_one_statistics_action()
 
     def __edit_part_in_identical_group_handler(self):
         """
@@ -267,6 +275,24 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
         c_p_dialog.show()
         self.part_2_paste = None
 
+    def __suppress_part(self):
+        """
+        将所选单元设为未启用状态
+        :return:
+        """
+        the_part = self.partListPanel.get_current_selected_part()
+        if the_part is None:
+            self.set_status_bar_text('未选择项目。')
+            return
+        resp = QMessageBox.question(self, '确认', f'是否把<{the_part:08d}>设置为未启用状态？',
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if resp == QMessageBox.Yes:
+            try:
+                self.__database.suppress_part(the_part)
+                self.__database.save_change()
+            except:
+                self.__database.roll_back()
+
     def __add_part_2_requirement(self):
         """
         将选择的物料添加入需求对话框
@@ -336,9 +362,11 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
                     return
                 for p in select_parts:
                     p = Part.get_parts(self.__database, part_id=p)[0]
-                    if self.__pick_material_dialog.is_zd_erp():
-                        erp_info = p.get_erp_info(self.__database)
-                    else:
+                    the_storage_tag = self.__pick_material_dialog.in_which_storage()
+                    erp_info = None
+                    if the_storage_tag == 1 or the_storage_tag == 0:
+                        erp_info = p.get_erp_info(self.__database, the_storage_tag == 1)
+                    elif the_storage_tag == 2:
                         erp_code = p.get_specified_tag(self.__database, '巨轮智能ERP物料编码')
                         if erp_code is None:
                             erp_info = None
@@ -346,6 +374,8 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
                             if jl_erp_database is None:
                                 jl_erp_database = JL_ERP_Database()
                             erp_info = jl_erp_database.get_erp_data(erp_code)
+                    elif the_storage_tag < 0:
+                        raise Exception('仓库号异常。')
                     if erp_info is None:
                         if self.__pick_material_dialog.get_default_storage() != 'A':
                             QMessageBox.warning(self, '忽略', f'{p.name}({p.part_id})没有ERP的信息，被忽略。')
@@ -411,6 +441,7 @@ class NPartMainWindow(QMainWindow, Ui_MainWindow):
 
     def __set_storage_shown_flag(self, is_check):
         self.partListPanel.set_storage_shown_flags(is_check)
+        self.set_status_bar_text('显示库存。' if is_check else '隐藏库存。')
         self.actionViewSupply.setVisible(is_check)
 
     def __when_storing_pos_check(self):

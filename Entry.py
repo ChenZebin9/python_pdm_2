@@ -87,7 +87,7 @@ if __name__ == '__main__':
     """ app = QApplication(sys.argv) 要放置在最前面，否则会出现许多可怪的问题。 """
     app = QApplication(sys.argv)
 
-    version = '1.6.3.4'
+    version = '1.6.4.7'
 
     config = configparser.ConfigParser()
     if not config.read('pdm_config.ini', encoding='GBK'):
@@ -232,7 +232,9 @@ if __name__ == '__main__':
         icon = QIcon()
         icon.addPixmap(QPixmap('OPS_ING_MMI.ico'), QIcon.Normal, QIcon.Off)
 
-        dialog = NReplaceItemInExcelDialog(parent=None, database=database)
+        resp = QMessageBox.question(None, '询问', 'ERP数据取自中德公司吗？', QMessageBox.Yes | QMessageBox.No,
+                                    QMessageBox.No)
+        dialog = NReplaceItemInExcelDialog(parent=None, database=database, is_zd=resp == QMessageBox.Yes)
         _title = dialog.windowTitle() + f' v{version}' + ('（离线）' if mode == 1 else '')
         dialog.setWindowTitle(_title)
         dialog.setWindowIcon(icon)
@@ -251,4 +253,5 @@ if __name__ == '__main__':
 1.6.2.16 2023.07.15 增加了生产配料管理模块，生产前预分配的功能。改善了配件在库，但已分配的功能。
 
 1.6.3.0 2023.07.29 更新为主要以钜欧仓库进行配料管理。
+1.6.4.0 2023.12.27 改变了以钜欧仓库为仓库的配料管理。
 """
